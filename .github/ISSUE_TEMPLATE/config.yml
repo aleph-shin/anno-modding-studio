@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/aleph-shin/anno-modding-studio/security/advisories/new
+    about: Please report vulnerabilities privately, as SECURITY.md describes.
+  - name: The user guide
+    url: https://github.com/aleph-shin/anno-modding-studio#readme
+    about: How the Studio works, and the Troubleshooting section.

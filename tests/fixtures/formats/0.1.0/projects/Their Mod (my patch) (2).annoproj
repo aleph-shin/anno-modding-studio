@@ -1,0 +1,241 @@
+{
+  "format": 2,
+  "kind": "project",
+  "written_by": "0.1.0",
+  "game": "anno1800",
+  "mod_id": "fixture-their-patch",
+  "created_at": 1793076248.421616,
+  "revision": 1,
+  "details": {
+    "name": "Their Mod (my patch)",
+    "category": "",
+    "version": "1.0",
+    "creator": "Fixture",
+    "description": "Personal changes to Their Mod. Loads straight after it, so updating that mod does not take them with it.",
+    "mod_id": "fixture-their-patch",
+    "load_after": [],
+    "declared": {}
+  },
+  "patches": [
+    "their mod",
+    "their-mod"
+  ],
+  "history": [
+    {
+      "timestamp": 1793076248.3795538,
+      "label": "Exported v1.0",
+      "version": "1.0",
+      "changes": [],
+      "kind": "export",
+      "ops": [],
+      "details": {
+        "name": "Their Mod (my patch)",
+        "category": "",
+        "version": "1.0",
+        "creator": "Fixture",
+        "description": "Personal changes to Their Mod. Loads straight after it, so updating that mod does not take them with it.",
+        "fork_of": "",
+        "load_after": [],
+        "scripts_folder": "",
+        "guid_range": "",
+        "loads_last": false
+      },
+      "inside": {
+        "ops": [
+          {
+            "expression": "/Values/Standard/Name",
+            "source": "<ModOp Type=\"replace\" GUID=\"1010\" Path=\"/Values/Standard/Name\"><Name>Better Bakery</Name></ModOp>",
+            "summary": "",
+            "origin": "Their Mod",
+            "note": "",
+            "order": 3,
+            "file": "",
+            "includes": "",
+            "aside": false,
+            "gap": 1,
+            "uid": "156ecd4724b6",
+            "active": true,
+            "matched": [],
+            "made": 0,
+            "caveat": "",
+            "unread_at": [],
+            "folded": [],
+            "kept": "",
+            "parts": [],
+            "scope": false,
+            "idle": false,
+            "within": [],
+            "tool": {},
+            "searches": false,
+            "plain": false,
+            "authored": true,
+            "wide": "",
+            "kept_by": "Their Mod (my patch)",
+            "at": 3,
+            "after": null,
+            "in": []
+          }
+        ],
+        "off": [
+          {
+            "origin": "Their Mod",
+            "uid": "60769c8ce26b",
+            "source": "<ModOp Type=\"remove\" GUID=\"1011\" />"
+          }
+        ],
+        "changes": [
+          {
+            "guid": "1010",
+            "asset_label": "Bakery",
+            "path": "/Values/Standard/Name",
+            "tag": "Name",
+            "old_value": "Bakery",
+            "new_value": "Better Bakery",
+            "positional": false,
+            "note": "",
+            "op": "replace",
+            "payload": "",
+            "summary": "",
+            "uid": "",
+            "active": true,
+            "authored": true,
+            "order": 3,
+            "spot": 0,
+            "origin": "Their Mod",
+            "search": "",
+            "op_uid": "156ecd4724b6",
+            "absorbs": false,
+            "exception_of": "",
+            "within": [],
+            "in_game_name": "",
+            "restated": false,
+            "kept_by": "Their Mod (my patch)"
+          }
+        ],
+        "taken_out": [
+          [
+            "Their Mod",
+            "<ModOp Type=\"remove\" GUID=\"1012\" />",
+            [],
+            5,
+            "Their Mod (my patch)"
+          ]
+        ],
+        "held_edits": [
+          {
+            "uid": "c79fb0843148",
+            "origin": "Their Mod",
+            "kind": "taken out",
+            "why": "gone",
+            "was": "<ModOp Type=\"remove\" GUID=\"1013\" />",
+            "now": "",
+            "now_uid": "",
+            "yours": [],
+            "active": [],
+            "kept_by": "Their Mod (my patch)"
+          }
+        ]
+      }
+    }
+  ],
+  "inside": {
+    "ops": [
+      {
+        "expression": "/Values/Standard/Name",
+        "source": "<ModOp Type=\"replace\" GUID=\"1010\" Path=\"/Values/Standard/Name\"><Name>Better Bakery</Name></ModOp>",
+        "summary": "",
+        "origin": "Their Mod",
+        "note": "",
+        "order": 3,
+        "file": "",
+        "includes": "",
+        "aside": false,
+        "gap": 1,
+        "uid": "156ecd4724b6",
+        "active": true,
+        "matched": [],
+        "made": 0,
+        "caveat": "",
+        "unread_at": [],
+        "folded": [],
+        "kept": "",
+        "parts": [],
+        "scope": false,
+        "idle": false,
+        "within": [],
+        "tool": {},
+        "searches": false,
+        "plain": false,
+        "authored": true,
+        "wide": "",
+        "kept_by": "Their Mod (my patch)",
+        "at": 2,
+        "after": {
+          "source": "<ModOp Type=\"replace\" GUID=\"1010\" Path=\"/Values/Standard/Name\"><Name>Bakery</Name></ModOp>",
+          "uid": "d45a61bce843",
+          "nth": 0
+        },
+        "in": []
+      }
+    ],
+    "off": [
+      {
+        "origin": "Their Mod",
+        "uid": "60769c8ce26b",
+        "source": "<ModOp Type=\"remove\" GUID=\"1011\" />"
+      }
+    ],
+    "changes": [
+      {
+        "guid": "1010",
+        "asset_label": "Bakery",
+        "path": "/Values/Standard/Name",
+        "tag": "Name",
+        "old_value": "Bakery",
+        "new_value": "Better Bakery",
+        "positional": false,
+        "note": "",
+        "op": "replace",
+        "payload": "",
+        "summary": "",
+        "uid": "",
+        "active": true,
+        "authored": true,
+        "order": 3,
+        "spot": 0,
+        "origin": "Their Mod",
+        "search": "",
+        "op_uid": "156ecd4724b6",
+        "absorbs": false,
+        "exception_of": "",
+        "within": [],
+        "in_game_name": "",
+        "restated": false,
+        "kept_by": "Their Mod (my patch)"
+      }
+    ],
+    "taken_out": [
+      [
+        "Their Mod",
+        "<ModOp Type=\"remove\" GUID=\"1012\" />",
+        [],
+        5,
+        "Their Mod (my patch)"
+      ]
+    ],
+    "held_edits": [
+      {
+        "uid": "c79fb0843148",
+        "origin": "Their Mod",
+        "kind": "taken out",
+        "why": "gone",
+        "was": "<ModOp Type=\"remove\" GUID=\"1013\" />",
+        "now": "",
+        "now_uid": "",
+        "yours": [],
+        "active": [],
+        "kept_by": "Their Mod (my patch)"
+      }
+    ]
+  }
+}

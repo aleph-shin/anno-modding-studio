@@ -1,0 +1,29 @@
+{
+  "format": 1,
+  "written_by": "0.1.0",
+  "when": 1793076248.5953774,
+  "label": "before exporting",
+  "mods_folder": "C:\\fixture\\mods",
+  "game": "anno1800",
+  "files": [
+    {
+      "mod": "Their Mod",
+      "path": "data/config/export/main/asset/assets.xml",
+      "copy": "0001-assets.xml",
+      "existed": true
+    },
+    {
+      "mod": "Their Mod",
+      "path": "modinfo.json",
+      "copy": "0002-modinfo.json",
+      "existed": true
+    },
+    {
+      "mod": "Their Mod",
+      "path": "data/config/export/main/asset/new.xml",
+      "copy": "",
+      "existed": false
+    }
+  ],
+  "pinned": false
+}

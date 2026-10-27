@@ -1,0 +1,77 @@
+# The release: on a pushed tag v<major>.<minor>.<patch>, build the Windows
+# zip from the locked inputs, run the built Studio's self-test, and make a
+# DRAFT release with the zip and its checksum. Nothing is published here:
+# the owner reads the draft and publishes it by hand. docs/development.md,
+# "Making a release", has every step.
+#
+# The tag must name __version__ in anno_modding_studio/__init__.py, and the
+# zip is AnnoModdingStudio-<version>-windows-x64.zip: the Studio's update
+# check finds a release by both. A tag push runs this whether the repository
+# is private or public; it is a few Windows minutes a release.
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+# Nothing for the workflow as a whole; the one job that writes says so.
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and draft ${{ github.ref_name }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      # To create the draft release and attach the zip to it.
+      contents: write
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUNBUFFERED: "1"
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Python whose notices tools/release/licenses holds. No pip cache:
+      # a release installs from the lock and nothing else.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: The tag names the version
+        run: python tools/build_release.py check-tag --tag "$env:TAG"
+
+      - name: Install the locked build inputs
+        timeout-minutes: 10
+        run: |
+          python -m pip install --require-hashes --no-deps -r requirements-release.txt
+          python -m pip check
+
+      - name: Freeze
+        timeout-minutes: 20
+        run: python tools/build_release.py freeze
+
+      - name: Self-test
+        timeout-minutes: 10
+        run: python tools/build_release.py self-test
+
+      - name: Notices, zip and checksum
+        run: python tools/build_release.py package
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:TAG.Substring(1)
+          $zip = "dist/AnnoModdingStudio-$version-windows-x64.zip"
+          gh release create "$env:TAG" "$zip" "$zip.sha256" `
+            --repo "${{ github.repository }}" `
+            --draft --verify-tag `
+            --title "Anno Modding Studio $version (beta)" `
+            --notes-file dist/release-notes.md

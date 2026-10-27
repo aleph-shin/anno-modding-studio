@@ -1,0 +1,137 @@
+[project]
+name = "anno-modding-studio"
+# Read from anno_modding_studio.__version__, the one place it is written.
+dynamic = ["version"]
+description = "Author Anno 1800 / Anno 117 ModOp XML mods without writing XPath by hand."
+requires-python = ">=3.10"
+# PEP 639: an SPDX expression, and the files that go into the wheel with it.
+license = "GPL-3.0-or-later"
+authors = [{ name = "aleph-shin" }]
+license-files = ["LICENSE", "THIRD-PARTY-NOTICES.md"]
+# PySide6-Essentials rather than PySide6, which adds PySide6-Addons: the
+# Studio uses only Core, Gui, Widgets, Svg and Network, all in Essentials, and
+# the add-ons would bring Qt Virtual Keyboard (GPL-only), Qt PDF and the rest
+# into the built Studio (THIRD-PARTY-NOTICES.md, section 5). An installed
+# PySide6 includes Essentials, so it still meets this. 6.12 at least: 6.11's
+# addLayout kept a wrapper of every item already in the layout it added, and
+# Qt deletes a layout item without telling PySide (see widgets.laid_out).
+dependencies = ["lxml>=6.1.0", "PySide6-Essentials>=6.12.0"]
+
+# The dev tools are pinned: a new ruff, mypy or vulture can find more or less
+# than the one tools/check_baseline.json was counted with, and CI would then
+# fail, or pass, on what no change did. Dependabot proposes each new release
+# (.github/dependabot.yml), and its PR is where the counts are settled.
+[project.optional-dependencies]
+# pytest-xdist shares the suite among processes (tools/check.py).
+dev = ["ruff==0.17.2", "mypy==2.4.0", "pytest==9.1.1", "pytest-xdist==3.8.0", "vulture==2.16"]
+
+[build-system]
+# 77 is the first setuptools to read the PEP 639 license and license-files.
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["anno_modding_studio*"]
+
+# The files the package reads beside its modules, which are no Python and
+# so in no wheel unless named: the icons, the mod.io logos with their notice,
+# and the catalogs. Without them a Studio installed with pip had no icon and
+# no German.
+[tool.setuptools.package-data]
+anno_modding_studio = ["resources/*.*", "resources/modio/*", "locale/*.po"]
+
+[tool.setuptools.dynamic]
+version = {attr = "anno_modding_studio.__version__"}
+
+# --------------------------------------------------------------------------
+# pytest
+# --------------------------------------------------------------------------
+# The suite is written with unittest (TestCase, subTest) and pytest runs it
+# natively, so `python -m unittest discover -s tests` still works and is still
+# what the README documents. This block only pins rootdir and testpaths so
+# both runners agree on what "the suite" means no matter where you invoke it.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning:anno_modding_studio.*"]
+
+# --------------------------------------------------------------------------
+# ruff
+# --------------------------------------------------------------------------
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "F",    # pyflakes -- unused imports/names, genuine mistakes
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "B",    # bugbear -- mutable defaults, shadowed loop vars, real bugs
+    "UP",   # pyupgrade -- checks we honour requires-python = 3.10
+    "SIM",  # flake8-simplify
+    "C4",   # comprehensions
+    "I",    # import sorting
+    "RUF",  # ruff's own rules
+    "BLE",  # blind except -- see the note in `ignore` below
+]
+ignore = [
+    # The source is hand-wrapped to 79 columns and mostly holds to it
+    # (95th percentile is exactly 79). Only 284 lines of 43k exceed 88, and
+    # reflowing them is churn, not review. Left off so real findings aren't
+    # buried under style.
+    "E501",
+    # Qt's API is camelCase and subclasses must match it.
+    "N802", "N803", "N815",
+    # NOTE: BLE001 (blind-except) is deliberately NOT ignored. Every broad
+    # except that is intentional already carries a `# noqa: BLE001 - <reason>`,
+    # so leaving the rule on means it flags exactly the ones nobody justified.
+    # The bulk UP rules measure conformance to modern idiom, not correctness.
+    # This codebase consistently uses %-formatting and typing.Dict/List, which
+    # are valid on 3.10; there are 1086 instances between them. Rewriting all
+    # of it is a style migration to decide on deliberately, not a review
+    # finding to triage 1086 times. The rest of UP stays on.
+    "UP031",  # printf-string-formatting  (692)
+    "UP006",  # non-pep585-annotation     (279)
+    "UP045",  # non-pep604-annotation     (69)
+    "UP035",  # deprecated-import         (46)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests legitimately build odd objects and import for side effects.
+"tests/*" = ["B011"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["anno_modding_studio"]
+
+# --------------------------------------------------------------------------
+# mypy
+# --------------------------------------------------------------------------
+# Aimed at core/ only. core has no Qt imports at all, so it type-checks as
+# plain Python; the UI layer is 13k lines of PySide6 where mypy's value is
+# much lower and its noise much higher. Tighten per-module as core gets
+# reviewed rather than all at once.
+[tool.mypy]
+python_version = "3.10"
+files = ["anno_modding_studio"]
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+no_implicit_optional = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "anno_modding_studio.ui.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["lxml.*", "PySide6.*"]
+ignore_missing_imports = true
+
+# --------------------------------------------------------------------------
+# vulture
+# --------------------------------------------------------------------------
+# Names nothing uses. The tests are read so that a name only they use counts
+# as used; tools/check.py counts what is found in the package and the tools,
+# by file, and leaves out the Qt overrides nothing in Python calls.
+[tool.vulture]
+paths = ["anno_modding_studio", "tools", "tests"]

@@ -1,0 +1,26 @@
+{
+  "format": 1,
+  "written_by": "0.1.0",
+  "entries": {
+    "Their Mod": {
+      "source": "adopted",
+      "version": "1.2"
+    },
+    "From mod.io": {
+      "source": "modio",
+      "modio_id": 4242,
+      "modfile_id": 7,
+      "version": "2.0",
+      "name": "From mod.io"
+    },
+    "[Gameplay] Fixture Mod": {
+      "source": "built",
+      "project": "projects/Fixture Mod.annoproj",
+      "mod_id": "fixture-mod",
+      "build": 1,
+      "was": [
+        "[Gameplay] Fixture"
+      ]
+    }
+  }
+}

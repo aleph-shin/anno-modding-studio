@@ -1,0 +1,459 @@
+{
+  "format": 6,
+  "written_by": "0.1.0",
+  "own": {
+    "origin": "",
+    "folder": "",
+    "modio_id": 0,
+    "order": 0,
+    "unread": 0,
+    "options": {},
+    "offered": {},
+    "read_as": {},
+    "from_collection": "",
+    "patches": "",
+    "needs": [],
+    "active": true,
+    "copies": {},
+    "copy_versions": {},
+    "stale": [],
+    "edited": false
+  },
+  "source_path": "",
+  "game": "anno1800",
+  "editing": "",
+  "home": "",
+  "aim": "make",
+  "is_the_mod": true,
+  "own_mod": true,
+  "mods_folder": "",
+  "provenance": {
+    "Their Mod": "Fixture collection"
+  },
+  "listed": {
+    "Their Mod": [
+      "Fixture collection"
+    ]
+  },
+  "profile": "Main",
+  "profiles": [
+    {
+      "name": "Main",
+      "switches": {
+        "Their Mod": true,
+        "Their Mod (my patch)": true,
+        "Other Mod (my copy)": true
+      }
+    },
+    {
+      "name": "Profile 2",
+      "switches": {
+        "Their Mod": true,
+        "Their Mod (my patch)": true,
+        "Other Mod (my copy)": true
+      }
+    }
+  ],
+  "base_archive": "",
+  "base_assets": 0,
+  "base_fingerprint": "",
+  "base_update": "",
+  "base_game_version": "",
+  "read_stack": [
+    [
+      "Their Mod",
+      "{}"
+    ],
+    [
+      "Other Mod (my copy)",
+      "{}"
+    ]
+  ],
+  "read_by": null,
+  "builds": {},
+  "created_at": 1793076248.3788362,
+  "changes": [
+    {
+      "guid": "1010",
+      "asset_label": "Bakery",
+      "path": "/Values/Cost/Gold",
+      "tag": "Gold",
+      "old_value": "100",
+      "new_value": "90",
+      "positional": false,
+      "note": "",
+      "op": "replace",
+      "payload": "",
+      "summary": "",
+      "uid": "",
+      "active": true,
+      "authored": false,
+      "order": 2,
+      "spot": 0,
+      "origin": "Their Mod",
+      "search": "",
+      "op_uid": "",
+      "absorbs": false,
+      "exception_of": "",
+      "within": [],
+      "in_game_name": "",
+      "restated": false
+    },
+    {
+      "guid": "1010",
+      "asset_label": "Bakery",
+      "path": "/Values/Building/Radius",
+      "tag": "Radius",
+      "old_value": "6",
+      "new_value": "8",
+      "positional": false,
+      "note": "",
+      "op": "merge",
+      "payload": "",
+      "summary": "",
+      "uid": "ba1fc259d630",
+      "active": true,
+      "authored": true,
+      "order": 1,
+      "spot": 0,
+      "origin": "",
+      "search": "",
+      "op_uid": "50277e22b2b9",
+      "absorbs": false,
+      "exception_of": "",
+      "within": [],
+      "in_game_name": "",
+      "restated": false
+    },
+    {
+      "guid": "1010",
+      "asset_label": "Bakery",
+      "path": "/Values/Building/Upkeep",
+      "tag": "Upkeep",
+      "old_value": "10",
+      "new_value": "5",
+      "positional": false,
+      "note": "",
+      "op": "replace",
+      "payload": "",
+      "summary": "",
+      "uid": "",
+      "active": true,
+      "authored": true,
+      "order": 0,
+      "spot": 0,
+      "origin": "",
+      "search": "",
+      "op_uid": "",
+      "absorbs": false,
+      "exception_of": "",
+      "within": [],
+      "in_game_name": "",
+      "restated": false,
+      "written_as": "05aa494e1027"
+    }
+  ],
+  "layers": [
+    {
+      "origin": "Their Mod",
+      "name": "Their Mod",
+      "folder": "C:\\fixture\\mods\\Their Mod",
+      "category": "",
+      "version": "1.2",
+      "creator": "",
+      "description": "",
+      "mod_id": "their-mod",
+      "modio_id": 0,
+      "order": 1,
+      "unread": 0,
+      "options": {},
+      "offered": {},
+      "read_as": {},
+      "from_collection": "Fixture collection",
+      "patches": "",
+      "needs": [],
+      "active": true,
+      "load_after": [],
+      "declared": {},
+      "copies": {
+        "Their Mod/[Shared] Piece": "Other Mod/[Shared] Piece"
+      },
+      "copy_versions": {},
+      "stale": [],
+      "edited": false
+    },
+    {
+      "origin": "Their Mod (my patch)",
+      "folder": "",
+      "modio_id": 0,
+      "order": 2,
+      "unread": 0,
+      "options": {},
+      "offered": {},
+      "read_as": {},
+      "from_collection": "",
+      "patches": "Their Mod",
+      "needs": [],
+      "active": true,
+      "copies": {},
+      "copy_versions": {},
+      "stale": [],
+      "edited": false
+    },
+    {
+      "origin": "Other Mod (my copy)",
+      "folder": "C:\\fixture\\library\\forks\\anno1800\\Other Mod (my copy) (2)",
+      "modio_id": 0,
+      "order": 3,
+      "unread": 0,
+      "options": {},
+      "offered": {},
+      "read_as": {},
+      "from_collection": "",
+      "patches": "",
+      "needs": [],
+      "active": true,
+      "copies": {},
+      "copy_versions": {},
+      "stale": [],
+      "edited": false
+    }
+  ],
+  "ops": [
+    {
+      "expression": "//Values/Trader",
+      "source": "<ModOp Type=\"merge\" Path=\"//Values/Trader\"><Trader/></ModOp>",
+      "summary": "merge Trader",
+      "origin": "Their Mod",
+      "note": "",
+      "order": 0,
+      "file": "",
+      "includes": "",
+      "aside": false,
+      "gap": 1,
+      "uid": "a2380794b7ff",
+      "active": true,
+      "matched": [],
+      "made": 0,
+      "caveat": "",
+      "unread_at": [],
+      "folded": [],
+      "kept": "",
+      "parts": [],
+      "scope": false,
+      "idle": false,
+      "within": [],
+      "tool": {},
+      "searches": true,
+      "plain": false,
+      "authored": false,
+      "wide": ""
+    },
+    {
+      "expression": "",
+      "source": "<ModOp Type=\"replace\" GUID=\"1010\" Path=\"/Values/Standard/Name\"><Name>Bakery</Name></ModOp>",
+      "summary": "",
+      "origin": "Their Mod",
+      "note": "",
+      "order": 3,
+      "file": "",
+      "includes": "",
+      "aside": false,
+      "gap": 1,
+      "uid": "d45a61bce843",
+      "active": true,
+      "matched": [],
+      "made": 0,
+      "caveat": "",
+      "unread_at": [],
+      "folded": [],
+      "kept": "",
+      "parts": [],
+      "scope": false,
+      "idle": false,
+      "within": [],
+      "tool": {},
+      "searches": false,
+      "plain": false,
+      "authored": false,
+      "wide": ""
+    },
+    {
+      "expression": "",
+      "source": "<ModOp Type=\"remove\" GUID=\"1011\" />",
+      "summary": "",
+      "origin": "Their Mod",
+      "note": "",
+      "order": 4,
+      "file": "",
+      "includes": "",
+      "aside": false,
+      "gap": 1,
+      "uid": "60769c8ce26b",
+      "active": false,
+      "matched": [],
+      "made": 0,
+      "caveat": "",
+      "unread_at": [],
+      "folded": [],
+      "kept": "",
+      "parts": [],
+      "scope": false,
+      "idle": false,
+      "within": [],
+      "tool": {},
+      "searches": false,
+      "plain": false,
+      "authored": false,
+      "wide": "",
+      "kept_by": "Their Mod (my patch)"
+    }
+  ],
+  "unread": [
+    {
+      "origin": "Their Mod",
+      "source": "<ModOp Type=\"odd\"/>",
+      "label": "odd",
+      "why": "not read",
+      "where": "",
+      "note": "",
+      "order": 1,
+      "file": "",
+      "gap": 1,
+      "within": []
+    }
+  ],
+  "taken_out": [],
+  "held_edits": [],
+  "history": [
+    {
+      "timestamp": 1793076248.3791072,
+      "label": "Exported v1.0",
+      "kind": "export",
+      "mods": [
+        {
+          "origin": "Their Mod",
+          "name": "Their Mod",
+          "folder": "C:\\fixture\\mods\\Their Mod",
+          "category": "",
+          "version": "1.2",
+          "creator": "",
+          "mod_id": "their-mod",
+          "modio_id": 0,
+          "order": 1,
+          "options": {},
+          "read_as": {},
+          "from_collection": "Fixture collection",
+          "patches": "",
+          "needs": [],
+          "active": true,
+          "load_after": []
+        }
+      ],
+      "profile": "Main",
+      "profiles": [
+        {
+          "name": "Main",
+          "switches": {
+            "Their Mod": true
+          }
+        }
+      ],
+      "projects": {
+        "": {
+          "path": "",
+          "mod_id": "fixture-mod",
+          "revision": 0,
+          "checkpoint": 1793076248.3789358
+        }
+      }
+    },
+    {
+      "timestamp": 1793076248.3798943,
+      "label": "With the patch",
+      "kind": "",
+      "mods": [
+        {
+          "origin": "Their Mod",
+          "name": "Their Mod",
+          "folder": "C:\\fixture\\mods\\Their Mod",
+          "category": "",
+          "version": "1.2",
+          "creator": "",
+          "mod_id": "their-mod",
+          "modio_id": 0,
+          "order": 1,
+          "options": {},
+          "read_as": {},
+          "from_collection": "Fixture collection",
+          "patches": "",
+          "needs": [],
+          "active": true,
+          "load_after": []
+        },
+        {
+          "origin": "Their Mod (my patch)",
+          "name": "Their Mod (my patch)",
+          "folder": "",
+          "category": "",
+          "version": "1.0",
+          "creator": "Fixture",
+          "mod_id": "fixture-their-patch",
+          "modio_id": 0,
+          "order": 2,
+          "options": {},
+          "read_as": {},
+          "from_collection": "",
+          "patches": "Their Mod",
+          "needs": [],
+          "active": true,
+          "load_after": []
+        }
+      ],
+      "profile": "Main",
+      "profiles": [
+        {
+          "name": "Main",
+          "switches": {
+            "Their Mod": true,
+            "Their Mod (my patch)": true
+          }
+        }
+      ],
+      "projects": {
+        "": {
+          "path": "",
+          "mod_id": "fixture-mod",
+          "revision": 0,
+          "checkpoint": 1793076248.37941
+        },
+        "Their Mod (my patch)": {
+          "path": "",
+          "mod_id": "fixture-their-patch",
+          "revision": 0,
+          "checkpoint": 1793076248.3795538
+        }
+      }
+    }
+  ],
+  "projects": [
+    {
+      "origin": "",
+      "path": "projects/Fixture Mod (2).annoproj",
+      "mod_id": "fixture-mod",
+      "read_at": 1
+    },
+    {
+      "origin": "Their Mod (my patch)",
+      "path": "projects/Their Mod (my patch) (2).annoproj",
+      "mod_id": "fixture-their-patch",
+      "read_at": 1
+    },
+    {
+      "origin": "Other Mod (my copy)",
+      "path": "projects/Other Mod (my copy) (2).annoproj",
+      "mod_id": "other-mod-my-copy",
+      "read_at": 1
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+# Store text as LF in the repository regardless of what Windows checks out.
+# Without this, git's autocrlf rewrites line endings on checkout and every
+# file looks modified the moment you clone.
+* text=auto eol=lf
+
+# Batch files are run by cmd.exe, which wants CRLF.
+*.bat text eol=crlf
+
+# Never touch binaries.
+*.png binary
+*.ico binary
+*.rda binary
+*.sqlite binary

@@ -1,0 +1,6 @@
+# What the release build is made from: the Studio's own dependencies and the
+# tool that freezes it. requirements-release.txt pins each of them and
+# everything they need, with hashes, and the build installs only that.
+# docs/development.md, "Making a release", says how to refresh it.
+-r requirements.txt
+pyinstaller

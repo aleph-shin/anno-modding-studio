@@ -1,0 +1,136 @@
+{
+  "format": 6,
+  "written_by": "0.1.0",
+  "own": {
+    "origin": "",
+    "folder": "",
+    "modio_id": 0,
+    "order": 0,
+    "unread": 0,
+    "options": {},
+    "offered": {
+      "roomier": {
+        "label": "Roomier",
+        "type": "toggle",
+        "default": "false",
+        "values": [],
+        "labels": [],
+        "description": ""
+      }
+    },
+    "read_as": {},
+    "from_collection": "",
+    "patches": "",
+    "needs": [],
+    "active": true,
+    "copies": {},
+    "copy_versions": {},
+    "stale": [],
+    "edited": false
+  },
+  "source_path": "",
+  "game": "anno117",
+  "editing": "",
+  "home": "",
+  "aim": "make",
+  "is_the_mod": true,
+  "own_mod": true,
+  "mods_folder": "",
+  "provenance": {},
+  "listed": {},
+  "profile": "Main",
+  "profiles": [
+    {
+      "name": "Main",
+      "switches": {
+        "Their Roman Mod": true
+      }
+    }
+  ],
+  "base_archive": "",
+  "base_assets": 0,
+  "base_fingerprint": "",
+  "base_update": "",
+  "base_game_version": "",
+  "read_stack": null,
+  "read_by": null,
+  "builds": {},
+  "created_at": 1793076248.4420066,
+  "changes": [
+    {
+      "guid": "2001000",
+      "asset_label": "Mill",
+      "path": "/Values/Building/Upkeep",
+      "tag": "Upkeep",
+      "old_value": "10",
+      "new_value": "5",
+      "positional": false,
+      "note": "",
+      "op": "replace",
+      "payload": "",
+      "summary": "",
+      "uid": "",
+      "active": true,
+      "authored": true,
+      "order": 0,
+      "spot": 0,
+      "origin": "",
+      "search": "",
+      "op_uid": "",
+      "absorbs": false,
+      "exception_of": "",
+      "within": [],
+      "in_game_name": "",
+      "restated": false,
+      "written_as": "963d40b6a132"
+    }
+  ],
+  "layers": [
+    {
+      "origin": "Their Roman Mod",
+      "name": "Their Roman Mod",
+      "folder": "C:\\fixture\\mods117\\Their Roman Mod",
+      "category": "",
+      "version": "1.0",
+      "creator": "",
+      "description": "",
+      "mod_id": "their-roman",
+      "modio_id": 0,
+      "order": 1,
+      "unread": 0,
+      "options": {
+        "hard": "1"
+      },
+      "offered": {
+        "hard": {
+          "type": "toggle",
+          "default": "0"
+        }
+      },
+      "read_as": {},
+      "from_collection": "",
+      "patches": "",
+      "needs": [],
+      "active": true,
+      "load_after": [],
+      "declared": {},
+      "copies": {},
+      "copy_versions": {},
+      "stale": [],
+      "edited": false
+    }
+  ],
+  "ops": [],
+  "unread": [],
+  "taken_out": [],
+  "held_edits": [],
+  "history": [],
+  "projects": [
+    {
+      "origin": "",
+      "path": "projects/Fixture Roman Mod.annoproj",
+      "mod_id": "fixture-roman",
+      "read_at": 1
+    }
+  ]
+}

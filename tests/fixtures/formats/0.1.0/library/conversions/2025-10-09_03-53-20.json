@@ -1,0 +1,32 @@
+{
+  "format": 1,
+  "written_by": "0.1.0",
+  "when": 1760000000.0,
+  "game": "anno1800",
+  "loading": [
+    "their-mod"
+  ],
+  "names": {
+    "their-mod": "Their Mod"
+  },
+  "on": {
+    "their-mod": true
+  },
+  "options": {},
+  "journal": {
+    "mods_folder": "C:\\fixture\\mods",
+    "backups": [],
+    "loadout": "",
+    "paths": {},
+    "profiles": [],
+    "full_copy": "",
+    "steps": [
+      {
+        "op": "move",
+        "from": "C:\\fixture\\mods\\Their Mod",
+        "to": "C:\\fixture\\made\\library\\Their Mod",
+        "link": "C:\\fixture\\mods\\Their Mod"
+      }
+    ]
+  }
+}

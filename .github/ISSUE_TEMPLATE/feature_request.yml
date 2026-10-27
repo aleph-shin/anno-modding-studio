@@ -1,0 +1,28 @@
+name: Feature request
+description: Something the Studio could do, or do better.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: What are you trying to do?
+      description: The task, in your own words, and how you do it today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: What you'd like the Studio to do. A sketch or an example mod is welcome.
+    validations:
+      required: true
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game
+      options:
+        - Anno 117
+        - Anno 1800
+        - Both
+    validations:
+      required: false

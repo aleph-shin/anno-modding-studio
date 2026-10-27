@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "written_by": "0.1.0",
+  "entries": {
+    "Their Mod": {
+      "target": "C:\\fixture\\made\\library\\Their Mod",
+      "kind": "copy",
+      "mods_folder": "C:\\fixture\\mods",
+      "linked": true
+    }
+  }
+}

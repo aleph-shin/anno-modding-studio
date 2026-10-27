@@ -1,0 +1,172 @@
+{
+  "format": 2,
+  "kind": "project",
+  "written_by": "0.1.0",
+  "game": "anno117",
+  "mod_id": "fixture-roman",
+  "created_at": 1793076248.4433885,
+  "revision": 1,
+  "details": {
+    "name": "Fixture Roman Mod",
+    "category": "Gameplay",
+    "version": "1.0",
+    "creator": "Fixture",
+    "description": "",
+    "mod_id": "fixture-roman",
+    "load_after": [],
+    "declared": {
+      "Options": {
+        "roomier": {
+          "type": "toggle",
+          "default": "false",
+          "label": "Roomier"
+        }
+      },
+      "Scripts": {
+        "Modules": [
+          {
+            "Path": "data/lua/fixture.lua"
+          }
+        ]
+      }
+    },
+    "guid_range": "Fixture",
+    "loads_last": true
+  },
+  "releases": {
+    "modio_mod_id": 0,
+    "published": {}
+  },
+  "narrow": [
+    {
+      "expression": "",
+      "source": "<ModOp Replace=\"@2001000/Building/Upkeep\">\n    <Upkeep>5</Upkeep>\n  </ModOp>",
+      "summary": "",
+      "origin": "",
+      "note": "",
+      "order": 0,
+      "file": "",
+      "includes": "",
+      "aside": false,
+      "gap": 1,
+      "uid": "963d40b6a132",
+      "active": true,
+      "matched": [
+        "2001000"
+      ],
+      "made": 1,
+      "caveat": "",
+      "unread_at": [],
+      "folded": [],
+      "kept": "",
+      "parts": [],
+      "scope": false,
+      "idle": false,
+      "within": [],
+      "tool": {},
+      "searches": false,
+      "plain": true,
+      "authored": true,
+      "wide": ""
+    }
+  ],
+  "history": [
+    {
+      "timestamp": 1793076248.4421575,
+      "label": "by hand",
+      "version": "1.0",
+      "changes": [
+        {
+          "guid": "2001000",
+          "asset_label": "Mill",
+          "path": "/Values/Building/Upkeep",
+          "tag": "Upkeep",
+          "old_value": "10",
+          "new_value": "5",
+          "positional": false,
+          "note": "",
+          "op": "replace",
+          "payload": "",
+          "summary": "",
+          "uid": "",
+          "active": true,
+          "authored": true,
+          "order": 0,
+          "spot": 0,
+          "origin": "",
+          "search": "",
+          "op_uid": "",
+          "absorbs": false,
+          "exception_of": "",
+          "within": [],
+          "in_game_name": "",
+          "restated": false,
+          "written_as": "963d40b6a132"
+        }
+      ],
+      "kind": "",
+      "ops": [],
+      "narrow": [
+        {
+          "expression": "",
+          "source": "<ModOp Replace=\"@2001000/Building/Upkeep\">\n    <Upkeep>5</Upkeep>\n  </ModOp>",
+          "summary": "",
+          "origin": "",
+          "note": "",
+          "order": 0,
+          "file": "",
+          "includes": "",
+          "aside": false,
+          "gap": 1,
+          "uid": "963d40b6a132",
+          "active": true,
+          "matched": [
+            "2001000"
+          ],
+          "made": 1,
+          "caveat": "",
+          "unread_at": [],
+          "folded": [],
+          "kept": "",
+          "parts": [],
+          "scope": false,
+          "idle": false,
+          "within": [],
+          "tool": {},
+          "searches": false,
+          "plain": true,
+          "authored": true,
+          "wide": ""
+        }
+      ],
+      "details": {
+        "name": "Fixture Roman Mod",
+        "category": "Gameplay",
+        "version": "1.0",
+        "creator": "Fixture",
+        "description": "",
+        "fork_of": "",
+        "load_after": [],
+        "declared": {
+          "Options": {
+            "roomier": {
+              "type": "toggle",
+              "default": "false",
+              "label": "Roomier"
+            }
+          },
+          "Scripts": {
+            "Modules": [
+              {
+                "Path": "data/lua/fixture.lua"
+              }
+            ]
+          }
+        },
+        "scripts_folder": "",
+        "guid_range": "Fixture",
+        "loads_last": true
+      }
+    }
+  ]
+}

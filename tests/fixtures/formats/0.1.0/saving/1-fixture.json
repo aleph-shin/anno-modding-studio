@@ -1,0 +1,12 @@
+{
+  "format": 2,
+  "written_by": "0.1.0",
+  "files": [
+    {
+      "target": "C:\\fixture\\made\\loadout-profiles.annoload",
+      "part": "C:\\fixture\\made\\loadout-profiles.annoload.1-fixture.part",
+      "old": "C:\\fixture\\made\\loadout-profiles.annoload.1-fixture.old",
+      "existed": true
+    }
+  ]
+}

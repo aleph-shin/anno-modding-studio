@@ -1,0 +1,61 @@
+name: Bug report
+description: Something in the Studio doesn't work, or reads a mod wrongly.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: version
+    attributes:
+      label: Version
+      description: >-
+        Open Help › About, press its copy button, and paste the version
+        details here.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game
+      options:
+        - Anno 117
+        - Anno 1800
+        - Both
+        - Neither (no game files loaded)
+    validations:
+      required: true
+  - type: dropdown
+    id: loader
+    attributes:
+      label: Is the Anno Modding Tools extension installed?
+      description: The Studio runs the mod loader's check from it.
+      options:
+        - "Yes"
+        - "No"
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: >-
+        What you did, step by step. Name the mods involved, with a mod.io link
+        where there is one. Don't attach files from the game itself.
+      placeholder: |
+        1. Load the game files for Anno 117
+        2. Open the mod ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened
+      description: Paste any error text. For a ModOp read wrongly, paste the op.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: >-
+        A security problem? Please don't report it here. See SECURITY.md for
+        how to report it privately.

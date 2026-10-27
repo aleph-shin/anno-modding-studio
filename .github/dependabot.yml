@@ -1,0 +1,37 @@
+# What Dependabot keeps up to date, once a week, in one PR per ecosystem.
+#
+# pip: the dev tools are pinned in pyproject.toml, because a new ruff or mypy
+# can change the counts tools/check_baseline.json holds, and CI runs what is
+# pinned. Their PR is where such a change shows, and it is settled there. The
+# Studio's own dependencies are floors (requirements.txt), and
+# increase-if-necessary leaves a floor where it is: a newer release already
+# meets it, and CI installs the newest.
+#
+# requirements-release.txt is what the release is built from, every package
+# pinned with its hashes, compiled by pip-compile from requirements-release.in.
+# Dependabot reads the pair from this same directory and proposes a new pin,
+# with its hashes, as it does for the rest. A security release of lxml, Qt or
+# PyInstaller reaches the next release through that PR.
+#
+# github-actions: the actions .github/workflows uses, pinned by commit with
+# the version beside each.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    versioning-strategy: increase-if-necessary
+    groups:
+      python:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]

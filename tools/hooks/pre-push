@@ -1,0 +1,28 @@
+#!/bin/sh
+# Refuse a push that carries a term from your own list of private terms
+# (tools/private_scan.py), makes ruff or mypy worse than
+# tools/check_baseline.json, or breaks a design or standards rule.
+#
+# Early feedback, not the authority: CI (.github/workflows/check.yml) runs the
+# whole of tools/check.py on every PR and decides whether it passes. This runs
+# the quick half only -- seconds, not the suite -- so a broken count shows
+# before the push rather than minutes after it. It is off until it is
+# switched on, once per clone, with:
+#
+#     git config core.hooksPath tools/hooks
+#
+# Skip it for one push with `git push --no-verify`; CI still runs.
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+[ -f tools/check.py ] || exit 0
+# The scan first: it reads the refs git hands the hook, and a commit that
+# carries something private must not leave whatever the counts say.
+if [ -f tools/private_scan.py ]; then
+    "${PYTHON:-python}" tools/private_scan.py || exit 1
+fi
+# The check reads the files as they are on disk, which is what is being pushed
+# only when everything is committed.
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+    echo "pre-push: there are uncommitted changes, and the check reads the working tree, not the commits being pushed" >&2
+fi
+exec "${PYTHON:-python}" tools/check.py --quick
