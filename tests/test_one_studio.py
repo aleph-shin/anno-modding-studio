@@ -194,6 +194,43 @@ class TestHandingOver(unittest.TestCase):
         self.assertTrue(self.second("C:/", longer=one_studio.MOST_HANDED - 10).startswith("answered "))
         self.assertEqual(self.received, ["C:/" + "y" * (one_studio.MOST_HANDED - 10)])
 
+    def test_a_write_done_before_the_wait_is_still_answered(self):
+        """On a busy machine the line is often in the pipe before the wait
+        for it begins, and the wait says False with nothing left to write."""
+
+        class Gone:
+            """A socket whose write went before it was waited for."""
+
+            def __init__(self):
+                self.said = [b"0.1.0\n"]
+
+            def connectToServer(self, name):
+                pass
+
+            def waitForConnected(self, ms):
+                return True
+
+            def write(self, data):
+                return len(data)
+
+            def waitForBytesWritten(self, ms):
+                return False
+
+            def bytesToWrite(self):
+                return 0
+
+            def waitForReadyRead(self, ms):
+                return bool(self.said)
+
+            def readAll(self):
+                return self.said.pop() if self.said else b""
+
+            def disconnectFromServer(self):
+                pass
+
+        with mock.patch.object(one_studio, "QLocalSocket", Gone):
+            self.assertEqual(one_studio.hand_over(self.name, "C:/a.xml", wait_ms=0), "0.1.0")
+
     def test_nobody_listening_is_no_answer(self):
         started = time.monotonic()
         self.assertIsNone(one_studio.hand_over(self.name, wait_ms=400))
