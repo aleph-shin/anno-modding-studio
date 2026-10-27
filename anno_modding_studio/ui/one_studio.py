@@ -203,7 +203,10 @@ def hand_over(name: str, message: str = "", wait_ms: int = WAIT_MS) -> Optional[
         QThread.msleep(_STEP_MS)
         waited += _STEP_MS
     socket.write((message + "\n").encode("utf-8"))
-    if not socket.waitForBytesWritten(1000):
+    # False too where the write was done before the wait began, as a short
+    # one into a pipe often is on a busy machine: only what is still unwritten
+    # is a failure.
+    if not socket.waitForBytesWritten(1000) and socket.bytesToWrite():
         socket.disconnectFromServer()
         return None
     answer = bytearray()

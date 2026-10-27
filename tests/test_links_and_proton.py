@@ -103,6 +103,16 @@ class TestWhatProtonSees(_Temp):
             '\t\t\t\t\t\t"LaunchOptions"\t\t"%s"\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}\n' % options,
             encoding="utf-8")
 
+    def linux(self, folder: Path) -> str:
+        """``folder`` as a launch option on Linux has it: with no drive, since
+        a colon parts the folders it mounts.  Windows reads a path with no
+        drive as on the working folder's, so the test works from ``folder``'s
+        (the runner's checkout is on D:, its temporary folder on C:)."""
+        if folder.drive:
+            self.addCleanup(os.chdir, os.getcwd())
+            os.chdir(folder.anchor)
+        return "/" + folder.relative_to(folder.anchor).as_posix()
+
     def test_a_library_in_the_home_folder_or_a_steam_library_is_seen(self):
         self.assertEqual(self.unseen(self.home / ".local" / "share" / "AnnoModdingStudio" / "library" / "anno1800"), [])
         self.assertEqual(self.unseen(self.other / "AnnoLibrary" / "anno1800"), [])
@@ -113,11 +123,11 @@ class TestWhatProtonSees(_Temp):
         self.assertIn("STEAM_COMPAT_MOUNTS=", line)
 
     def test_a_folder_the_launch_options_mount_is_seen(self):
-        self.launch_options('STEAM_COMPAT_MOUNTS=/srv:%s %%command%%' % (self.root / "data").as_posix())
+        self.launch_options('STEAM_COMPAT_MOUNTS=/srv:%s %%command%%' % self.linux(self.root / "data"))
         self.assertEqual(self.unseen(self.root / "data" / "library" / "anno1800"), [])
 
     def test_the_options_of_another_game_do_not_count(self):
-        self.launch_options('STEAM_COMPAT_MOUNTS=%s %%command%%' % (self.root / "data").as_posix())
+        self.launch_options('STEAM_COMPAT_MOUNTS=%s %%command%%' % self.linux(self.root / "data"))
         other = self.steam / "steamapps" / "common" / "Other" / "mods"
         other.mkdir(parents=True)
         self.assertEqual(len(self.unseen(self.root / "data" / "library" / "anno1800", other)), 1)
@@ -169,7 +179,9 @@ class TestJunctionsUnderWine(_Temp):
             self.skipTest("no junction tag off Windows")
         mounted = self.root / "mounted"
         mounted.mkdir()
-        found = mock.Mock(st_reparse_tag=tag)
+        # A folder's mode as well: Python 3.10's islink reads it through the
+        # same lstat, where 3.12 and later ask Windows themselves.
+        found = mock.Mock(st_reparse_tag=tag, st_mode=library.stat.S_IFDIR)
         with mock.patch.object(library.os, "lstat", return_value=found):
             with mock.patch.object(library.os, "readlink", side_effect=OSError(4390, "not a reparse point")):
                 self.assertFalse(library.is_junction(mounted))
