@@ -2368,8 +2368,9 @@ Install the Anno Modding Tools extension in VS Code, or name its folder in
 ### Known limits
 
 - Attribute values can't be edited. Anno's asset values are elements.
-- The Studio doesn't write `Condition` attributes. Every ModOp it generates applies
-  unconditionally.
+- The ModOps the Studio generates for your field edits have no `Condition` of their
+  own. A condition comes from a group around them: one made with
+  [Put under an option](#options-anno-117), or one you type.
 - The reference graph is inferred. A real link at a rarely used path can be missing
   from the default view.
 - The Studio doesn't read Lua, and doesn't show what a patched game tooltip comes to.
