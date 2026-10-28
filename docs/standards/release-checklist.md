@@ -111,5 +111,5 @@ Fixes for what these checks find are PRs into the release branch, not into `main
 
 - [ ] The release branch's PR into `main` is merged, so its fixes are in the next
       release.
-- [ ] The branch is kept for a fix to this release, and deleted when the next release
-      branch is cut.
+- [ ] The branch is left in place. It takes fixes to this release until the next
+      release branch is cut, and is kept after that.
