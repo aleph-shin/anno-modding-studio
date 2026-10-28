@@ -358,17 +358,12 @@ def quiet_dialogs():
             return answer(*args, **kwargs)
         return ask
 
+    # The ones the Studio calls: (label, echo, text) and (label, items, current).
     QInputDialog.getText = staticmethod(asked(
-        "getText", lambda label="", echo=None, text="", *_a, **_k: (text, True)))
-    QInputDialog.getMultiLineText = staticmethod(asked(
-        "getMultiLineText", lambda label="", text="", *_a, **_k: (text, True)))
+        "getText", lambda *args, text="", **_k: (args[2] if len(args) > 2 else text, True)))
     QInputDialog.getItem = staticmethod(asked(
-        "getItem", lambda label="", items=(), current=0, *_a, **_k: (
+        "getItem", lambda _label="", items=(), current=0, *_a, **_k: (
             items[current] if items else "", bool(items))))
-    QInputDialog.getInt = staticmethod(asked(
-        "getInt", lambda label="", value=0, *_a, **_k: (value, True)))
-    QInputDialog.getDouble = staticmethod(asked(
-        "getDouble", lambda label="", value=0.0, *_a, **_k: (value, True)))
     # A file dialog is cancelled: nothing here picks a file.
     for name, nothing in (("getOpenFileName", ("", "")), ("getSaveFileName", ("", "")),
                           ("getOpenFileNames", ([], "")), ("getExistingDirectory", "")):
