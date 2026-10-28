@@ -51,6 +51,7 @@ from .modio_task_dialog import ModioTaskDialog
 from .widgets import (
     ElidingLabel,
     enter_activates,
+    least_size,
     named,
     rows_table,
     show_box_text,
@@ -136,7 +137,7 @@ class ModioGetDialog(ModioTaskDialog):
         # Dependencies fetched alongside, each with what install did for it.
         self.also: List[tuple] = []
         self.setWindowTitle(tr("Install a mod from mod.io"))
-        self.setMinimumSize(820, 520)
+        least_size(self, 820, 520)
         self._build_ui()
         self._refresh_state()
 

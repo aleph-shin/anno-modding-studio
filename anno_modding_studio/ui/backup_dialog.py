@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 from ..core import backup
 from ..core.i18n import bullets, date_text, number, tr, trn
 from .help_tip import BACKUPS_HELP, HelpTip
-from .widgets import ask, tab_as_laid_out, wrappable_path
+from .widgets import ask, least_size, tab_as_laid_out, wrappable_path
 
 
 class BackupDialog(QDialog):
@@ -37,7 +37,7 @@ class BackupDialog(QDialog):
         self.into = into
         self.restored = 0
         self.setWindowTitle(tr("Restore mods from a backup"))
-        self.setMinimumSize(680, 420)
+        least_size(self, 680, 420)
         self._build_ui()
         self._reload()
 

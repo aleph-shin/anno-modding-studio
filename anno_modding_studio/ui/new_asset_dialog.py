@@ -63,7 +63,7 @@ from ..core.i18n import STORED, tr, tr_noop, trn
 from . import theme
 from .asset_picker import AssetPickerDialog
 from .help_tip import HelpTip
-from .widgets import show_rich, tab_as_laid_out
+from .widgets import least_size, show_rich, tab_as_laid_out
 
 # The register's own *Personal use* range, for a fetched copy that leaves it
 # out: every register has one to fall back on.
@@ -260,7 +260,7 @@ class NewAssetDialog(QDialog):
         }
 
         self.setWindowTitle(tr("New asset"))
-        self.setMinimumSize(760, 600)
+        least_size(self, 760, 600)
         self._build_ui()
         self._suggest_guid()
         if base_guid:

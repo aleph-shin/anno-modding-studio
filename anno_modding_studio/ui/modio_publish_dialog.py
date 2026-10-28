@@ -32,7 +32,14 @@ from ..core import modio, publish
 from ..core.i18n import number, size_text, tr
 from .help_tip import HelpTip
 from .modio_brand import branding
-from .widgets import rich_label, shown_row, single_line, sortable, tab_as_laid_out
+from .widgets import (
+    least_size,
+    rich_label,
+    shown_row,
+    single_line,
+    sortable,
+    tab_as_laid_out,
+)
 
 
 class TermsDialog(QDialog):
@@ -41,7 +48,7 @@ class TermsDialog(QDialog):
     def __init__(self, terms: modio.Terms, parent=None):
         super().__init__(parent)
         self.setWindowTitle(tr("mod.io terms"))
-        self.setMinimumSize(560, 420)
+        least_size(self, 560, 420)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 14, 16, 12)
         heading = QLabel(tr("Before signing in to mod.io"))
@@ -105,7 +112,7 @@ class LinkDialog(QDialog):
         self.new = new
         self.chosen: Optional[int] = None
         self.setWindowTitle(tr("Link to a mod on mod.io"))
-        self.setMinimumSize(600, 400)
+        least_size(self, 600, 400)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 14, 16, 12)
         # The title says what this is. What picking one does is behind the ?.

@@ -65,6 +65,7 @@ from .widgets import (
     add_detours,
     enter_activates,
     keep_size,
+    least_size,
     sort_as,
     sortable,
     tab_as_laid_out,
@@ -306,7 +307,7 @@ class ModsFolderDialog(QDialog):
             else tr("Add mods") if self._standing is not None
             else tr("Import your installed mods")
         )
-        self.setMinimumSize(860, 600)
+        least_size(self, 860, 600)
         self._build_ui()
         # Ten columns and the mods' whole names: opened wide, and at the size
         # it was left at.

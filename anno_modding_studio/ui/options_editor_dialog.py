@@ -43,7 +43,7 @@ from ..core import declaring, settings
 from ..core.i18n import tr, tr_noop, tr_stored, trn
 from . import theme
 from .help_tip import HelpTip
-from .widgets import enter_activates, problem_footer, shown_row, single_line
+from .widgets import enter_activates, least_size, problem_footer, shown_row, single_line
 
 # The kinds offered, in the order the list shows them. A kind the block
 # already holds and the Studio does not offer stays as it is.
@@ -106,7 +106,7 @@ class OptionsEditorDialog(QDialog):
         self._showing = False
         self.mod_name = loadout.label_of(origin) or tr("your mod")
         self.setWindowTitle(tr("Options: %s", self.mod_name))
-        self.setMinimumSize(760, 520)
+        least_size(self, 760, 520)
         self._build_ui()
         first = next((at for at, item in enumerate(self.items) if item["proposed"]), 0)
         first = next((at for at, item in enumerate(self.items) if focus and item["name"] == focus), first)

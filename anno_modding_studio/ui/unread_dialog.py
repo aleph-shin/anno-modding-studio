@@ -37,7 +37,7 @@ from ..core.changes import is_own_mod
 from ..core.i18n import number, tr, tr_noop, tr_stored, trn
 from . import theme
 from .help_tip import HelpTip
-from .widgets import listing_table, sortable
+from .widgets import least_size, listing_table, sortable
 
 COLUMNS = (tr_noop("Mod"), "ModOp", tr_noop("Why it was not read"), tr_noop("What it does in game"))
 IN_GAME = 3
@@ -73,7 +73,7 @@ class UnreadDialog(QDialog):
         self._asking = None
         self._own_effects = {}
         self.setWindowTitle(tr("ModOps that could not be read"))
-        self.setMinimumSize(1000, 600)
+        least_size(self, 1000, 600)
         self._build_ui()
         self.reload()
 

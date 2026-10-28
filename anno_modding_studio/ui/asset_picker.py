@@ -31,6 +31,7 @@ from . import theme
 from .widgets import (
     enter_activates,
     fit_columns,
+    least_size,
     rich_label,
     single_line,
     sortable,
@@ -49,7 +50,7 @@ class AssetPickerDialog(QDialog):
         self.index = index
         self.chosen_guid = None
         self.setWindowTitle(tr("Choose an asset for %s", field_name))
-        self.setMinimumSize(820, 520)
+        least_size(self, 820, 520)
 
         self._debounce = QTimer(self)
         self._debounce.setSingleShot(True)

@@ -25,6 +25,7 @@ from . import theme
 from .help_tip import HelpTip
 from .widgets import (
     filter_box,
+    least_size,
     single_line,
     sort_as,
     sortable,
@@ -43,7 +44,7 @@ class UnloadModsDialog(QDialog):
         self.loadout = loadout
         self.chosen = []
         self.setWindowTitle(tr("Unload mods"))
-        self.setMinimumSize(560, 420)
+        least_size(self, 560, 420)
         # A list of a few hundred mods wants room to grow into.
         self.setSizeGripEnabled(True)
         self._build_ui()
