@@ -840,8 +840,11 @@ class XmlPane(QPlainTextEdit):
         def line_of(offset: int) -> int:
             return bisect.bisect_right(starts, offset) - 1
 
-        for mention in guidnames.mentions(text) if self._namer is not None else ():
-            row = self._namer.row(mention)
+        looked_up = []
+        if self._namer is not None:
+            with self._namer.held():
+                looked_up = [(mention, self._namer.row(mention)) for mention in guidnames.mentions(text)]
+        for mention, row in looked_up:
             if row is None:
                 continue
             line = line_of(mention.start)
