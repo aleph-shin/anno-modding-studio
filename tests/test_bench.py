@@ -217,5 +217,48 @@ class TestTheTwoToolsTakeTheSameMods(_Census):
         self.assertEqual(len(modfolder.mod_folders(folder)), len(mods))
 
 
+class TestNoDialogWaitsForAClick(unittest.TestCase):
+    def setUp(self):
+        from PySide6.QtWidgets import (
+            QApplication,
+            QDialog,
+            QFileDialog,
+            QInputDialog,
+            QMessageBox,
+        )
+
+        QApplication.instance() or QApplication([])
+        # What quiet_dialogs replaces, put back after: the rest of the suite
+        # runs in this process.
+        for kind in (QDialog, QMessageBox, QInputDialog, QFileDialog):
+            kept = dict(vars(kind))
+            self.addCleanup(self._put_back, kind, kept)
+        with contextlib.redirect_stdout(io.StringIO()):
+            bench.quiet_dialogs()
+
+    @staticmethod
+    def _put_back(kind, kept):
+        for name in set(vars(kind)) - set(kept):
+            delattr(kind, name)
+        for name, value in kept.items():
+            if vars(kind).get(name) is not value:
+                setattr(kind, name, value)
+
+    def test_a_static_question_is_answered_with_what_it_was_given(self):
+        """``QInputDialog.getText`` runs its own loop in Qt's C++, past the
+        patched ``exec``: offscreen, the first edit to a loadout's own mod
+        asked "Who are you?" and the bench waited all night."""
+        from PySide6.QtWidgets import QFileDialog, QInputDialog, QLineEdit
+
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said):
+            self.assertEqual(QInputDialog.getText(None, "Who are you?", "label", text="me"), ("me", True))
+            self.assertEqual(QInputDialog.getText(
+                None, "t", "label", QLineEdit.EchoMode.Normal, "typed"), ("typed", True))
+            self.assertEqual(QInputDialog.getItem(None, "t", "label", ["a", "b"], 1, False), ("b", True))
+            self.assertEqual(QFileDialog.getSaveFileName(None, "Save loadout", "x"), ("", ""))
+        self.assertIn("[getText] Who are you?", said.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
