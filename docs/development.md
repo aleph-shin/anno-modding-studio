@@ -250,7 +250,8 @@ is pushed.
    and its `.sha256` attached. A tag that does not name the version stops it before
    anything is built.
 5. **The draft.** Open it under **Releases**. Download the zip, check its digest
-   against the `.sha256`, unzip it, and start it once. Write *What changed* into the
+   against the `.sha256`, unzip it, and start it once in a Windows account that has
+   never run the Studio, as the checklist says. Write *What changed* into the
    text the workflow left. Then **Publish release**. Leave **Set as a pre-release**
    off: the update check reads `releases/latest`, which skips pre-releases.
 6. **After.** Merge the release branch into `main`, as the checklist says.

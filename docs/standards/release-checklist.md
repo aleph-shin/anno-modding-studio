@@ -73,8 +73,9 @@ Fixes for what these checks find are PRs into the release branch, not into `main
 ### The zip
 
 - [ ] A trial build from the lock (`python tools/build_release.py`, development.md)
-      passed its self-test, and the Studio it built was started once by hand on a
-      PC that has never run the Studio from source.
+      passed its self-test. What the build carries is checked on a machine that has
+      never run the Studio by the release workflow, on `windows-latest`; a first
+      start by hand is after the tag.
 - [ ] The user guide's *Install and run*, the README's *Install*, and the zip's
       `README.txt` still describe what SmartScreen shows for an unsigned exe, and how
       to get past it.
@@ -99,6 +100,13 @@ Fixes for what these checks find are PRs into the release branch, not into `main
 - [ ] The draft's zip matches its `.sha256`, and its notices match the bundle: unzip
       it and check its root and `licenses/` against THIRD-PARTY-NOTICES.md, section
       5, with `SOURCES.txt` naming the versions in `requirements-release.txt`.
+- [ ] The draft's zip was started once by hand as a new user would: downloaded
+      through a browser, so that it carries the mark of a download and SmartScreen
+      shows what the guide says it shows, and started in a Windows account that has
+      never run the Studio, so that there are no settings, library or loadouts and
+      no `ANNO_STUDIO_*` variable. The window opened, found the game and read it.
+      The self-test runs off screen and never sees a first start; a second account
+      is a new user on the PC the Studio is made on, which has run it from source.
 - [ ] The release on GitHub links the tagged source, which the GPL asks for beside
       the frozen zip.
 - [ ] The draft is titled *Anno Modding Studio &lt;version&gt; (beta)*, says what
