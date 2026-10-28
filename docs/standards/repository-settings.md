@@ -1,16 +1,15 @@
 # Repository settings
 
-The GitHub settings the public repository is to have, switched on when it is made from
-the private one. None of them is in a file the repository carries, so nothing here is
-applied by a check or a script: each is switched on by hand, by the owner, once. The
-private repository becomes an archive, and none of this is needed there.
+The GitHub settings the repository has. None of them is in a file the repository
+carries, so nothing here is applied by a check or a script: each is switched on by
+hand, by the owner, and this is the list to check them against.
 
 Each setting says where it is on GitHub and what it is for. CI itself is described in
 [development.md](../development.md#ci).
 
-## Before the first push
+## The owner's account
 
-On the owner's account, under **Settings > Emails**:
+Under **Settings > Emails**:
 
 - [ ] **Keep my email addresses private.** GitHub then gives the address
       `<id>+<user>@users.noreply.github.com`, and uses it for what is done on the
@@ -18,14 +17,9 @@ On the owner's account, under **Settings > Emails**:
 - [ ] **Block command line pushes that expose my email.** A push of a commit that
       carries the private address is refused.
 
-The commits that make the public repository are written with the noreply address
-(`git config user.email` in the clone they are made in), as author and as committer.
-The private address is on most of the private repository's commits. None of those is
-carried over, and the block makes sure no later commit brings the address back.
-
-Both were already on by 17 Oct, when the block refused a push to the private
-repository of a branch whose commits carried the private address. A clone whose
-`user.email` is still that address has every new branch refused the same way.
+The owner's commits are written with the noreply address (`git config user.email`), as
+author and as committer, and the block makes sure none brings the private address in.
+A clone whose `user.email` is the private address has every push refused.
 
 ## Branches
 
@@ -39,8 +33,8 @@ branches the [branch rules](../development.md#branches) name:
       open PR again after each merge, and the merge into `main` runs the check anyway.
 - [ ] **Block force pushes.** A release is a tag on its branch, and a branch whose
       history can be rewritten leaves the tag pointing at something else.
-- [ ] **Restrict deletions.** A release branch is deleted by hand when the next is
-      cut, with the ruleset's bypass.
+- [ ] **Restrict deletions.** A release branch is kept, like its tag, after the next
+      one is cut. The owner's bypass covers pull requests only, so it deletes nothing.
 - [ ] **Require a pull request before merging**, with no approvals required. One
       maintainer cannot approve their own PR, and an approval required of nobody else
       would leave every PR waiting.
