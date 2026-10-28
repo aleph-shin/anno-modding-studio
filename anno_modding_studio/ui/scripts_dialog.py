@@ -41,7 +41,14 @@ from ..core.changes import is_own_mod
 from ..core.i18n import tr
 from . import theme
 from .help_tip import HelpTip
-from .widgets import enter_activates, open_script, shown_row, tab_after, wrappable_path
+from .widgets import (
+    enter_activates,
+    least_size,
+    open_script,
+    shown_row,
+    tab_after,
+    wrappable_path,
+)
 
 _MODULE_NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.\-]*$")
 _GLOBAL_NAME = re.compile(r"^[A-Za-z_]\w*$")
@@ -147,7 +154,7 @@ class ScriptsDialog(QDialog):
         self.pending = {}
         self.mod_name = loadout.label_of(origin) or tr("your mod")
         self.setWindowTitle(tr("Scripts: %s", self.mod_name))
-        self.setMinimumSize(720, 520)
+        least_size(self, 720, 520)
         self._build_ui()
         self._load(self.original)
 

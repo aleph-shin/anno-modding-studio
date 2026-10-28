@@ -360,10 +360,14 @@ class ChangesPanel(QWidget, ChangeRows):
         ))
         # Not as wide as its longest entry, which can be a mod's name: the
         # panel is narrow, and the filter box beside it is what is typed in.
+        # Wide enough for its own two, though, in any language: Qt counts the
+        # length in widths of an "X", wider than most letters.
         self.scope_box.setSizeAdjustPolicy(
             QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
         )
-        self.scope_box.setMinimumContentsLength(10)
+        self.scope_box.setMinimumContentsLength(max(
+            len(self.scope_box.itemText(i)) for i in range(self.scope_box.count())
+        ))
         self.scope_box.currentIndexChanged.connect(self._on_scope)
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)

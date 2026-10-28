@@ -931,6 +931,50 @@ def flash_button_feedback(button: QPushButton, duration_ms: int = 1200) -> None:
     QTimer.singleShot(duration_ms, _restore)
 
 
+class _LeastSize(QObject):
+    """Holds a dialog to the larger of a least size and its layout's: see
+    :func:`least_size`."""
+
+    def __init__(self, dialog, floor: QSize) -> None:
+        super().__init__(dialog)
+        self._dialog = dialog
+        self._floor = floor
+        dialog.installEventFilter(self)
+        self.apply()
+
+    def apply(self) -> None:
+        dialog = self._dialog
+        least = QSize(self._floor)
+        layout = dialog.layout()
+        if layout is not None:
+            least = least.expandedTo(layout.totalMinimumSize())
+        screen = dialog.screen()
+        if screen is not None:
+            least = least.boundedTo(screen.availableGeometry().size())
+        if dialog.minimumSize() != least:
+            dialog.setMinimumSize(least)
+
+    def eventFilter(self, watched, event):
+        # Polish comes before the first show sizes the dialog.
+        if event.type() in (QEvent.Type.Polish, QEvent.Type.LayoutRequest, QEvent.Type.Show):
+            self.apply()
+        return False
+
+
+def least_size(dialog, width: int, height: int) -> None:
+    """Never let ``dialog`` be smaller than ``width`` by ``height``, nor than
+    what its layout needs.
+
+    A size set with setMinimumSize alone stands in for the layout's: Qt then
+    lets the dialog be smaller than its contents. It opens no taller or wider
+    than two thirds of the screen, so at a large interface size on a small
+    screen the contents were squashed, buttons cut at both ends and fields
+    half their height. Kept up as the contents change, and never larger than
+    the screen.
+    """
+    _LeastSize(dialog, QSize(width, height))
+
+
 def keep_size(dialog, settings, key: str, first: QSize) -> None:
     """Open ``dialog`` at the size it was closed at last time -- ``first``
     the first time -- and write down the size it closes at, under ``key``.

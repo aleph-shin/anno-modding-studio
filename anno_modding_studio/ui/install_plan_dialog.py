@@ -41,7 +41,14 @@ from ..core.i18n import size_text, tr, tr_noop, trn
 from . import theme
 from .modio_brand import branding
 from .modio_task_dialog import ModioTaskDialog
-from .widgets import ElidingLabel, rows_table, sort_as, sortable, wrappable_path
+from .widgets import (
+    ElidingLabel,
+    least_size,
+    rows_table,
+    sort_as,
+    sortable,
+    wrappable_path,
+)
 
 COLUMNS = (
     tr_noop("Mod"),
@@ -129,7 +136,7 @@ class InstallPlanDialog(ModioTaskDialog):
         self._running: List[installplan.Row] = []
         self._filling = False
         self.setWindowTitle(title)
-        self.setMinimumSize(860, 560)
+        least_size(self, 860, 560)
         self._build_ui(title, intro)
         self._begin()
 

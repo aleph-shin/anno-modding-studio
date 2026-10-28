@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 
 from ..core.i18n import join_list, tr, tr_noop
 from .help_tip import HelpTip
-from .widgets import single_line, tab_as_laid_out
+from .widgets import least_size, single_line, tab_as_laid_out
 
 COLUMNS = (tr_noop("Loadout"), tr_noop("Note"))
 
@@ -59,7 +59,7 @@ class AddToLoadoutDialog(QDialog):
         super().__init__(parent)
         self.rows = list(rows)
         self.setWindowTitle(tr("Add to loadout"))
-        self.setMinimumSize(520, 360)
+        least_size(self, 520, 360)
         self.setSizeGripEnabled(True)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 14, 16, 12)
