@@ -10681,6 +10681,33 @@ class TestFilteringInModsOrOneMod(TestAFoldedModsRowsWait):
         self.assertEqual(panel.scope_box.count(), 2)
         self.assertFalse(self.mod_row(panel, self.ONE).isHidden())
 
+    def test_its_own_entries_fit_and_a_long_mod_name_does_not_widen_it(self):
+        """It showed "Mods and chang" at every size: it was ten letters wide."""
+        from PySide6.QtWidgets import QStyle, QStyleOptionComboBox
+
+        from anno_modding_studio.core.changes import ModLayer
+
+        panel = self.panel()
+        box = panel.scope_box
+        box.resize(box.sizeHint())
+        option = QStyleOptionComboBox()
+        box.initStyleOption(option)
+        field = box.style().subControlRect(
+            QStyle.ComplexControl.CC_ComboBox, option,
+            QStyle.SubControl.SC_ComboBoxEditField, box,
+        )
+        for i in range(box.count()):
+            self.assertLessEqual(
+                box.fontMetrics().horizontalAdvance(box.itemText(i)), field.width(),
+                box.itemText(i),
+            )
+        width = box.sizeHint().width()
+        panel.loadout.set_layer(ModLayer(origin="Long", name="A" * 80))
+        panel.regroup()
+        panel.filter_mod("Long")
+        self.assertIn("A" * 80, box.currentText())
+        self.assertEqual(box.sizeHint().width(), width)
+
 
 class TestAModRowSaysWhatItIs(unittest.TestCase):
     """A mod row's tooltip and caption, for a mod with a hundred options and for
