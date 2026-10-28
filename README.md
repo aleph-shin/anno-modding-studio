@@ -56,9 +56,8 @@ fields both mods change.*
 
 Anything in a mod can be changed, not only the settings its author offers. You can
 change a value in the fields editor, type over one of the author's ModOps, switch it
-off, or take it out entirely. Their mod itself is never changed: your edits are kept
-in a patch, a small mod of your own that loads right after theirs. Where you changed
-one of their ModOps, Play gives the game a copy of their mod with that edit in it.
+off, or take it out entirely. Their mod itself is never changed: your edits go into a
+patch, a small mod of your own that loads right after theirs.
 
 - **Change it where you see it.** Open the asset, change the value, press Play.
 - **Keep your changes through its updates.** Install the author's update and your
@@ -92,8 +91,8 @@ it refers to the ones on the right.*
   field. The fields offered are the ones the base game uses at that place. Each change
   becomes one narrow ModOp, rather than a widely scoped replace or merge.
 - **Or type ModOps.** Type in the ModOps pane of an asset's XML view, or in the mod's
-  whole file. What you type is kept and exported as you typed it, notes and blank
-  lines included (up to eight in a row), and shown beside what it comes to. Files your `assets.xml` includes
+  whole file. What you type is kept and exported as you typed it, and shown beside
+  what it comes to. Files your `assets.xml` includes
   are edited as part of one text.
 - **Or type into an asset's full XML representation directly.** Change the asset as
   your mod leaves it, or paste a whole asset and change it inline, then click
@@ -149,9 +148,6 @@ The guide lists [every request and what it sends](docs/guide.md#what-the-studio-
 
 - It doesn't read Lua. A mod that runs scripts is marked, and what its scripts do
   isn't in what the Studio shows.
-- Attribute values can't be edited, and the ModOps it writes for your field edits
-  have no conditions of their own: a condition comes from an option group you put
-  them in, or one you type.
 - The German translation is made by machine.
 - The app should run fine on Linux through Proton 11 or newer, but that hasn't been
   tried yet.
