@@ -6,8 +6,7 @@
 #
 # The tag must name __version__ in anno_modding_studio/__init__.py, and the
 # zip is AnnoModdingStudio-<version>-windows-x64.zip: the Studio's update
-# check finds a release by both. A tag push runs this whether the repository
-# is private or public; it is a few Windows minutes a release.
+# check finds a release by both.
 name: release
 
 on:

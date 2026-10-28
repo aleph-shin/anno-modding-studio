@@ -155,11 +155,6 @@ that CI counts with the same ruff and mypy as the baseline was counted with.
 Dependabot proposes each new release of them and of the actions, once a week
 ([`.github/dependabot.yml`](../.github/dependabot.yml)).
 
-While the repository is private, its Actions minutes are few, and a run of both jobs
-is reckoned at about 80 of them. There it runs only when started by hand, from
-**Actions > check > Run workflow**. Once the repository is public it runs as above,
-and costs nothing.
-
 A PR shows the result as its **check** status, one for each Python. A run's page,
 under the repository's **Actions** tab, has the log and a summary: each check with
 what it found and whether it passed, the tests that did not run and why, and what CI
@@ -190,8 +185,7 @@ What CI cannot check, so it stays with the contributor or the release:
 
 The release has a workflow of its own,
 [`.github/workflows/release.yml`](../.github/workflows/release.yml), run by a pushed
-tag: see [Making a release](#making-a-release). It runs whether the repository is
-private or public, a few Windows minutes for each release.
+tag: see [Making a release](#making-a-release).
 
 How the repository is set up around this, branch protection among it, is in
 [repository-settings.md](standards/repository-settings.md).
@@ -205,12 +199,11 @@ How the repository is set up around this, branch protection among it, is in
   on it. The [release checklist](standards/release-checklist.md) is done there, while
   work carries on in `main`.
 - **The release is a tag on that branch.** The branch is then merged back into `main`,
-  so its fixes are in the next release. It stays for a fix to that release until the
-  next release branch is cut.
+  so its fixes are in the next release. It takes fixes to that release until the next
+  release branch is cut, and is kept after that.
 
-While the repository is private, nothing holds this but the checklists: GitHub protects
-branches only on a paid plan or in a public repository. Once it is public, branch
-protection holds `main` and the release branches to the check
+A ruleset on GitHub holds `main` and the release branches to this: nothing reaches
+them but through a PR whose check passed, and none of them can be rewritten or deleted
 ([repository-settings.md](standards/repository-settings.md)).
 
 ## Making a release
@@ -299,7 +292,7 @@ options, for when it is worth it:
 - **SignPath Foundation**, free code signing for open-source projects. The certificate
   is SignPath's, the signing runs from the release workflow, and the project must meet
   its conditions (an OSI licence, a public repository, a reviewed build). The
-  recommendation, once the repository is public.
+  recommendation.
 - **Azure Trusted Signing** (Artifact Signing), Microsoft's own service, for a monthly
   fee. Its certificates are trusted by SmartScreen sooner than an ordinary one, but
   individuals need an identity it can verify, and its availability by country varies.
