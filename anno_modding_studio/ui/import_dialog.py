@@ -220,6 +220,12 @@ class ImportDialog(QDialog):
         self.scan_button = QPushButton(tr("&Scan archives"))
         self.scan_button.setObjectName("Primary")
         self.scan_button.clicked.connect(self._scan)
+        # Off while the box is empty. With both games installed and nothing
+        # read yet no install is picked, the box's grey example path read as
+        # a folder filled in, and the scan it offered said "That folder does
+        # not exist."
+        self.scan_button.setEnabled(False)
+        self.folder_edit.textChanged.connect(self._sync_scan_button)
         row.addWidget(self.scan_button)
         row.addWidget(HelpTip(tr(EXTRACTED_HELP), self.windowTitle()))
         outer.addLayout(row)
@@ -387,6 +393,13 @@ class ImportDialog(QDialog):
         )
 
     # -- actions ------------------------------------------------------------
+    def _sync_scan_button(self) -> None:
+        """Scan archives offered while there is a folder to scan and no scan
+        or extraction is running, which the progress bar shows."""
+        self.scan_button.setEnabled(
+            bool(self.folder_edit.text().strip()) and self.progress.isHidden()
+        )
+
     def _install_picked(self) -> None:
         path = self.install_combo.currentData()
         if path:
@@ -446,7 +459,9 @@ class ImportDialog(QDialog):
 
     def _scan(self) -> None:
         folder = self.folder_edit.text().strip()
-        if not folder or not Path(folder).is_dir():
+        if not folder:
+            return  # Enter in the empty box: the status says what to do
+        if not Path(folder).is_dir():
             self.status.setText(tr("That folder does not exist."))
             return
         if gamefiles.maindata_folder(Path(folder)) is None:
@@ -507,8 +522,8 @@ class ImportDialog(QDialog):
     def _on_scan_done(self, result) -> None:
         if self._given_up():
             return
-        self.scan_button.setEnabled(True)
         self.progress.hide()
+        self._sync_scan_button()
         self.result_scan = result
         self._scanned_folder = self._scan_worker.folder if self._scan_worker else None
         # A scan has run: whatever keeps the button off now, the status says.
@@ -659,7 +674,7 @@ class ImportDialog(QDialog):
         if self._given_up():
             return
         self.progress.hide()
-        self.scan_button.setEnabled(True)
+        self._sync_scan_button()
         self.extract_button.setEnabled(self.result_scan is not None)
         self.status.setText(message)
 
