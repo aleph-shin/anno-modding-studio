@@ -215,6 +215,12 @@ class TestTheLock(unittest.TestCase):
         for name in ("pyinstaller", "pyside6-essentials", "shiboken6", "lxml"):
             self.assertIn(name, release.locked())
 
+    def test_it_holds_what_pyinstaller_needs_on_windows(self):
+        """A lock compiled on Linux left these out, and the release build on
+        windows-latest installs nothing but the lock."""
+        for name in ("pefile", "pywin32-ctypes"):
+            self.assertIn(name, release.locked())
+
     def test_it_meets_the_studio_s_own_floors(self):
         def numbers(text):
             return tuple(int(part) for part in re.findall(r"\d+", text)[:3])

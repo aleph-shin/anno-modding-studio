@@ -4,3 +4,9 @@
 # docs/development.md, "Making a release", says how to refresh it.
 -r requirements.txt
 pyinstaller
+# PyInstaller needs these two on Windows only, and says so with a marker, so a
+# lock compiled anywhere else (Dependabot compiles on Linux) left them out, and
+# the build on windows-latest stopped at the freeze. Named here, they are in the
+# lock wherever it is compiled. Both are pure Python.
+pefile
+pywin32-ctypes
