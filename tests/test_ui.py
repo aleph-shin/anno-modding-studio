@@ -1694,6 +1694,49 @@ class TestExportingAndHistory(WorkflowCase):
         finally:
             dialog.deleteLater()
 
+    def test_the_changes_columns_are_as_wide_as_their_words(self):
+        """In German the kind of change read "hinz…" for "hinzugefügt", and
+        the last heading "Gema…"."""
+        from anno_modding_studio.ui.history_dialog import HistoryDialog
+
+        self.window._open_asset("1010340")
+        self._edit("CycleTime", "15.00")
+        dialog = HistoryDialog(self.window.loadout, self.window)
+        self.addCleanup(dialog.deleteLater)
+        dialog.show()
+        self.addCleanup(dialog.close)
+        tree = dialog.mod.diff_tree
+        QCoreApplication.processEvents()
+        header = tree.header()
+        kinds = [tree.topLevelItem(row).text(0) for row in range(tree.topLevelItemCount())]
+        self.assertTrue(kinds)
+        for kind in kinds:
+            self.assertGreaterEqual(
+                header.sectionSize(0), tree.fontMetrics().horizontalAdvance(kind), kind
+            )
+        for column in range(1, header.count()):
+            self.assertGreaterEqual(
+                header.sectionSize(column),
+                header.fontMetrics().horizontalAdvance(tree.headerItem().text(column)),
+                tree.headerItem().text(column),
+            )
+
+    def test_the_export_rows_lines_have_the_room_beside_them(self):
+        """In German "In keinem Loadout außer diesem." took four lines in a
+        fifth of the row: the column of Change… beside it stood empty."""
+        from PySide6.QtWidgets import QGridLayout
+
+        output = self.window.output
+        grid = output.game_status.parentWidget().layout().findChildren(QGridLayout)
+        ways = next(g for g in grid if g.indexOf(output.game_status) >= 0)
+        for status in (output.game_status, output.modio_status):
+            _row, column, _rows, columns = ways.getItemPosition(ways.indexOf(status))
+            self.assertEqual((column, columns), (1, 2))
+        # Update stands beside Add to loadout, not in that column.
+        self.assertIs(output.update_button.parentWidget(), output.game_button.parentWidget())
+        self.assertEqual(ways.indexOf(output.update_button), -1)
+        self.assertEqual(output.preview_label._mode, Qt.TextElideMode.ElideMiddle)
+
     def test_a_checkpoint_is_offered_only_with_something_new_to_save(self):
         import tempfile
 

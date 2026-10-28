@@ -544,7 +544,9 @@ class OutputPanel(QWidget):
         right_layout.addWidget(self.mod_row)
 
         preview_header = QHBoxLayout()
-        self.preview_label = ElidingLabel(mode=Qt.TextElideMode.ElideLeft)
+        # Cut in the middle: cut at the start, the path stayed whole and the
+        # label lost the words that say what it is a path of.
+        self.preview_label = ElidingLabel(mode=Qt.TextElideMode.ElideMiddle)
         self.preview_label.setObjectName("SubHeading")
         preview_header.addWidget(self.preview_label, 1)
         preview_header.addWidget(HelpTip(tr(
@@ -582,7 +584,9 @@ class OutputPanel(QWidget):
             ways.addWidget(label, at, 0, Qt.AlignmentFlag.AlignVCenter)
             status = QLabel("")
             status.setWordWrap(True)
-            ways.addWidget(status, at, 1, Qt.AlignmentFlag.AlignVCenter)
+            # Over the column of Change… too, which only As files has: in
+            # German the line had a fifth of the row and took four lines.
+            ways.addWidget(status, at, 1, 1, 2, Qt.AlignmentFlag.AlignVCenter)
             return label, status
 
         # Translators: a row of the Export tab: whether the mod is in the
@@ -592,7 +596,6 @@ class OutputPanel(QWidget):
         # from the files cache, ticked where they have it.
         self.game_button = QPushButton(tr("Add to loadout\u2026"))
         self.game_button.clicked.connect(self._on_game_button)
-        ways.addWidget(self.game_button, 0, 3)
         # Once other loadouts have the mod: its build in the library made
         # again, which each of them links.
         # Translators: a button of the Export tab: the mod built again for
@@ -601,7 +604,12 @@ class OutputPanel(QWidget):
         self.update_button.setToolTip(tr("Builds the mod again for the loadouts that have it."))
         self.update_button.clicked.connect(lambda: self.update_build())
         self.update_button.hide()
-        ways.addWidget(self.update_button, 0, 2)
+        # Beside Add to loadout, where it takes room only when it is there.
+        game_buttons = QHBoxLayout()
+        game_buttons.setContentsMargins(0, 0, 0, 0)
+        game_buttons.addWidget(self.update_button)
+        game_buttons.addWidget(self.game_button)
+        ways.addLayout(game_buttons, 0, 3)
         # Publishing and testing, not installing: what Play is for, and what
         # each row is, behind the one ?.
         # Translators: "Play" is the Studio's button that builds your mods and
