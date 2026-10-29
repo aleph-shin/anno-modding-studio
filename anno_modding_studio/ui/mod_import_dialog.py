@@ -57,6 +57,7 @@ from .widgets import (
     busy_cursor,
     fit_columns,
     hold_lines,
+    least_size,
     sortable,
     tab_as_laid_out,
 )
@@ -133,7 +134,7 @@ class ModImportDialog(QDialog):
         self._mine_for = ""
 
         self.setWindowTitle(tr("Import changes from a mod"))
-        self.setMinimumSize(1000, 640)
+        least_size(self, 1000, 640)
         self._build_ui()
         self.folder_box.setText(start_dir or "")
         # A folder that is itself a mod is read straight away. It used to be

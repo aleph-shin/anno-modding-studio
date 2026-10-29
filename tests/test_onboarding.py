@@ -438,6 +438,24 @@ class TestMultipleInstallsDetected(unittest.TestCase):
             dialog.reject()
             dialog.deleteLater()
 
+    def test_scan_waits_for_a_folder(self):
+        """On a first start with both games installed, Scan archives was
+        offered over an empty box, whose grey example path read as a folder
+        filled in, and said "That folder does not exist." """
+        dialog = ImportDialog()
+        try:
+            self.assertFalse(dialog.scan_button.isEnabled())
+            told = dialog.status.text()
+            dialog._folder_entered()
+            self.assertEqual(dialog.status.text(), told)
+            dialog.folder_edit.setText("C:/games/Anno 1800")
+            self.assertTrue(dialog.scan_button.isEnabled())
+            dialog.folder_edit.setText("  ")
+            self.assertFalse(dialog.scan_button.isEnabled())
+        finally:
+            dialog.reject()
+            dialog.deleteLater()
+
 
 class TestBothGamesInstalled(unittest.TestCase):
     """Two installs the dialog can tell apart, each with archives to read.

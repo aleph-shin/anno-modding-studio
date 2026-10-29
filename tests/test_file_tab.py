@@ -1282,6 +1282,17 @@ class TestNamesBesideTheLines(FileTabCase):
         self.pane.name_assets()
         self.assertEqual(self.pane.named_assets()[line], [("1010202", "Steel")])
 
+    def test_naming_a_file_looks_at_the_loadout_once(self):
+        """Each name asked the workspace, and each question took the whole
+        loadout's fingerprint again: 107 times, and seconds, for the longest
+        file of 417 mods."""
+        workspace = self.window.workspace
+        self.pane._namer.forget()
+        with mock.patch.object(workspace, "_fingerprint", wraps=workspace._fingerprint) as looked:
+            self.pane.name_assets()
+        self.assertGreaterEqual(len(self.pane.named_assets()), 2)
+        self.assertLessEqual(looked.call_count, 1)
+
     def test_a_line_past_the_edge_has_its_names_at_the_edge(self):
         line = self.line_of('GUID="1010340"')
         block = self.pane.document().findBlockByNumber(line)

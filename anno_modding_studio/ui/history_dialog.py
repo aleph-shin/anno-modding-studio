@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
+    QHeaderView,
     QInputDialog,
     QLabel,
     QListWidget,
@@ -56,7 +57,7 @@ from ..core.i18n import STORED, date_text, number, tr, tr_noop, tr_stored, trn
 from . import theme, widgets
 from .changes_dock import field_label
 from .help_tip import HelpTip
-from .widgets import ask, fit_columns, sortable_tree, tab_as_laid_out
+from .widgets import ask, fit_columns, least_size, sortable_tree, tab_as_laid_out
 
 INDEX_ROLE = Qt.ItemDataRole.UserRole  # -1 marks the live working copy
 # How many names a sentence lists before it says how many more.
@@ -132,7 +133,7 @@ class HistoryDialog(QDialog):
         self.setWindowTitle(tr("Loadout history: %s", loadout_name or loadout.own.name)
                             if loadout_name or loadout.own.name
                             else tr("Loadout history: Untitled"))
-        self.setMinimumSize(980, 560)
+        least_size(self, 980, 560)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 14, 16, 12)
         outer.setSpacing(10)
@@ -228,11 +229,18 @@ class _HistoryTab(QWidget):
         self.diff_tree.setAlternatingRowColors(True)
         self.diff_tree.setRootIsDecorated(False)
         header = self.diff_tree.header()
-        header.resizeSection(0, 72)
+        # The kind of change is one word, and as wide as the language makes
+        # it: at a fixed 72px German's "hinzugefügt" read "hinz…".
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         for column in range(1, len(columns) - 1):
             header.resizeSection(column, 170)
         header.setStretchLastSection(True)
-        fit_columns(self.diff_tree)
+        # No heading narrower than itself: the last one, "Made in", is what
+        # the others leave, and in German that was "Gema…".
+        fit_columns(self.diff_tree, floors={
+            column: header.sectionSizeFromContents(column).width()
+            for column in range(1, len(columns))
+        })
         right_layout.addWidget(self.diff_tree, 1)
         self.sorting = sortable_tree(self.diff_tree)
         row = QHBoxLayout()

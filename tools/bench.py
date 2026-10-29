@@ -346,6 +346,29 @@ def quiet_dialogs():
     QDialog.exec = refused
     QMessageBox.exec = refused
 
+    # The static questions run their own event loop in Qt's C++, past the
+    # exec above: offscreen, one waited for a click all night ("Who are
+    # you?", at the first edit to a loadout's own mod).  Answered with
+    # what they were given, as OK would.
+    from PySide6.QtWidgets import QFileDialog, QInputDialog
+
+    def asked(kind, answer):
+        def ask(_parent, title, *args, **kwargs):
+            print("    [%s] %s" % (kind, title))
+            return answer(*args, **kwargs)
+        return ask
+
+    # The ones the Studio calls: (label, echo, text) and (label, items, current).
+    QInputDialog.getText = staticmethod(asked(
+        "getText", lambda *args, text="", **_k: (args[2] if len(args) > 2 else text, True)))
+    QInputDialog.getItem = staticmethod(asked(
+        "getItem", lambda _label="", items=(), current=0, *_a, **_k: (
+            items[current] if items else "", bool(items))))
+    # A file dialog is cancelled: nothing here picks a file.
+    for name, nothing in (("getOpenFileName", ("", "")), ("getSaveFileName", ("", "")),
+                          ("getOpenFileNames", ([], "")), ("getExistingDirectory", "")):
+        setattr(QFileDialog, name, staticmethod(asked(name, lambda *_a, nothing=nothing, **_k: nothing)))
+
 
 def let_background_finish(window, clock: Clock) -> None:
     """Run the event loop until the window has nothing running behind it.

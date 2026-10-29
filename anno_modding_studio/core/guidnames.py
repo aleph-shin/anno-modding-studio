@@ -19,6 +19,7 @@ told, the field's name across the whole game is asked instead
 from __future__ import annotations
 
 import re
+from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -183,6 +184,16 @@ class Namer:
     def forget(self) -> None:
         """Ask again: the assets there are may not be the ones there were."""
         self._known.clear()
+
+    def held(self):
+        """The loadout taken as fixed while a whole text is named.
+
+        Each new number asks the workspace, and each question looked at the
+        whole loadout again: a long mod's file was 107 looks at 32,000
+        changes, seconds of the file tab drawing it.
+        """
+        steady = getattr(self.workspace, "steady", None)
+        return steady() if steady is not None else nullcontext()
 
     def row(self, mention: Mention):
         """The asset ``mention`` links to (an :class:`AssetRow`), or None."""

@@ -38,6 +38,7 @@ from .changes_dock import field_label
 from .help_tip import HelpTip
 from .widgets import (
     enter_activates,
+    least_size,
     listing_table,
     open_script,
     sortable,
@@ -72,7 +73,7 @@ class ConflictsDialog(QDialog):
         # (H2-9).
         self.elsewhere = elsewhere or {}
         self.setWindowTitle(tr("Mods reaching for the same thing"))
-        self.setMinimumSize(980, 560)
+        least_size(self, 980, 560)
         self._build_ui()
         self.reload()
 

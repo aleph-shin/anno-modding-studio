@@ -727,6 +727,46 @@ class TestADialogKeepsItsSize(unittest.TestCase):
         self.assertEqual(small.size(), QSize(200, 150))
 
 
+class TestADialogsLeastSize(unittest.TestCase):
+    """No smaller than its least size, nor than what its contents need: with
+    setMinimumSize alone, a dialog opened at 200% on a small screen had its
+    buttons cut at both ends."""
+
+    def dialog(self, *texts):
+        from PySide6.QtWidgets import QDialog, QHBoxLayout, QPushButton
+
+        dialog = QDialog()
+        self.addCleanup(dialog.deleteLater)
+        row = QHBoxLayout(dialog)
+        buttons = [QPushButton(text) for text in texts]
+        for button in buttons:
+            row.addWidget(button)
+        return dialog, buttons
+
+    def test_the_least_size_holds_where_the_contents_need_less(self):
+        from PySide6.QtCore import QSize
+
+        dialog, _ = self.dialog("OK")
+        widgets.least_size(dialog, 400, 300)
+        self.assertEqual(dialog.minimumSize(), QSize(400, 300))
+
+    def test_the_contents_hold_where_they_need_more_and_as_they_grow(self):
+        dialog, (button,) = self.dialog("A button")
+        widgets.least_size(dialog, 20, 20)
+        dialog.show()
+        self.addCleanup(dialog.close)
+        self.assertGreaterEqual(dialog.minimumWidth(), button.minimumSizeHint().width())
+        button.setText("A button whose text has grown a great deal longer than it was")
+        QApplication.sendPostedEvents()
+        self.assertGreaterEqual(dialog.minimumWidth(), button.minimumSizeHint().width())
+        self.assertGreaterEqual(dialog.width(), button.minimumSizeHint().width())
+
+    def test_never_larger_than_the_screen(self):
+        dialog, _ = self.dialog("OK")
+        widgets.least_size(dialog, 99999, 99999)
+        self.assertEqual(dialog.minimumSize(), dialog.screen().availableGeometry().size())
+
+
 class TestTabOrder(unittest.TestCase):
     """Tab goes where the controls are laid out, whatever order they were made in."""
 

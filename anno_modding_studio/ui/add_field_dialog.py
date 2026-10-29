@@ -40,6 +40,7 @@ from .widgets import (
     enter_activates,
     fit_columns,
     hold_lines,
+    least_size,
     rich_label,
     show_rich,
     sort_as,
@@ -75,7 +76,7 @@ class AddFieldDialog(QDialog):
 
         # Translators: a field is one XML tag of a game asset, with its value.
         self.setWindowTitle(tr("Add a field"))
-        self.setMinimumSize(720, 520)
+        least_size(self, 720, 520)
 
         self._filter_timer = QTimer(self)
         self._filter_timer.setSingleShot(True)

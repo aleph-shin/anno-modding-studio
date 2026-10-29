@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 from ..core.i18n import tr, tr_noop
 from . import theme
 from .help_tip import HelpTip
-from .widgets import listing_table, sortable
+from .widgets import least_size, listing_table, sortable
 
 COLUMNS = (tr_noop("Mod"), tr_noop("The other mod"), tr_noop("What happens"))
 
@@ -47,7 +47,7 @@ class NeedsDialog(QDialog):
     def __init__(self, check, parent=None):
         super().__init__(parent)
         self.setWindowTitle(tr("What these mods say about each other"))
-        self.setMinimumSize(980, 440)
+        least_size(self, 980, 440)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 14, 16, 12)
         outer.setSpacing(8)

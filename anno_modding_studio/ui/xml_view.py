@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
 
 from ..core.i18n import tr
 from . import theme
-from .widgets import flash_button_feedback, tab_as_laid_out
+from .widgets import flash_button_feedback, least_size, tab_as_laid_out
 
 
 class XmlHighlighter(QSyntaxHighlighter):
@@ -92,7 +92,7 @@ class XmlDialog(QDialog):
     def __init__(self, heading: str, xml: str, note: str = "", parent=None):
         super().__init__(parent)
         self.setWindowTitle(tr("ModOps XML"))
-        self.setMinimumSize(760, 520)
+        least_size(self, 760, 520)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 14, 16, 12)

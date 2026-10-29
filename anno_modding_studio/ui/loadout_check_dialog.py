@@ -36,7 +36,13 @@ from PySide6.QtWidgets import (
 from ..core.i18n import number, tr, tr_noop, trn
 from . import theme
 from .help_tip import HelpTip
-from .widgets import enter_activates, listing_table, sortable, tab_as_laid_out
+from .widgets import (
+    enter_activates,
+    least_size,
+    listing_table,
+    sortable,
+    tab_as_laid_out,
+)
 
 COLUMNS = (tr_noop("Asset"), tr_noop("Changed by"), tr_noop("Where they part"), tr_noop("The change there"))
 
@@ -54,7 +60,7 @@ class LoadoutCheckDialog(QDialog):
         self.verdict = None
         self._worker = None
         self.setWindowTitle(tr("The whole loadout, by the game's loader"))
-        self.setMinimumSize(1000, 620)
+        least_size(self, 1000, 620)
         self._build_ui()
 
     def _build_ui(self) -> None:

@@ -108,3 +108,12 @@ every later stage.
   value was 2.83:1 against Brick's raised surface, below the 3:1 floor. The
   render on the comparison sheet didn't check that pair, and `contrast.py`
   does.
+- **0.1.0's look** replaced all 24 references on 28 Oct, approved on the
+  release branch (`docs/standards/release-checklist.md`). They had stood
+  since 4 Oct, and three weeks of work had changed every tab: the Mods,
+  Game and Check menus and the Mod file tab, the Start tab's *Your loadout*
+  and Studio folders rows, the Export tab's three rows for where a mod goes,
+  and the Mod changes panel's buttons and row badges. From here on each
+  release replaces them, so `--compare` shows what changed since the last
+  one. `scale-150/` is from before these changes and `--compare` does not
+  render it.

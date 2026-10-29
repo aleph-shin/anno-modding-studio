@@ -91,8 +91,8 @@ it refers to the ones on the right.*
   field. The fields offered are the ones the base game uses at that place. Each change
   becomes one narrow ModOp, rather than a widely scoped replace or merge.
 - **Or type ModOps.** Type in the ModOps pane of an asset's XML view, or in the mod's
-  whole file. What you type is kept and exported as you typed it, notes and blank
-  lines included, and shown beside what it comes to. Files your `assets.xml` includes
+  whole file. What you type is kept and exported as you typed it, and shown beside
+  what it comes to. Files your `assets.xml` includes
   are edited as part of one text.
 - **Or type into an asset's full XML representation directly.** Change the asset as
   your mod leaves it, or paste a whole asset and change it inline, then click
@@ -148,8 +148,6 @@ The guide lists [every request and what it sends](docs/guide.md#what-the-studio-
 
 - It doesn't read Lua. A mod that runs scripts is marked, and what its scripts do
   isn't in what the Studio shows.
-- Attribute values can't be edited, and the ModOps it writes for your edits have no
-  conditions.
 - The German translation is made by machine.
 - The app should run fine on Linux through Proton 11 or newer, but that hasn't been
   tried yet.

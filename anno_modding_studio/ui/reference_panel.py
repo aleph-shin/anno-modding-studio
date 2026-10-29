@@ -63,6 +63,7 @@ from .widgets import (
     ElidingLabel,
     enter_activates,
     fit_columns,
+    least_size,
     sortable,
     tab_as_laid_out,
 )
@@ -486,7 +487,7 @@ class ReferenceListDialog(QDialog):
 
         # Translators: the Studio's graph of which assets point at which.
         self.setWindowTitle(tr("References"))
-        self.setMinimumSize(760, 520)
+        least_size(self, 760, 520)
 
         # Same debounce the app's other filters use: a keystroke should never
         # be waiting on a table rebuild.

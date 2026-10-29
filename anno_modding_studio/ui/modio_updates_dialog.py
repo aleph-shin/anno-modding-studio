@@ -61,6 +61,7 @@ from .widgets import (
     ask,
     enter_activates,
     filter_box,
+    least_size,
     rows_table,
     show_progress,
     sort_as,
@@ -163,7 +164,7 @@ class ModioUpdatesDialog(QDialog):
         self._task: Optional[ModioTaskWorker] = None
         self._failed = False
         self.setWindowTitle(tr("Check mod.io for updates"))
-        self.setMinimumSize(760, 460)
+        least_size(self, 760, 460)
         # A mod row asks about its own mod (``only``); the menu, about all.
         wanted = None if only is None else set(only)
         self.matches = updates.identify(
