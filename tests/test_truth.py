@@ -667,7 +667,7 @@ class TestMakingALoadoutLive(TruthWindow):
             self.window.live.sync_loadout()
         (text,) = asked.texts
         self.assertIn("Switch on:\n  • [Gameplay] Wanted", text)
-        self.assertIn("does not have them on:\n  • [Gameplay] Stray", text)
+        self.assertIn("Switch off, not in this loadout:\n  • [Gameplay] Stray", text)
         self.assertIn("mod browser installed", text)
         self.assertEqual(sorted(p.name for p in self.mods.iterdir()),
                          ["-[Gameplay] Stray", "[Gameplay] Mine", "[Gameplay] Wanted"])
@@ -1485,7 +1485,7 @@ class TestPlay(PlayingWindow):
             self.assertTrue(self.window.live.play())
         (title,), (text,) = asked.titles, asked.texts
         self.assertEqual(title, "Play Main?")
-        self.assertIn("does not have them on:\n  • [Gameplay] Stray", text)
+        self.assertIn("Switch off, not in this loadout:\n  • [Gameplay] Stray", text)
         self.assertTrue(text.endswith("Then Anno 1800 starts."))
         self.assertTrue((self.mods / "-[Gameplay] Stray").is_dir())
         self.assertEqual(self.started_now(), ["steam://rungameid/916440"])

@@ -43,6 +43,23 @@ FORK_PROFILE, FORK_SEPARATE = "profile", "separate"
 ZIP_ADD, ZIP_OPEN, ZIP_INSTALL = "add", "open", "install"
 # What to do with dropped mods that are for another game than the one loaded.
 OTHER_GAME_ANYWAY, OTHER_GAME_SKIP = "anyway", "skip"
+# Past this many mods to build or switch, Play's question says how many of
+# each, and the names are behind Show Details, as play.Plan.told does for
+# what is worth knowing.
+NAMED_IN_FULL = play.Plan.SAID_IN_FULL
+# Past this many, a sentence of Play's question counts the mods it names.
+NAMED_IN_A_LINE = 3
+
+
+def _some(names, cut: bool) -> str:
+    """``names`` after a colon in a sentence: every one, or with ``cut`` and
+    more than a few, how many."""
+    names = list(names)
+    if not cut or len(names) <= NAMED_IN_A_LINE:
+        return ", ".join(names)
+    # Translators: stands in for a list of mods' names after a colon, as in
+    # "Mod options written into active-options.jsonc for: 10 mods."
+    return trn("%(n)s mod", "%(n)s mods", len(names))
 
 
 def _lost(lost: int, many: bool) -> str:
@@ -154,21 +171,57 @@ class Prompts:
         return chosen if ok else ""
 
     def confirm_live(self, plan: play.Plan, launch: bool, loadout, name: str) -> bool:
-        """Whether to go ahead, having said everything it will do."""
-        lines = [tr("In:\n%s\n", wrappable_path(plan.folder))]
-        if plan.built:
-            lines.append(tr("Build into the Studio's library, linked in:\n%s",
-                            bullets(plan.built_names, 12)))
+        """Whether to go ahead, having said everything it will do: in full
+        where it is short, and otherwise as a count of each kind, with every
+        name behind Show Details.  Said in full, four lists of a dozen names
+        and a line for each mod the loader agreed with ran the box past the
+        bottom of the screen, its buttons with it."""
+        text = self._live_text(plan, launch, loadout, cut=True)
+        whole = self._live_text(plan, launch, loadout, cut=False)
+        if name:
+            title = tr("Play %s?", name) if launch else tr("Make %s live?", name)
+        else:
+            title = tr("Play this loadout?") if launch else tr("Make this loadout live?")
+        # Translators: "Play" is the Studio's button that builds your mods and
+        # starts the game; use the same word as that button.
+        action = tr("&Play") if launch else tr("&Make it live")
+        return self._ask_to_go(
+            title, text, widgets.plain_text(whole) if whole != text else "", action,
+            action_tip=tr("No mod is deleted or rewritten. This moves the switches the "
+                          "game reads, and writes the Studio's own builds."),
+        )
+
+    def _live_text(self, plan: play.Plan, launch: bool, loadout, cut: bool) -> str:
+        """What making ``plan``'s loadout live does, for the question: with
+        ``cut``, the part the box has room for."""
+        lines = [tr("In:\n%s", wrappable_path(plan.folder))]
         on = sorted(name for name, want in plan.moving.items() if want)
         off = sorted(name for name, want in plan.moving.items() if not want)
-        if on:
-            lines.append(tr("Switch on:\n%s", bullets(on, 12)))
-        if off:
-            lines.append(tr("Switch off:\n%s", bullets(off, 12)))
-        if plan.strays:
-            names = sorted(mod.name for mod in plan.strays)
-            listed = bullets(names, 12)
-            lines.append(tr("Switch off, because this loadout does not have them on:\n%s", listed))
+        strays = sorted(mod.name for mod in plan.strays)
+        if cut and len(plan.built_names) + len(on) + len(off) + len(strays) > NAMED_IN_FULL:
+            # One line each, together: the names are behind Show Details.
+            counts = []
+            if plan.built:
+                counts.append(trn("Build into the library and link in: %(n)s mod",
+                                  "Build into the library and link in: %(n)s mods",
+                                  len(plan.built_names)))
+            if on:
+                counts.append(trn("Switch on: %(n)s mod", "Switch on: %(n)s mods", len(on)))
+            if off:
+                counts.append(trn("Switch off: %(n)s mod", "Switch off: %(n)s mods", len(off)))
+            if strays:
+                counts.append(trn("Switch off, not in this loadout: %(n)s mod",
+                                  "Switch off, not in this loadout: %(n)s mods", len(strays)))
+            lines.append("\n".join(counts))
+        else:
+            if plan.built:
+                lines.append(tr("Build into the library and link in:\n%s", bullets(plan.built_names)))
+            if on:
+                lines.append(tr("Switch on:\n%s", bullets(on)))
+            if off:
+                lines.append(tr("Switch off:\n%s", bullets(off)))
+            if strays:
+                lines.append(tr("Switch off, not in this loadout:\n%s", bullets(strays)))
         if plan.found is not None and plan.found.describe_cache():
             lines.append(plan.found.describe_cache())
         if plan.own:
@@ -177,67 +230,50 @@ class Prompts:
                 "Your own profiles are not touched.", plan.own_name
             ))
         if plan.options:
-            lines.append(tr(
-                "Mod options written into %(file)s for: %(mods)s. Entries for mods "
-                "this loadout does not mention stay as they are.",
-                file=switches.OPTIONS_FILE, mods=", ".join(sorted(plan.options)[:8]),
-            ))
+            lines.append(tr("Mod options written into %(file)s for: %(mods)s.",
+                            file=switches.OPTIONS_FILE, mods=_some(sorted(plan.options), cut)))
         if plan.tweaks:
             lines.append(tr_kw(
                 "iModYourAnno settings written into [[generated copy|generated copies]] "
-                "of: %s.",
-                ", ".join(layer.label for layer in plan.tweaks[:8]),
+                "of: %s.", _some([layer.label for layer in plan.tweaks], cut),
             ))
         if plan.edited:
             lines.append(tr_kw(
-                "Your edits to other people's mods written into [[generated copy|generated "
-                "copies]] of: %s.",
-                ", ".join(layer.label for layer in plan.edited[:8]),
+                "Your edits written into [[generated copy|generated copies]] of: %s.",
+                _some([layer.label for layer in plan.edited], cut),
             ))
         if plan.reverting:
-            lines.append(tr(
-                "Loading the library's own copy again, with no settings or edits of "
-                "yours left to write into it: %s.",
-                ", ".join(plan.reverting[:8]),
-            ))
+            lines.append(tr("Back to the library's own copy, with nothing of yours to "
+                            "write into it: %s.", _some(plan.reverting, cut)))
         if plan.tweaks_held:
-            lines.append(tr(
-                "Set differently here, but in a folder of your own and not "
-                "the library's, so left as the folder has them: %s.",
-                ", ".join(plan.tweaks_held[:8]),
-            ))
+            lines.append(tr("Your settings not written, since these are folders of your "
+                            "own and not the library's: %s.", _some(plan.tweaks_held, cut)))
         told, details = plan.told()
         if told:
-            listed = told + "".join("\n" + note for note in plan.notes if note)
+            listed = (told if cut else details or told) + "".join(
+                "\n" + note for note in plan.notes if note)
             lines.append(tr("Worth knowing first:\n%s", listed))
         agreed = [verdict for verdict in plan.loader if verdict.state == "agrees"]
-        if agreed:
+        if cut and len(agreed) > NAMED_IN_A_LINE:
+            lines.append(trn("The game's loader agrees on %(n)s mod built.",
+                             "The game's loader agrees on %(n)s mods built.", len(agreed)))
+        elif agreed:
             lines.append("\n".join(verdict.describe() for verdict in agreed))
-        lines.append(tr(
-            "No mod is deleted or rewritten. This moves the switches the "
-            "game reads, and writes the Studio's own builds."
-        ))
         if launch:
             lines.append(tr("Then %s starts.", games.get(loadout.game).label))
-        named = name
-        if launch:
-            title = tr("Play %s?", named) if named else tr("Play this loadout?")
-        else:
-            title = tr("Make %s live?", named) if named else tr("Make this loadout live?")
-        # Translators: "Play" is the Studio's button that builds your mods and
-        # starts the game; use the same word as that button.
-        action = tr("&Play") if launch else tr("&Make it live")
-        return self._ask_to_go(title, "\n\n".join(lines), details, action)
+        return "\n\n".join(lines)
 
-    def _ask_to_go(self, title: str, text: str, details: str = "", action: str = "") -> bool:
-        """The action or Cancel, with the whole list of what is worth knowing
-        behind Show Details when the question only has room for a count of it."""
+    def _ask_to_go(self, title: str, text: str, details: str = "", action: str = "",
+                   action_tip: str = "") -> bool:
+        """The action or Cancel, with the whole of what is said behind Show
+        Details when the question only has room for a count of it."""
         if not details:
-            return ask(self.parent, title, text, action)
+            return ask(self.parent, title, text, action, action_tip=action_tip)
         box = QMessageBox(QMessageBox.Icon.Question, title, "",
                           QMessageBox.StandardButton.Cancel, self.parent)
         show_box_text(box, text)
         go = box.addButton(action, QMessageBox.ButtonRole.AcceptRole)
+        tip(go, action_tip)
         box.setDefaultButton(go)
         box.setDetailedText(details)
         return self.answer(box) is go

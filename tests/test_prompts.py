@@ -244,5 +244,71 @@ class TestTheGameIsRunning(unittest.TestCase):
         self.assertEqual(asking, ["prompts.py"])
 
 
+class TestPlaysQuestion(unittest.TestCase):
+    """What Play says it will do, in a box that fits on the screen."""
+
+    def plan(self, switched: int):
+        from types import SimpleNamespace
+
+        from anno_modding_studio.core import play
+
+        plan = play.Plan(folder="C:/mods")
+        plan.moving = {"On %02d" % n: True for n in range(switched)}
+        plan.strays = [SimpleNamespace(name="Stray %02d" % n) for n in range(switched)]
+        return plan
+
+    def asked(self, plan):
+        """The box Play's question is asked in, answered Cancel."""
+        from types import SimpleNamespace
+
+        shown = []
+
+        def answer(box):
+            shown.append(box)
+            return None
+
+        loadout = SimpleNamespace(game=ANNO_1800)
+        with mock.patch.object(prompts.Prompts, "answer", lambda _self, box: answer(box)), \
+                mock.patch.object(prompts.widgets, "answer_of", answer):
+            self.assertFalse(prompts.Prompts(None).confirm_live(plan, True, loadout, "Main"))
+        return shown[0]
+
+    def test_a_few_mods_are_named_in_it(self):
+        box = self.asked(self.plan(2))
+        text = _isolation.box_text(box)
+        self.assertIn("Switch on:\n  • On 00\n  • On 01", text)
+        self.assertIn("Switch off, not in this loadout:\n  • Stray 00\n  • Stray 01", text)
+        self.assertEqual(box.detailedText(), "")
+
+    def test_many_are_counted_with_every_name_behind_show_details(self):
+        """Four lists of twelve names, each with "and 8 more", ran the box
+        past the bottom of the screen, and its buttons with it."""
+        box = self.asked(self.plan(20))
+        text = _isolation.box_text(box)
+        self.assertIn("Switch on: 20 mods\nSwitch off, not in this loadout: 20 mods", text)
+        self.assertNotIn("On 00", text)
+        self.assertIn("  • On 19", box.detailedText())
+        self.assertIn("Switch off, not in this loadout:\n  • Stray 00", box.detailedText())
+
+    def test_a_sentence_naming_many_mods_counts_them(self):
+        """It named the first eight and left the rest out unsaid."""
+        from types import SimpleNamespace
+
+        plan = self.plan(1)
+        plan.copies = SimpleNamespace(tweaks=[], tweaks_held=[], generating={}, edited=[],
+                                      reverting=["Mod %02d" % n for n in range(10)])
+        box = self.asked(plan)
+        self.assertIn("with nothing of yours to write into it: 10 mods.", _isolation.box_text(box))
+        self.assertIn("Mod 00, Mod 01, Mod 02, Mod 03, Mod 04, Mod 05, Mod 06, Mod 07, Mod 08, "
+                      "Mod 09.", box.detailedText())
+
+    def test_that_nothing_is_deleted_is_said_on_the_button(self):
+        for switched in (2, 20):
+            box = self.asked(self.plan(switched))
+            self.assertNotIn("No mod is deleted", _isolation.box_text(box))
+            (play,) = [button for button in box.buttons() if button.text() == "&Play"]
+            self.assertTrue(play.toolTip().startswith("No mod is deleted or rewritten."))
+
+
 if __name__ == "__main__":
     unittest.main()

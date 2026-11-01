@@ -60,6 +60,7 @@ msgid_plural "%(n)s files"
 msgstr[0] "%(n)s Datei"
 msgstr[1] "%(n)s Dateien"
 
+#. Translators: stands in for a list of mods' names after a colon, as in "Mod options written into active-options.jsonc for: 10 mods."
 #: anno_modding_studio/core/backup.py anno_modding_studio/core/loadercheck.py anno_modding_studio/core/loaderlog.py anno_modding_studio/core/reader.py anno_modding_studio/core/truth.py anno_modding_studio/ui/main_window.py anno_modding_studio/ui/prompts.py anno_modding_studio/ui/unread_dialog.py
 #, python-format
 msgid "%(n)s mod"
@@ -15489,20 +15490,75 @@ msgstr "Jede Mod, die die Sammlung mitgebracht hat, wird in diesem Loadout ausge
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
-msgid ""
-"In:\n"
-"%s\n"
-msgstr ""
-"Ordner:\n"
-"%s\n"
+msgid "Play %s?"
+msgstr "%s spielen?"
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid "Make %s live?"
+msgstr "%s live schalten?"
+
+#: anno_modding_studio/ui/prompts.py
+msgid "Play this loadout?"
+msgstr "Dieses Loadout spielen?"
+
+#: anno_modding_studio/ui/prompts.py
+msgid "Make this loadout live?"
+msgstr "Dieses Loadout live schalten?"
+
+#. Translators: "Play" is the Studio's button that builds your mods and starts the game; use the same word as that button.
+#: anno_modding_studio/ui/prompts.py
+msgid "&Make it live"
+msgstr "&Live schalten"
+
+#: anno_modding_studio/ui/prompts.py
+msgid "No mod is deleted or rewritten. This moves the switches the game reads, and writes the Studio's own builds."
+msgstr "Keine Mod wird gelöscht oder umgeschrieben. Das hier legt die Schalter um, die das Spiel liest, und schreibt die eigenen Builds des Studios."
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
 msgid ""
-"Build into the Studio's library, linked in:\n"
+"In:\n"
 "%s"
 msgstr ""
-"In die Bibliothek des Studios bauen und verlinken:\n"
+"Ordner:\n"
+"%s"
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid "Build into the library and link in: %(n)s mod"
+msgid_plural "Build into the library and link in: %(n)s mods"
+msgstr[0] "In die Bibliothek bauen und verlinken: %(n)s Mod"
+msgstr[1] "In die Bibliothek bauen und verlinken: %(n)s Mods"
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid "Switch on: %(n)s mod"
+msgid_plural "Switch on: %(n)s mods"
+msgstr[0] "Aktivieren: %(n)s Mod"
+msgstr[1] "Aktivieren: %(n)s Mods"
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid "Switch off: %(n)s mod"
+msgid_plural "Switch off: %(n)s mods"
+msgstr[0] "Deaktivieren: %(n)s Mod"
+msgstr[1] "Deaktivieren: %(n)s Mods"
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid "Switch off, not in this loadout: %(n)s mod"
+msgid_plural "Switch off, not in this loadout: %(n)s mods"
+msgstr[0] "Deaktivieren, nicht in diesem Loadout: %(n)s Mod"
+msgstr[1] "Deaktivieren, nicht in diesem Loadout: %(n)s Mods"
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid ""
+"Build into the library and link in:\n"
+"%s"
+msgstr ""
+"In die Bibliothek bauen und verlinken:\n"
 "%s"
 
 #: anno_modding_studio/ui/prompts.py
@@ -15526,10 +15582,10 @@ msgstr ""
 #: anno_modding_studio/ui/prompts.py
 #, python-format
 msgid ""
-"Switch off, because this loadout does not have them on:\n"
+"Switch off, not in this loadout:\n"
 "%s"
 msgstr ""
-"Deaktivieren, weil dieses Loadout sie nicht aktiviert hat:\n"
+"Deaktivieren, nicht in diesem Loadout:\n"
 "%s"
 
 #: anno_modding_studio/ui/prompts.py
@@ -15539,8 +15595,8 @@ msgstr "Wird ins Profil des Studios, %s, geschrieben und zum [[live|Live-Profil]
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
-msgid "Mod options written into %(file)s for: %(mods)s. Entries for mods this loadout does not mention stay as they are."
-msgstr "Mod-Optionen in %(file)s geschrieben für: %(mods)s. Einträge für Mods, die dieses Loadout nicht erwähnt, bleiben, wie sie sind."
+msgid "Mod options written into %(file)s for: %(mods)s."
+msgstr "Mod-Optionen in %(file)s geschrieben für: %(mods)s."
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
@@ -15549,18 +15605,18 @@ msgstr "iModYourAnno-Einstellungen werden in [[generated copy|generierte Kopien]
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
-msgid "Your edits to other people's mods written into [[generated copy|generated copies]] of: %s."
-msgstr "Deine Änderungen an Mods anderer werden in [[generated copy|generierte Kopien]] geschrieben von: %s."
+msgid "Your edits written into [[generated copy|generated copies]] of: %s."
+msgstr "Deine Änderungen werden in [[generated copy|generierte Kopien]] geschrieben von: %s."
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
-msgid "Loading the library's own copy again, with no settings or edits of yours left to write into it: %s."
-msgstr "Wieder die eigene Kopie aus der Bibliothek laden, da keine Einstellungen oder Änderungen von dir mehr hineinzuschreiben sind: %s."
+msgid "Back to the library's own copy, with nothing of yours to write into it: %s."
+msgstr "Zurück zur eigenen Kopie der Bibliothek, da nichts von dir hineinzuschreiben ist: %s."
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
-msgid "Set differently here, but in a folder of your own and not the library's, so left as the folder has them: %s."
-msgstr "Hier anders eingestellt, aber in einem eigenen Ordner und nicht in dem der Bibliothek, daher so belassen, wie sie im Ordner stehen: %s."
+msgid "Your settings not written, since these are folders of your own and not the library's: %s."
+msgstr "Deine Einstellungen werden nicht geschrieben, da dies eigene Ordner sind und nicht die der Bibliothek: %s."
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
@@ -15572,36 +15628,16 @@ msgstr ""
 "%s"
 
 #: anno_modding_studio/ui/prompts.py
-msgid "No mod is deleted or rewritten. This moves the switches the game reads, and writes the Studio's own builds."
-msgstr "Keine Mod wird gelöscht oder umgeschrieben. Das hier legt die Schalter um, die das Spiel liest, und schreibt die eigenen Builds des Studios."
+#, python-format
+msgid "The game's loader agrees on %(n)s mod built."
+msgid_plural "The game's loader agrees on %(n)s mods built."
+msgstr[0] "Der Loader des Spiels stimmt bei %(n)s gebauten Mod überein."
+msgstr[1] "Der Loader des Spiels stimmt bei %(n)s gebauten Mods überein."
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
 msgid "Then %s starts."
 msgstr "Dann startet %s."
-
-#: anno_modding_studio/ui/prompts.py
-#, python-format
-msgid "Play %s?"
-msgstr "%s spielen?"
-
-#: anno_modding_studio/ui/prompts.py
-msgid "Play this loadout?"
-msgstr "Dieses Loadout spielen?"
-
-#: anno_modding_studio/ui/prompts.py
-#, python-format
-msgid "Make %s live?"
-msgstr "%s live schalten?"
-
-#: anno_modding_studio/ui/prompts.py
-msgid "Make this loadout live?"
-msgstr "Dieses Loadout live schalten?"
-
-#. Translators: "Play" is the Studio's button that builds your mods and starts the game; use the same word as that button.
-#: anno_modding_studio/ui/prompts.py
-msgid "&Make it live"
-msgstr "&Live schalten"
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
