@@ -350,6 +350,12 @@ def new_asset_guid(change: Change) -> str:
     return _guid_in(change.payload)
 
 
+def payload_guid(payload: str) -> str:
+    """The GUID of the asset ``payload`` is, or "" -- for a payload held apart
+    from its change, as a fingerprint holds one."""
+    return _guid_in(payload or "")
+
+
 @lru_cache(maxsize=1 << 16)
 def _guid_in(payload: str) -> str:
     """The GUID of the asset ``payload`` is, kept for each text asked of.

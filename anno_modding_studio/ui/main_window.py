@@ -2669,6 +2669,7 @@ class MainWindow(QMainWindow):
         self.readings.check()
         self.changes_panel.refresh()
         self.file_panel.mark_stale()
+        self.references.mark_stale()
         self.editor.refresh_search()
         self.mark_output_dirty()
         self.update_title()
@@ -3037,6 +3038,7 @@ class MainWindow(QMainWindow):
             self.editor.typed_undone(typed)
         self.editor.refresh_search()
         self.file_panel.mark_stale()
+        self.references.mark_stale()
         self.mark_output_dirty()
         self.update_title()
         self._sync_undo_actions()
@@ -3087,6 +3089,9 @@ class MainWindow(QMainWindow):
         self.pending_in_refs = None
         if wanted and wanted != self.references.guid:
             self.references.show_asset(wanted)
+        else:
+            # Still on its asset: drawn again only if the mod has moved.
+            self.references.catch_up()
 
     def _editor_arrives(self) -> None:
         """The editor has come into view: whatever the graph moved to
@@ -3173,6 +3178,7 @@ class MainWindow(QMainWindow):
         # A mod switched on or off here is the loadout's side of the fourth
         # card moving; the folders have not.
         self.refresh_truth(say=False, disk=False)
+        self.references.mark_stale()
         self.mark_output_dirty()
         self.update_title()
         self.record()
@@ -3183,6 +3189,7 @@ class MainWindow(QMainWindow):
         # Reverted, or an op written as narrow ModOps: the mod's file says
         # something else now.
         self.file_panel.mark_stale()
+        self.references.mark_stale()
         self.mark_output_dirty()
         self.update_title()
         self.record()

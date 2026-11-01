@@ -4996,6 +4996,37 @@ class TestReferenceGraphUi(unittest.TestCase):
         incoming = self.window.workspace.references_to("1010196")
         self.assertIn("1337000010", {link.guid for link in incoming})
 
+    def test_an_edit_to_the_asset_it_is_on_is_drawn_on_coming_back(self):
+        """Coming back to the tab drew the graph again only for another
+        asset, so an edit to the one it was on left the old links standing
+        (hands-on, 31 Oct)."""
+        from anno_modding_studio.core import effective
+        from anno_modding_studio.core.changes import OP_ADD_NEXT, Change
+
+        made = Change(
+            guid="1010340", asset_label="mine  (new asset)", path="",
+            tag="Asset", op=OP_ADD_NEXT, summary="create asset 1337000011",
+            payload="<Asset><Values><Standard><GUID>1337000011</GUID>"
+                    "<Name>mine</Name></Standard><Factory7><FactoryInputs>"
+                    "<Item><Product>1010196</Product></Item>"
+                    "</FactoryInputs></Factory7></Values></Asset>",
+        )
+        self.window.loadout.set_change(made)
+        self.window.on_changes_updated()
+        self.window.show_references("1337000011")
+        self.assertIn("1010196", self._node_guids())
+
+        self.window.tabs.setCurrentIndex(TAB_EDIT)
+        # As the editor makes it: into the payload of the change that makes
+        # it -- Values, Factory7, FactoryInputs, Item, Product.
+        self.assertTrue(effective.set_payload_text(made, "0.1.0.0.0", "1010197"))
+        self.window.on_changes_updated()
+        self.window.tabs.setCurrentIndex(TAB_REFS)
+
+        guids = self._node_guids()
+        self.assertIn("1010197", guids)
+        self.assertNotIn("1010196", guids)
+
     def test_clearing_the_panel_leaves_nothing_behind(self):
         self.window.show_references("1010340")
         self.assertTrue(self._nodes())

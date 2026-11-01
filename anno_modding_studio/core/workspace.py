@@ -480,6 +480,15 @@ class Workspace:
             for guid in set(assets) | set(was_assets)
             if assets.get(guid) != was_assets.get(guid)
         }
+        if creators != was_creators:
+            # An edit to an asset a mod makes lands in the payload of the
+            # change that makes it, and that change is filed under the asset it
+            # goes in beside -- so the asset that moved is the one the payload
+            # is, before the edit and after it.
+            for _key, payload, _active in set(creators) ^ set(was_creators or ()):
+                made_here = effective.payload_guid(payload)
+                if made_here:
+                    moved.add(made_here)
         for key in [key for key in self._live_cache if key[0] in moved]:
             del self._live_cache[key]
         if moved:

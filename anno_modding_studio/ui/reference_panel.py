@@ -656,6 +656,8 @@ class ReferencePanel(QWidget):
         self._shared_trail = self.trail
         self._full_columns = {}
         self._edges = []
+        # The mod has moved since the graph was drawn: see mark_stale().
+        self._waiting = False
         self._build_ui()
         self.clear()
 
@@ -840,6 +842,35 @@ class ReferencePanel(QWidget):
         if self.guid is not None:
             self.refresh()
 
+    def mark_stale(self) -> None:
+        """The mod may have moved: draw the graph again when it is next
+        arrived at (:meth:`catch_up`), or now if it is in front.
+
+        Nothing else drew it again.  An edit to the asset the graph is on
+        left the old links standing, in a window of its own beside the
+        editor and on its tab alike -- coming back to the tab redraws it
+        only for a different asset (hands-on, 31 Oct).
+        """
+        self._waiting = True
+        if self.isVisible():
+            self.catch_up()
+
+    def catch_up(self) -> None:
+        """Draw the graph again if the mod has moved since it was drawn.
+
+        Asked on arrival rather than on every show: arriving can move the
+        graph to another asset, and the asset it was on is then a graph
+        drawn for nobody.
+        """
+        if not self._waiting:
+            return
+        self._waiting = False
+        if self.index is None or self.guid is None:
+            return
+        # The name and template are the asset's, and can be what moved.
+        self._show_heading()
+        self.refresh()
+
     def clear(self) -> None:
         self.guid = None
         self.trail.clear()
@@ -896,6 +927,13 @@ class ReferencePanel(QWidget):
         if record:
             self.trail.visit(guid)
         self.guid = guid
+        self._waiting = False
+        self._show_heading()
+        self.refresh()
+        self.assetShown.emit(guid)
+
+    def _show_heading(self) -> None:
+        guid = self.guid
         self.open_button.setEnabled(True)
         self.hint.setVisible(False)
         self.subtitle_label.setVisible(True)
@@ -907,8 +945,6 @@ class ReferencePanel(QWidget):
         if row and row.group_path:
             bits.append(row.group_path)
         self.subtitle_label.setFullText("   ·   ".join(bits))
-        self.refresh()
-        self.assetShown.emit(guid)
 
     def _open_focus(self) -> None:
         if self.guid:
