@@ -1181,6 +1181,52 @@ class TestWhatPointsAtThisWithAWholeModsFolderOpen(unittest.TestCase):
             ["9100"],
         )
 
+    def test_an_edit_inside_a_new_asset_moves_its_links(self):
+        """An edit to an asset a mod makes lands in the payload of the change
+        that makes it -- and that change is filed under the asset it goes in
+        beside, not the one it makes.  The walks held for the new asset were
+        let go only for the neighbour, so the graph went on drawing the links
+        the asset had before the edit (hands-on, 31 Oct)."""
+        def payload(product):
+            return (
+                "<Asset><Template>FactoryBuilding7</Template><Values><Standard>"
+                "<GUID>2130025000</GUID><Name>new_maker</Name></Standard>"
+                "<Factory7><FactoryInputs><Item><Product>%s</Product>"
+                "<Amount>1</Amount></Item></FactoryInputs></Factory7>"
+                "</Values></Asset>" % product
+            )
+
+        made = Change(
+            guid="9100", asset_label="maker", path="", tag="Asset",
+            op=OP_ADD_NEXT, summary="create asset 2130025000",
+            payload=payload("9000"),
+        )
+        loadout = Loadout()
+        loadout.set_change(made)
+        workspace = Workspace(self.index, loadout)
+        self.assertEqual(
+            [link.guid for link in workspace.references_from("2130025000", False)],
+            ["9000"],
+        )
+        self.assertIn(
+            "2130025000",
+            {link.guid for link in workspace.references_to("9000", False)},
+        )
+        # As the editor makes it: the payload rewritten on the same change.
+        made.payload = payload("9001")
+        self.assertEqual(
+            [link.guid for link in workspace.references_from("2130025000", False)],
+            ["9001"],
+        )
+        self.assertNotIn(
+            "2130025000",
+            {link.guid for link in workspace.references_to("9000", False)},
+        )
+        self.assertIn(
+            "2130025000",
+            {link.guid for link in workspace.references_to("9001", False)},
+        )
+
 
 class TestReadingSomethingDamaged(unittest.TestCase):
     """What the effective view does with a payload or path it cannot read.

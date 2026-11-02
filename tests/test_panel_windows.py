@@ -1354,6 +1354,32 @@ class TestTheEditMenuWithTheEditorOut(FileCase):
         self.assertIn(window.redo_action, own.actions())
 
 
+class TestTheGraphOutKeepsUpWithEdits(GraphCase):
+    """In a window of its own the graph is in front while the editor is
+    used, and nothing drew it again after an edit (hands-on, 31 Oct)."""
+
+    def test_an_edit_to_the_asset_it_is_on_is_drawn_straight_away(self):
+        from anno_modding_studio.core.changes import Change
+
+        window = self.window
+        window._open_asset("7300")
+        window.tabs.setCurrentIndex(TAB_REFS)
+        self.take_out()
+        self.assertEqual(self.graph.guid, "7300")
+        window.tabs.setCurrentIndex(TAB_EDIT)
+
+        def pointed_at():
+            return {target for source, target, _links in self.graph._edges if source == "7300"}
+
+        self.assertEqual(pointed_at(), {"7301"})
+        window.loadout.set_change(Change(
+            guid="7300", asset_label="link_0", path="/Values/Bits/Item/Product",
+            tag="Product", old_value="7301", new_value="7303",
+        ))
+        window.on_changes_updated()
+        self.assertEqual(pointed_at(), {"7303"})
+
+
 class TestTheGraphInAndTheEditorOut(GraphCase):
     """What phase 2 built with the graph out holds the other way round."""
 
