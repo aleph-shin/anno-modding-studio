@@ -240,6 +240,65 @@ class TestPutUnderAnOption(OptionsCase):
         self.assertTrue(done)
         self.assertEqual(self.panel.pane.toPlainText().count('<Group Condition="$my-mod.shrine-of-ceres">'), 2)
 
+    def test_a_change_made_later_goes_into_the_group_the_option_has(self):
+        """Put under an option, and then a change made: picked and put
+        under the same option, it goes in with the rest, and not into a
+        group of its own after them."""
+        self.put(self.every_pick())
+        self.window.editor.load_asset("1010340")
+        field = next(
+            item for item in self.window.editor._iter_items() if item.text(0) == "BuildModeStartLevel"
+        )
+        field.setText(1, "2")
+        later = [("change", change.key) for change in self.loadout.changes.values() if not change.op_uid]
+        self.assertEqual(len(later), 1)
+        done, seen = self.put(later, which=1)
+        self.assertTrue(done)
+        dialog = seen[0]
+        self.assertTrue(dialog._form.isRowVisible(dialog.join_box))
+        self.assertEqual((dialog.plan().joined, dialog.plan().passed), (1, 0))
+        self.assertIn("goes into the group the option has", dialog.said.text())
+        self.panel.refresh()
+        text = self.panel.pane.toPlainText()
+        self.assertEqual(text.count("<Group"), 1)
+        self.assertLess(text.index("<Group"), text.index("BuildModeStartLevel"))
+        self.assertLess(text.index("BuildModeStartLevel"), text.index("</Group>"))
+        self.assertEqual(self.loadout.options, {
+            "shrine-of-ceres": {"label": "Shrine of Ceres", "type": "toggle", "default": "true"},
+        })
+        # One step to undo, as the first was.
+        self.window.undo_last()
+        self.panel.refresh()
+        text = self.panel.pane.toPlainText()
+        self.assertGreater(text.index("BuildModeStartLevel"), text.index("</Group>"))
+
+    def test_unticked_it_goes_into_a_group_of_its_own(self):
+        from anno_modding_studio.ui import option_group_dialog
+
+        self.put(self.every_pick())
+        self.window.editor.load_asset("1010340")
+        field = next(
+            item for item in self.window.editor._iter_items() if item.text(0) == "BuildModeStartLevel"
+        )
+        field.setText(1, "2")
+        later = [("change", change.key) for change in self.loadout.changes.values() if not change.op_uid]
+
+        def unticked(dialog):
+            dialog.which.setCurrentIndex(1)
+            dialog.join_box.setChecked(False)
+            return int(option_group_dialog.QDialog.DialogCode.Accepted)
+
+        with mock.patch.object(option_group_dialog.OptionGroupDialog, "exec", unticked):
+            self.assertTrue(self.window.put_under_option("", later))
+        self.panel.refresh()
+        self.assertEqual(self.panel.pane.toPlainText().count('<Group Condition="$my-mod.shrine-of-ceres">'), 2)
+
+    def test_a_new_toggle_offers_no_group_to_go_into(self):
+        _done, seen = self.put(self.every_pick())
+        dialog = seen[0]
+        self.assertFalse(dialog._form.isRowVisible(dialog.join_box))
+        self.assertIsNone(dialog.plan())
+
     def test_the_rows_picked_in_the_panel_are_offered_it(self):
         panel = self.window.changes_panel
         panel.refresh()

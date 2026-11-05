@@ -13193,20 +13193,6 @@ msgstr "eine Bedingung, über die das Studio nichts sagen kann"
 msgid "it answers to the mod's own options"
 msgstr "sie richtet sich nach den eigenen Optionen der Mod"
 
-#: anno_modding_studio/ui/option_group_dialog.py
-#, python-format
-msgid "%(n)s ModOp goes into a group that runs only while the option is on."
-msgid_plural "%(n)s ModOps go into a group that runs only while the option is on."
-msgstr[0] "%(n)s ModOp kommt in eine Gruppe, die nur läuft, solange die Option an ist."
-msgstr[1] "%(n)s ModOps kommen in eine Gruppe, die nur läuft, solange die Option an ist."
-
-#: anno_modding_studio/ui/option_group_dialog.py
-#, python-format
-msgid "They do not stand together in the file, so they go into %(n)s group."
-msgid_plural "They do not stand together in the file, so they go into %(n)s groups."
-msgstr[0] "Sie stehen in der Datei nicht beieinander, also kommen sie in %(n)s Gruppe."
-msgstr[1] "Sie stehen in der Datei nicht beieinander, also kommen sie in %(n)s Gruppen."
-
 #. Translators: the first choice of which option to put ModOps under.
 #: anno_modding_studio/ui/option_group_dialog.py
 msgid "A new toggle"
@@ -13216,6 +13202,14 @@ msgstr "Ein neuer Schalter"
 msgctxt "option"
 msgid "&Option"
 msgstr "&Option"
+
+#: anno_modding_studio/ui/option_group_dialog.py
+msgid "Into its &existing group"
+msgstr "In ihre &vorhandene Gruppe"
+
+#: anno_modding_studio/ui/option_group_dialog.py
+msgid "Joins what was put under it before. Unticked: a new group where they stand."
+msgstr "Zu dem, was schon unter ihr steht. Ohne Haken: eine neue Gruppe, wo sie stehen."
 
 #: anno_modding_studio/ui/option_group_dialog.py
 msgid "what a mod manager shows, such as the part it turns off"
@@ -13240,9 +13234,55 @@ msgid "On, the mod does what it did before it had the option."
 msgstr "An tut die Mod, was sie vor der Option getan hat."
 
 #: anno_modding_studio/ui/option_group_dialog.py
+msgid "They are under that option already, in its group."
+msgstr "Sie stehen schon unter dieser Option, in ihrer Gruppe."
+
+#: anno_modding_studio/ui/option_group_dialog.py
 #, python-format
 msgid "The mod already has an option called %s."
 msgstr "Die Mod hat schon eine Option namens %s."
+
+#: anno_modding_studio/ui/option_group_dialog.py
+#, python-format
+msgid "%(n)s ModOp goes into a group that runs only while the option is on."
+msgid_plural "%(n)s ModOps go into a group that runs only while the option is on."
+msgstr[0] "%(n)s ModOp kommt in eine Gruppe, die nur läuft, solange die Option an ist."
+msgstr[1] "%(n)s ModOps kommen in eine Gruppe, die nur läuft, solange die Option an ist."
+
+#: anno_modding_studio/ui/option_group_dialog.py
+#, python-format
+msgid "They do not stand together in the file, so they go into %(n)s group."
+msgid_plural "They do not stand together in the file, so they go into %(n)s groups."
+msgstr[0] "Sie stehen in der Datei nicht beieinander, also kommen sie in %(n)s Gruppe."
+msgstr[1] "Sie stehen in der Datei nicht beieinander, also kommen sie in %(n)s Gruppen."
+
+#: anno_modding_studio/ui/option_group_dialog.py
+#, python-format
+msgid "%(n)s ModOp goes into the group the option has in the file, which runs only while it is on."
+msgid_plural "%(n)s ModOps go into the group the option has in the file, which runs only while it is on."
+msgstr[0] "%(n)s ModOp kommt in die Gruppe der Option in der Datei, die nur läuft, solange sie an ist."
+msgstr[1] "%(n)s ModOps kommen in die Gruppe der Option in der Datei, die nur läuft, solange sie an ist."
+
+#: anno_modding_studio/ui/option_group_dialog.py
+#, python-format
+msgid "To get there they go past %(n)s other ModOp, which runs on their other side then."
+msgid_plural "To get there they go past %(n)s other ModOps, which run on their other side then."
+msgstr[0] "Dafür kommen sie an %(n)s anderen ModOp vorbei, die dann auf ihrer anderen Seite läuft."
+msgstr[1] "Dafür kommen sie an %(n)s anderen ModOps vorbei, die dann auf ihrer anderen Seite laufen."
+
+#: anno_modding_studio/ui/option_group_dialog.py
+#, python-format
+msgid "The rest have no such group beside them, and go into %(n)s group of their own."
+msgid_plural "The rest have no such group beside them, and go into %(n)s groups of their own."
+msgstr[0] "Der Rest hat keine solche Gruppe neben sich und kommt in %(n)s eigene Gruppe."
+msgstr[1] "Der Rest hat keine solche Gruppe neben sich und kommt in %(n)s eigene Gruppen."
+
+#: anno_modding_studio/ui/option_group_dialog.py
+#, python-format
+msgid "%(n)s of them is under it already, and stays where it is."
+msgid_plural "%(n)s of them are under it already, and stay where they are."
+msgstr[0] "%(n)s davon steht schon unter ihr und bleibt, wo sie ist."
+msgstr[1] "%(n)s davon stehen schon unter ihr und bleiben, wo sie sind."
 
 #. Translators: kinds of a mod's option, as a mod manager shows them.
 #: anno_modding_studio/ui/options_editor_dialog.py

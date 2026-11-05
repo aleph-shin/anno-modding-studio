@@ -297,6 +297,87 @@ class WhatIsPutUnderAnOption(unittest.TestCase):
             "  </Group>",
         ])
 
+    UNDER = "\n".join([
+        "<ModOps>",                          # 1
+        "  <Group Condition=\"$on\">",       # 2  group g, the option's
+        "    <ModOp Inner/>",                # 3  op i
+        "  </Group>",                        # 4
+        "  <ModOp A/>",                      # 5  op a
+        "  <ModOp B/>",                      # 6  op b
+        "  <Group Condition=\"$on and $x\">",  # 7  group h, asking more
+        "    <ModOp C/>",                    # 8  op c
+        "  </Group>",                        # 9
+        "</ModOps>",                         # 10
+    ])
+
+    def under(self):
+        from anno_modding_studio.core import generator, modfile
+
+        def op(uid):
+            return Op(origin="", uid=uid)
+
+        g, h = op("g"), op("h")
+        items = [
+            modfile.Item(generator.SPAN_GROUP, 2, 2, op=g),
+            modfile.Item(generator.SPAN_OP, 3, 3, op=op("i"), depth=1),
+            modfile.Item(generator.SPAN_GROUP_END, 4, 4, op=g),
+            modfile.Item(generator.SPAN_OP, 5, 5, op=op("a")),
+            modfile.Item(generator.SPAN_OP, 6, 6, op=op("b")),
+            modfile.Item(generator.SPAN_GROUP, 7, 7, op=h),
+            modfile.Item(generator.SPAN_OP, 8, 8, op=op("c"), depth=1),
+            modfile.Item(generator.SPAN_GROUP_END, 9, 9, op=h),
+        ]
+        return modfile.Shown(origin="", text=self.UNDER, items=items)
+
+    def test_what_comes_after_the_options_group_goes_into_it(self):
+        from anno_modding_studio.core import option_groups
+
+        spelled = option_groups.spellings("on", "my-mod")
+        self.assertEqual(spelled, {"$on", "$my-mod.on"})
+        plan = option_groups.planned(self.under(), [("op", "a"), ("op", "b")], spelled)
+        self.assertEqual((plan.joined, plan.passed, plan.left, plan.already), (2, 0, [], 0))
+        self.assertEqual(plan.shown.text.split("\n")[1:6], [
+            '  <Group Condition="$on">',
+            "    <ModOp Inner/>",
+            "    <ModOp A/>",
+            "    <ModOp B/>",
+            "  </Group>",
+        ])
+
+    def test_what_it_goes_past_is_counted(self):
+        from anno_modding_studio.core import option_groups
+
+        plan = option_groups.planned(self.under(), [("op", "b")], {"$on"})
+        self.assertEqual((plan.joined, plan.passed), (1, 1))
+        self.assertEqual(plan.shown.text.split("\n")[2:6], [
+            "    <ModOp Inner/>", "    <ModOp B/>", "  </Group>", "  <ModOp A/>",
+        ])
+
+    def test_a_group_asking_more_is_not_the_options(self):
+        from anno_modding_studio.core import option_groups
+
+        # Inside a group that asks more than the option: none of the
+        # option's beside it, so a group of its own there.
+        shown = self.under()
+        plan = option_groups.planned(shown, [("op", "c")], {"$on"})
+        self.assertEqual((plan.joined, plan.left), (0, [option_groups.Run(8, 8)]))
+        self.assertIs(plan.shown, shown)
+
+    def test_what_is_under_it_already_stays(self):
+        from anno_modding_studio.core import option_groups
+
+        plan = option_groups.planned(self.under(), [("op", "i"), ("op", "g")], {"$on"})
+        self.assertEqual(plan.already, 1)
+        self.assertTrue(plan.nothing_to_do)
+
+    def test_without_the_option_every_run_is_left_to_wrap(self):
+        from anno_modding_studio.core import option_groups
+
+        shown = self.under()
+        plan = option_groups.planned(shown, [("op", "a"), ("op", "b")])
+        self.assertEqual(plan.left, option_groups.runs(shown, [("op", "a"), ("op", "b")]))
+        self.assertEqual(plan.joined, 0)
+
     def test_a_row_says_the_label_and_not_the_name(self):
         loadout = _own(options={"ceres": {"type": "toggle", "default": "true", "label": "Shrine of Ceres"}})
         self.assertEqual(
