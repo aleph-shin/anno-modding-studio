@@ -667,8 +667,8 @@ class TestMakingALoadoutLive(TruthWindow):
             self.window.live.sync_loadout()
         (text,) = asked.texts
         self.assertIn("Switch on:\n  • [Gameplay] Wanted", text)
-        self.assertIn("Switch off, not in this loadout:\n  • [Gameplay] Stray", text)
-        self.assertIn("mod browser installed", text)
+        self.assertIn("Switch off:\n  • [Gameplay] Stray", text)
+        self.assertIn("1 mod from the game's mod browser stays on", text)
         self.assertEqual(sorted(p.name for p in self.mods.iterdir()),
                          ["-[Gameplay] Stray", "[Gameplay] Mine", "[Gameplay] Wanted"])
         self.assertIn("renamed 2 folders", self.window.status_label.text())
@@ -1251,7 +1251,8 @@ class TestSwitchingToMatchOnAnno117(TruthWindow):
         ]
         self.window.loadout.own.loads_last = True
         asked = self.sync()
-        self.assertIn("the Studio's profile, Anno Modding Studio", asked[0])
+        # The Studio's own profile is not one you made, and goes unsaid.
+        self.assertNotIn("profile", asked[0])
         written = self.documents / "profiles" / "Anno Modding Studio.txt"
         self.assertTrue(written.is_file())
         # One file whatever loadout is played; its DisplayName says which.
@@ -1485,7 +1486,7 @@ class TestPlay(PlayingWindow):
             self.assertTrue(self.window.live.play())
         (title,), (text,) = asked.titles, asked.texts
         self.assertEqual(title, "Play Main?")
-        self.assertIn("Switch off, not in this loadout:\n  • [Gameplay] Stray", text)
+        self.assertIn("Switch off:\n  • [Gameplay] Stray", text)
         self.assertTrue(text.endswith("Then Anno 1800 starts."))
         self.assertTrue((self.mods / "-[Gameplay] Stray").is_dir())
         self.assertEqual(self.started_now(), ["steam://rungameid/916440"])

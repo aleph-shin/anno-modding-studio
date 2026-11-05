@@ -44,9 +44,8 @@ ZIP_ADD, ZIP_OPEN, ZIP_INSTALL = "add", "open", "install"
 # What to do with dropped mods that are for another game than the one loaded.
 OTHER_GAME_ANYWAY, OTHER_GAME_SKIP = "anyway", "skip"
 # Past this many mods to build or switch, Play's question says how many of
-# each, and the names are behind Show Details, as play.Plan.told does for
-# what is worth knowing.
-NAMED_IN_FULL = play.Plan.SAID_IN_FULL
+# each, and the names are behind Show Details.
+NAMED_IN_FULL = 8
 # Past this many, a sentence of Play's question counts the mods it names.
 NAMED_IN_A_LINE = 3
 
@@ -175,7 +174,8 @@ class Prompts:
         where it is short, and otherwise as a count of each kind, with every
         name behind Show Details.  Said in full, four lists of a dozen names
         and a line for each mod the loader agreed with ran the box past the
-        bottom of the screen, its buttons with it."""
+        bottom of the screen, its buttons with it.  The Studio's own 117
+        profile is not mentioned: it is the Studio's, not one you made."""
         text = self._live_text(plan, launch, loadout, cut=True)
         whole = self._live_text(plan, launch, loadout, cut=False)
         if name:
@@ -187,48 +187,44 @@ class Prompts:
         action = tr("&Play") if launch else tr("&Make it live")
         return self._ask_to_go(
             title, text, widgets.plain_text(whole) if whole != text else "", action,
-            action_tip=tr("No mod is deleted or rewritten. This moves the switches the "
-                          "game reads, and writes the Studio's own builds."),
+            action_tip=tr("No mod is deleted or rewritten: only switches and the Studio's "
+                          "own builds change."),
         )
 
     def _live_text(self, plan: play.Plan, launch: bool, loadout, cut: bool) -> str:
         """What making ``plan``'s loadout live does, for the question: with
         ``cut``, the part the box has room for."""
-        lines = [tr("In:\n%s", wrappable_path(plan.folder))]
+        lines = [tr("Mods folder: %s", wrappable_path(plan.folder))]
         on = sorted(name for name, want in plan.moving.items() if want)
-        off = sorted(name for name, want in plan.moving.items() if not want)
-        strays = sorted(mod.name for mod in plan.strays)
-        if cut and len(plan.built_names) + len(on) + len(off) + len(strays) > NAMED_IN_FULL:
-            # One line each, together: the names are behind Show Details.
+        # Off is off, whether the loadout has the mod off or does not have it.
+        off = sorted([name for name, want in plan.moving.items() if not want]
+                     + [mod.name for mod in plan.strays])
+        if cut and len(plan.built_names) + len(on) + len(off) > NAMED_IN_FULL:
+            # One line: the names are behind Show Details.
             counts = []
             if plan.built:
-                counts.append(trn("Build into the library and link in: %(n)s mod",
-                                  "Build into the library and link in: %(n)s mods",
+                counts.append(trn("Builds %(n)s of your mods.", "Builds %(n)s of your mods.",
                                   len(plan.built_names)))
             if on:
-                counts.append(trn("Switch on: %(n)s mod", "Switch on: %(n)s mods", len(on)))
+                counts.append(trn("Switches on %(n)s mod.", "Switches on %(n)s mods.", len(on)))
             if off:
-                counts.append(trn("Switch off: %(n)s mod", "Switch off: %(n)s mods", len(off)))
-            if strays:
-                counts.append(trn("Switch off, not in this loadout: %(n)s mod",
-                                  "Switch off, not in this loadout: %(n)s mods", len(strays)))
-            lines.append("\n".join(counts))
+                counts.append(trn("Switches off %(n)s mod.", "Switches off %(n)s mods.", len(off)))
+            lines.append(" ".join(counts))
         else:
             if plan.built:
-                lines.append(tr("Build into the library and link in:\n%s", bullets(plan.built_names)))
+                lines.append(tr("Build:\n%s", bullets(plan.built_names)))
             if on:
                 lines.append(tr("Switch on:\n%s", bullets(on)))
             if off:
                 lines.append(tr("Switch off:\n%s", bullets(off)))
-            if strays:
-                lines.append(tr("Switch off, not in this loadout:\n%s", bullets(strays)))
-        if plan.found is not None and plan.found.describe_cache():
+        held = plan.found.unswitchable_others if plan.found is not None else []
+        if held and cut:
+            lines.append(trn("%(n)s mod from the game's mod browser stays on: the Studio "
+                             "cannot switch it.",
+                             "%(n)s mods from the game's mod browser stay on: the Studio "
+                             "cannot switch them.", len(held)))
+        elif held:
             lines.append(plan.found.describe_cache())
-        if plan.own:
-            lines.append(tr_kw(
-                "Written into the Studio's profile, %s, and made the [[live]] one. "
-                "Your own profiles are not touched.", plan.own_name
-            ))
         if plan.options:
             lines.append(tr("Mod options written into %(file)s for: %(mods)s.",
                             file=switches.OPTIONS_FILE, mods=_some(sorted(plan.options), cut)))
@@ -250,13 +246,18 @@ class Prompts:
                             "own and not the library's: %s.", _some(plan.tweaks_held, cut)))
         told, details = plan.told()
         if told:
-            listed = (told if cut else details or told) + "".join(
-                "\n" + note for note in plan.notes if note)
+            if cut and details:
+                # Counted: a note on one of them goes with the list.
+                listed = told
+            else:
+                listed = (details or told) + "".join("\n" + note for note in plan.notes if note)
             lines.append(tr("Worth knowing first:\n%s", listed))
         agreed = [verdict for verdict in plan.loader if verdict.state == "agrees"]
-        if cut and len(agreed) > NAMED_IN_A_LINE:
-            lines.append(trn("The game's loader agrees on %(n)s mod built.",
-                             "The game's loader agrees on %(n)s mods built.", len(agreed)))
+        if cut and agreed:
+            # Which loader, and on how many assets, is behind Show Details.
+            lines.append(trn("The game's loader agrees with the Studio on %(n)s build.",
+                             "The game's loader agrees with the Studio on %(n)s builds.",
+                             len(agreed)))
         elif agreed:
             lines.append("\n".join(verdict.describe() for verdict in agreed))
         if launch:

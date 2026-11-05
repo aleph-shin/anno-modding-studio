@@ -273,11 +273,12 @@ class TestPlaysQuestion(unittest.TestCase):
             self.assertFalse(prompts.Prompts(None).confirm_live(plan, True, loadout, "Main"))
         return shown[0]
 
-    def test_a_few_mods_are_named_in_it(self):
+    def test_a_few_mods_are_named_in_it_under_the_folder(self):
         box = self.asked(self.plan(2))
-        text = _isolation.box_text(box)
-        self.assertIn("Switch on:\n  • On 00\n  • On 01", text)
-        self.assertIn("Switch off, not in this loadout:\n  • Stray 00\n  • Stray 01", text)
+        text = _isolation.box_text(box).replace("\u200b", "")
+        self.assertTrue(text.startswith("Mods folder: C:/mods\n\nSwitch on:\n  • On 00\n  • On 01"))
+        # Off is off, whether the loadout has it off or does not have it.
+        self.assertIn("Switch off:\n  • Stray 00\n  • Stray 01", text)
         self.assertEqual(box.detailedText(), "")
 
     def test_many_are_counted_with_every_name_behind_show_details(self):
@@ -285,10 +286,22 @@ class TestPlaysQuestion(unittest.TestCase):
         past the bottom of the screen, and its buttons with it."""
         box = self.asked(self.plan(20))
         text = _isolation.box_text(box)
-        self.assertIn("Switch on: 20 mods\nSwitch off, not in this loadout: 20 mods", text)
+        self.assertIn("\n\nSwitches on 20 mods. Switches off 20 mods.\n\n", text)
         self.assertNotIn("On 00", text)
         self.assertIn("  • On 19", box.detailedText())
-        self.assertIn("Switch off, not in this loadout:\n  • Stray 00", box.detailedText())
+        self.assertIn("Switch off:\n  • Stray 00", box.detailedText())
+
+    def test_the_loaders_agreement_is_a_count(self):
+        """Which loader it was, and on how many assets of which mod, was more
+        than the question needs; it is behind Show Details."""
+        from anno_modding_studio.core import loadercheck
+
+        plan = self.plan(1)
+        plan.loader = [loadercheck.Verdict(loadercheck.AGREES, name="Mine", checked=27)]
+        box = self.asked(plan)
+        self.assertIn("The game's loader agrees with the Studio on 1 build.",
+                      _isolation.box_text(box))
+        self.assertIn("Mine", box.detailedText())
 
     def test_a_sentence_naming_many_mods_counts_them(self):
         """It named the first eight and left the rest out unsaid."""
@@ -307,7 +320,7 @@ class TestPlaysQuestion(unittest.TestCase):
             box = self.asked(self.plan(switched))
             self.assertNotIn("No mod is deleted", _isolation.box_text(box))
             (play,) = [button for button in box.buttons() if button.text() == "&Play"]
-            self.assertTrue(play.toolTip().startswith("No mod is deleted or rewritten."))
+            self.assertTrue(play.toolTip().startswith("No mod is deleted or rewritten:"))
 
 
 if __name__ == "__main__":
