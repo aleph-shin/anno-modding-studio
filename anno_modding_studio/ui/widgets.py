@@ -1653,9 +1653,27 @@ def plain_text(text: str) -> str:
     return unmarked(text).replace(_NAMED_START, "").replace(_NAMED_END, "")
 
 
-def show_box_text(box, text: str) -> None:
+def table_markup(rows) -> str:
+    """``rows`` of ``(label, value)`` as a box's two-column table, every label
+    and value escaped as :func:`box_markup` escapes text.  A row whose value
+    is None is a heading, starting a table of its own under it: its labels
+    may be longer than the first table's, and squeezed its values aside."""
+    tables = [[]]
+    for label, value in rows:
+        if value is None:
+            tables.append(['<tr><td colspan="2" style="padding-top:10px; font-weight:600">%s</td></tr>'
+                           % box_markup(label)])
+        else:
+            tables[-1].append('<tr><td nowrap style="padding-right:18px">%s</td><td>%s</td></tr>'
+                              % (box_markup(label), box_markup(value)))
+    return "".join('<table cellspacing="0" cellpadding="1">%s</table>' % "".join(cells)
+                   for cells in tables if cells)
+
+
+def show_box_text(box, text: str, table=()) -> None:
     """Put ``text`` in a message box, with the names in it in the heavier
-    weight (:func:`named`) and its keywords pointing at their meaning.
+    weight (:func:`named`) and its keywords pointing at their meaning; under
+    ``table``, the rows of :func:`table_markup`, where there are any.
 
     The box reads it as rich text it was told is rich, so nothing in a name
     is ever taken for markup (:func:`external_text_stays_plain`): all of it
@@ -1663,7 +1681,12 @@ def show_box_text(box, text: str) -> None:
     the link round a keyword, whose meaning opens beside it and goes nowhere.
     """
     box.setTextFormat(Qt.TextFormat.RichText)
-    box.setText(box_markup(text))
+    if table and text:
+        # A line break after a table is lost: the space is the paragraph's.
+        box.setText(table_markup(table) + '<p style="margin-top:10px; margin-bottom:0">%s</p>'
+                    % box_markup(text))  # i18n: keep - markup round text already translated
+    else:
+        box.setText((table_markup(table) if table else "") + box_markup(text))
     if terms_in_text(text):
         from .help_tip import KeywordTips
 

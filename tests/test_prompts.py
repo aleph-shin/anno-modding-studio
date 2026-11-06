@@ -273,22 +273,23 @@ class TestPlaysQuestion(unittest.TestCase):
             self.assertFalse(prompts.Prompts(None).confirm_live(plan, True, loadout, "Main"))
         return shown[0]
 
-    def test_a_few_mods_are_named_in_it_under_the_folder(self):
+    def test_it_is_a_table_naming_a_few_mods_in_a_row(self):
         box = self.asked(self.plan(2))
         text = _isolation.box_text(box).replace("\u200b", "")
-        self.assertTrue(text.startswith("Mods folder: C:/mods\n\nSwitch on:\n  • On 00\n  • On 01"))
         # Off is off, whether the loadout has it off or does not have it.
-        self.assertIn("Switch off:\n  • Stray 00\n  • Stray 01", text)
+        self.assertTrue(text.startswith("Mods folder: C:/mods\nSwitch on: On 00\nOn 01\n"
+                                        "Switch off: Stray 00\nStray 01\n"), text)
+        self.assertTrue(text.endswith("\nThen Anno 1800 starts."))
         self.assertEqual(box.detailedText(), "")
 
-    def test_many_are_counted_with_every_name_behind_show_details(self):
+    def test_more_in_a_row_are_counted_with_every_name_behind_show_details(self):
         """Four lists of twelve names, each with "and 8 more", ran the box
         past the bottom of the screen, and its buttons with it."""
-        box = self.asked(self.plan(20))
+        box = self.asked(self.plan(4))
         text = _isolation.box_text(box)
-        self.assertIn("\n\nSwitches on 20 mods. Switches off 20 mods.\n\n", text)
+        self.assertIn("\nSwitch on: 4 mods\nSwitch off: 4 mods\n", text)
         self.assertNotIn("On 00", text)
-        self.assertIn("  • On 19", box.detailedText())
+        self.assertIn("  • On 03", box.detailedText())
         self.assertIn("Switch off:\n  • Stray 00", box.detailedText())
 
     def test_the_loaders_agreement_is_a_count(self):
@@ -299,21 +300,34 @@ class TestPlaysQuestion(unittest.TestCase):
         plan = self.plan(1)
         plan.loader = [loadercheck.Verdict(loadercheck.AGREES, name="Mine", checked=27)]
         box = self.asked(plan)
-        self.assertIn("The game's loader agrees with the Studio on 1 build.",
-                      _isolation.box_text(box))
+        self.assertIn("\nLoader agrees: 1 build\n", _isolation.box_text(box))
         self.assertIn("Mine", box.detailedText())
 
-    def test_a_sentence_naming_many_mods_counts_them(self):
-        """It named the first eight and left the rest out unsaid."""
+    def test_every_kind_of_change_is_a_row(self):
+        """Each was a sentence of its own, and named the first eight mods
+        and left the rest out unsaid."""
         from types import SimpleNamespace
 
         plan = self.plan(1)
-        plan.copies = SimpleNamespace(tweaks=[], tweaks_held=[], generating={}, edited=[],
+        plan.copies = SimpleNamespace(tweaks=[], tweaks_held=["Mine"], generating={}, edited=[],
                                       reverting=["Mod %02d" % n for n in range(10)])
         box = self.asked(plan)
-        self.assertIn("with nothing of yours to write into it: 10 mods.", _isolation.box_text(box))
+        text = _isolation.box_text(box)
+        self.assertIn("\nBack to library copy: 10 mods\nSettings not written: Mine\n", text)
         self.assertIn("Mod 00, Mod 01, Mod 02, Mod 03, Mod 04, Mod 05, Mod 06, Mod 07, Mod 08, "
                       "Mod 09.", box.detailedText())
+
+    def test_much_worth_knowing_is_a_table_of_its_own(self):
+        plan = self.plan(1)
+        plan.worth_knowing("GUIDs taken twice", ["GUID %d is created twice." % n for n in range(5)])
+        plan.worth_knowing("Your changes", ["Mine: a bad Mod ID."])
+        box = self.asked(plan)
+        self.assertIn("\nWorth knowing first:\nGUIDs taken twice: 5\nYour changes: 1\n",
+                      _isolation.box_text(box))
+        self.assertIn("  • GUID 4 is created twice.", box.detailedText())
+        # Its own table: the long headings of what is worth knowing do not
+        # push the first table's values aside.
+        self.assertEqual(box.text().count("<table"), 2)
 
     def test_that_nothing_is_deleted_is_said_on_the_button(self):
         for switched in (2, 20):

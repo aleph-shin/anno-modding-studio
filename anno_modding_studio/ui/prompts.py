@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 
 from ..core import disk, edits, games, places, play, switches
 from ..core.changes import OWN, is_own_mod
-from ..core.i18n import bullets, date_text, join_list, tr, tr_kw, trn, trn_kw
+from ..core.i18n import bullets, date_text, join_list, number, tr, tr_kw, trn, trn_kw
 from . import widgets
 from .widgets import ask, busy_cursor, choose, named, show_box_text, tip, wrappable_path
 
@@ -43,22 +43,20 @@ FORK_PROFILE, FORK_SEPARATE = "profile", "separate"
 ZIP_ADD, ZIP_OPEN, ZIP_INSTALL = "add", "open", "install"
 # What to do with dropped mods that are for another game than the one loaded.
 OTHER_GAME_ANYWAY, OTHER_GAME_SKIP = "anyway", "skip"
-# Past this many mods to build or switch, Play's question says how many of
-# each, and the names are behind Show Details.
-NAMED_IN_FULL = 8
-# Past this many, a sentence of Play's question counts the mods it names.
-NAMED_IN_A_LINE = 3
+# Past this many, a row of Play's question counts the mods it would name, and
+# the names are behind Show Details.
+NAMED_IN_A_ROW = 3
 
 
-def _some(names, cut: bool) -> str:
-    """``names`` after a colon in a sentence: every one, or with ``cut`` and
-    more than a few, how many."""
+def _row(names) -> Tuple[str, bool]:
+    """``(a row's value, whether it is a count)``: ``names`` one to a line,
+    or past a few, how many."""
     names = list(names)
-    if not cut or len(names) <= NAMED_IN_A_LINE:
-        return ", ".join(names)
-    # Translators: stands in for a list of mods' names after a colon, as in
-    # "Mod options written into active-options.jsonc for: 10 mods."
-    return trn("%(n)s mod", "%(n)s mods", len(names))
+    if len(names) <= NAMED_IN_A_ROW:
+        return "\n".join(names), False
+    # Translators: a count in place of mods' names, in a table of what Play
+    # does, beside a heading such as "Switch off".
+    return trn("%(n)s mod", "%(n)s mods", len(names)), True
 
 
 def _lost(lost: int, many: bool) -> str:
@@ -170,14 +168,14 @@ class Prompts:
         return chosen if ok else ""
 
     def confirm_live(self, plan: play.Plan, launch: bool, loadout, name: str) -> bool:
-        """Whether to go ahead, having said everything it will do: in full
-        where it is short, and otherwise as a count of each kind, with every
-        name behind Show Details.  Said in full, four lists of a dozen names
-        and a line for each mod the loader agreed with ran the box past the
-        bottom of the screen, its buttons with it.  The Studio's own 117
-        profile is not mentioned: it is the Studio's, not one you made."""
-        text = self._live_text(plan, launch, loadout, cut=True)
-        whole = self._live_text(plan, launch, loadout, cut=False)
+        """Whether to go ahead, having said what it will do as a table: a row
+        for each kind of change, naming a few mods or counting more, with
+        every name behind Show Details.  Said as sentences and lists, it ran
+        the box past the bottom of the screen, its buttons with it, and the
+        counts it fell back on were scattered through a sentence each.  The
+        Studio's own 117 profile is not mentioned: it is the Studio's, not
+        one you made."""
+        rows, after, counted = self._live_rows(plan, launch, loadout)
         if name:
             title = tr("Play %s?", name) if launch else tr("Make %s live?", name)
         else:
@@ -185,99 +183,114 @@ class Prompts:
         # Translators: "Play" is the Studio's button that builds your mods and
         # starts the game; use the same word as that button.
         action = tr("&Play") if launch else tr("&Make it live")
-        return self._ask_to_go(
-            title, text, widgets.plain_text(whole) if whole != text else "", action,
-            action_tip=tr("No mod is deleted or rewritten: only switches and the Studio's "
-                          "own builds change."),
-        )
+        box = QMessageBox(QMessageBox.Icon.Question, title, "",
+                          QMessageBox.StandardButton.Cancel, self.parent)
+        show_box_text(box, after, table=rows)
+        go = box.addButton(action, QMessageBox.ButtonRole.AcceptRole)
+        tip(go, tr("No mod is deleted or rewritten: only switches and the Studio's "
+                   "own builds change."))
+        box.setDefaultButton(go)
+        if counted:
+            box.setDetailedText(widgets.plain_text(self._live_text(plan, launch, loadout)))
+        return self.answer(box) is go
 
-    def _live_text(self, plan: play.Plan, launch: bool, loadout, cut: bool) -> str:
-        """What making ``plan``'s loadout live does, for the question: with
-        ``cut``, the part the box has room for."""
-        lines = [tr("Mods folder: %s", wrappable_path(plan.folder))]
+    def _live_rows(self, plan: play.Plan, launch: bool, loadout) -> Tuple[list, str, bool]:
+        """``(rows, text under them, whether a row leaves out what Show
+        Details says)`` for the question: what making ``plan``'s loadout live
+        does."""
+        rows = [(tr("Mods folder"), wrappable_path(plan.folder))]
+        counted = False
+
+        def add(label: str, names) -> None:
+            nonlocal counted
+            value, cut = _row(names)
+            if value:
+                rows.append((label, value))
+                counted = counted or cut
+
         on = sorted(name for name, want in plan.moving.items() if want)
         # Off is off, whether the loadout has the mod off or does not have it.
         off = sorted([name for name, want in plan.moving.items() if not want]
                      + [mod.name for mod in plan.strays])
-        if cut and len(plan.built_names) + len(on) + len(off) > NAMED_IN_FULL:
-            # One line: the names are behind Show Details.
-            counts = []
-            if plan.built:
-                counts.append(trn("Builds %(n)s of your mods.", "Builds %(n)s of your mods.",
-                                  len(plan.built_names)))
-            if on:
-                counts.append(trn("Switches on %(n)s mod.", "Switches on %(n)s mods.", len(on)))
-            if off:
-                counts.append(trn("Switches off %(n)s mod.", "Switches off %(n)s mods.", len(off)))
-            lines.append(" ".join(counts))
-        else:
-            if plan.built:
-                lines.append(tr("Build:\n%s", bullets(plan.built_names)))
-            if on:
-                lines.append(tr("Switch on:\n%s", bullets(on)))
-            if off:
-                lines.append(tr("Switch off:\n%s", bullets(off)))
+        # Translators: the headings of the table Play's question is. Each says
+        # what happens to the mods beside it; keep them short.
+        add(tr("Build"), plan.built_names if plan.built else [])
+        add(tr("Switch on"), on)
+        add(tr("Switch off"), off)
         held = plan.found.unswitchable_others if plan.found is not None else []
-        if held and cut:
-            lines.append(trn("%(n)s mod from the game's mod browser stays on: the Studio "
-                             "cannot switch it.",
-                             "%(n)s mods from the game's mod browser stay on: the Studio "
-                             "cannot switch them.", len(held)))
-        elif held:
+        if held:
+            # Why the Studio cannot switch them is behind Show Details.
+            rows.append((tr("Left on"), trn("%(n)s mod from the game's mod browser",
+                                            "%(n)s mods from the game's mod browser",
+                                            len(held))))
+            counted = True
+        add(tr("Mod options"), sorted(plan.options))
+        add(tr("iModYourAnno settings"), [layer.label for layer in plan.tweaks])
+        add(tr("Your edits"), [layer.label for layer in plan.edited])
+        add(tr("Back to library copy"), plan.reverting)
+        add(tr("Settings not written"), plan.tweaks_held)
+        agreed = [verdict for verdict in plan.loader if verdict.state == "agrees"]
+        if agreed:
+            # Which loader, and on how many assets, is behind Show Details.
+            rows.append((tr("Loader agrees"), trn("%(n)s build", "%(n)s builds", len(agreed))))
+            counted = True
+        told, kinds = plan.told()
+        lines = []
+        if kinds:
+            rows.append((tr("Worth knowing first"), None))
+            rows += [(heading, number(count)) for heading, count in kinds]
+            counted = True
+        elif told:
+            lines.append(tr("Worth knowing first:\n%s", told + "".join(
+                "\n" + note for note in plan.notes if note)))
+        if launch:
+            lines.append(tr("Then %s starts.", games.get(loadout.game).label))
+        return rows, "\n\n".join(lines), counted
+
+    def _live_text(self, plan: play.Plan, launch: bool, loadout) -> str:
+        """What making ``plan``'s loadout live does, every name and detail of
+        it: Show Details, under the question's table."""
+        lines = [tr("Mods folder: %s", plan.folder)]
+        on = sorted(name for name, want in plan.moving.items() if want)
+        off = sorted([name for name, want in plan.moving.items() if not want]
+                     + [mod.name for mod in plan.strays])
+        if plan.built:
+            lines.append(tr("Build:\n%s", bullets(plan.built_names)))
+        if on:
+            lines.append(tr("Switch on:\n%s", bullets(on)))
+        if off:
+            lines.append(tr("Switch off:\n%s", bullets(off)))
+        if plan.found is not None and plan.found.unswitchable_others:
             lines.append(plan.found.describe_cache())
         if plan.options:
             lines.append(tr("Mod options written into %(file)s for: %(mods)s.",
-                            file=switches.OPTIONS_FILE, mods=_some(sorted(plan.options), cut)))
+                            file=switches.OPTIONS_FILE, mods=", ".join(sorted(plan.options))))
         if plan.tweaks:
             lines.append(tr_kw(
                 "iModYourAnno settings written into [[generated copy|generated copies]] "
-                "of: %s.", _some([layer.label for layer in plan.tweaks], cut),
+                "of: %s.", ", ".join(layer.label for layer in plan.tweaks),
             ))
         if plan.edited:
             lines.append(tr_kw(
                 "Your edits written into [[generated copy|generated copies]] of: %s.",
-                _some([layer.label for layer in plan.edited], cut),
+                ", ".join(layer.label for layer in plan.edited),
             ))
         if plan.reverting:
             lines.append(tr("Back to the library's own copy, with nothing of yours to "
-                            "write into it: %s.", _some(plan.reverting, cut)))
+                            "write into it: %s.", ", ".join(plan.reverting)))
         if plan.tweaks_held:
             lines.append(tr("Your settings not written, since these are folders of your "
-                            "own and not the library's: %s.", _some(plan.tweaks_held, cut)))
-        told, details = plan.told()
+                            "own and not the library's: %s.", ", ".join(plan.tweaks_held)))
+        told, _kinds = plan.told()
         if told:
-            if cut and details:
-                # Counted: a note on one of them goes with the list.
-                listed = told
-            else:
-                listed = (details or told) + "".join("\n" + note for note in plan.notes if note)
-            lines.append(tr("Worth knowing first:\n%s", listed))
+            lines.append(tr("Worth knowing first:\n%s", told + "".join(
+                "\n" + note for note in plan.notes if note)))
         agreed = [verdict for verdict in plan.loader if verdict.state == "agrees"]
-        if cut and agreed:
-            # Which loader, and on how many assets, is behind Show Details.
-            lines.append(trn("The game's loader agrees with the Studio on %(n)s build.",
-                             "The game's loader agrees with the Studio on %(n)s builds.",
-                             len(agreed)))
-        elif agreed:
+        if agreed:
             lines.append("\n".join(verdict.describe() for verdict in agreed))
         if launch:
             lines.append(tr("Then %s starts.", games.get(loadout.game).label))
         return "\n\n".join(lines)
-
-    def _ask_to_go(self, title: str, text: str, details: str = "", action: str = "",
-                   action_tip: str = "") -> bool:
-        """The action or Cancel, with the whole of what is said behind Show
-        Details when the question only has room for a count of it."""
-        if not details:
-            return ask(self.parent, title, text, action, action_tip=action_tip)
-        box = QMessageBox(QMessageBox.Icon.Question, title, "",
-                          QMessageBox.StandardButton.Cancel, self.parent)
-        show_box_text(box, text)
-        go = box.addButton(action, QMessageBox.ButtonRole.AcceptRole)
-        tip(go, action_tip)
-        box.setDefaultButton(go)
-        box.setDetailedText(details)
-        return self.answer(box) is go
 
     def answer(self, box):
         """The button a question box was answered with -- a method, so a test

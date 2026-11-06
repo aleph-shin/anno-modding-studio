@@ -337,14 +337,13 @@ class TestBeforePlay(PlayingWindow):
         plan = play.Plan(folder="")
         plan.worth_knowing("GUIDs taken twice", ["GUID %d is created twice." % n for n in range(3)])
         plan.worth_knowing("The game's loader", ["It differs.", ""])
-        told, details = plan.told()
-        self.assertEqual(details, "")  # four: said in full
+        told, kinds = plan.told()
+        self.assertEqual(kinds, [])  # four: said in full
         self.assertIn("  • GUID 2 is created twice.", told)
         plan.worth_knowing("Your changes", ["Mine: 2 changes would not apply.", "Mine: a bad Mod ID."])
-        told, details = plan.told()
-        self.assertEqual(told, "  • GUIDs taken twice: 3\n  • The game's loader: 1\n  • Your changes: 2\n"
-                               "Show Details has every one.")
-        self.assertIn("  • GUID 2 is created twice.", details)
+        told, kinds = plan.told()
+        self.assertEqual(kinds, [("GUIDs taken twice", 3), ("The game's loader", 1), ("Your changes", 2)])
+        self.assertIn("  • GUID 2 is created twice.", told)
         self.assertEqual(len(plan.warnings), 6)
 
     def test_guids_taken_twice_are_among_them(self):
