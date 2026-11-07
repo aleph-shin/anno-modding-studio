@@ -666,9 +666,9 @@ class TestMakingALoadoutLive(TruthWindow):
                 mock.patch.object(self.window.start, "refresh_source_panel"):
             self.window.live.sync_loadout()
         (text,) = asked.texts
-        self.assertIn("Switch on:\n  • [Gameplay] Wanted", text)
-        self.assertIn("does not have them on:\n  • [Gameplay] Stray", text)
-        self.assertIn("mod browser installed", text)
+        self.assertIn("Switch on: [Gameplay] Wanted\n", text)
+        self.assertIn("Switch off: [Gameplay] Stray\n", text)
+        self.assertIn("Left on: 1 mod from the game's mod browser\n", text)
         self.assertEqual(sorted(p.name for p in self.mods.iterdir()),
                          ["-[Gameplay] Stray", "[Gameplay] Mine", "[Gameplay] Wanted"])
         self.assertIn("renamed 2 folders", self.window.status_label.text())
@@ -1251,7 +1251,8 @@ class TestSwitchingToMatchOnAnno117(TruthWindow):
         ]
         self.window.loadout.own.loads_last = True
         asked = self.sync()
-        self.assertIn("the Studio's profile, Anno Modding Studio", asked[0])
+        # The Studio's own profile is not one you made, and goes unsaid.
+        self.assertNotIn("profile", asked[0])
         written = self.documents / "profiles" / "Anno Modding Studio.txt"
         self.assertTrue(written.is_file())
         # One file whatever loadout is played; its DisplayName says which.
@@ -1305,7 +1306,7 @@ class TestSwitchingToMatchOnAnno117(TruthWindow):
             origin="Mine", mod_id="mine", offered=offered, options={"speed": "1", "walls": "true"},
         )]
         asked = self.sync()
-        self.assertIn("Mod options written into active-options.jsonc for: mine", asked[0])
+        self.assertIn("\nMod options: mine\n", asked[0])
         written = json.loads((self.documents / "active-options.jsonc").read_text(encoding="utf-8"))
         # Only what differs from the defaults, and nobody else's entry touched.
         self.assertEqual(written, {"someone-else": {"x": "1"}, "mine": {"walls": "true"}})
@@ -1485,7 +1486,7 @@ class TestPlay(PlayingWindow):
             self.assertTrue(self.window.live.play())
         (title,), (text,) = asked.titles, asked.texts
         self.assertEqual(title, "Play Main?")
-        self.assertIn("does not have them on:\n  • [Gameplay] Stray", text)
+        self.assertIn("Switch off: [Gameplay] Stray\n", text)
         self.assertTrue(text.endswith("Then Anno 1800 starts."))
         self.assertTrue((self.mods / "-[Gameplay] Stray").is_dir())
         self.assertEqual(self.started_now(), ["steam://rungameid/916440"])

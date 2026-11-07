@@ -321,7 +321,9 @@ def box_text(box) -> str:
     """A message box's text as it was written: the markup
     ``widgets.show_box_text`` puts round it taken off again, so a test reads
     the sentence and not the HTML.  A name set apart with ``widgets.named``
-    comes back without its marks, and a keyword without its link."""
+    comes back without its marks, and a keyword without its link.  A row of
+    a table (``widgets.table_markup``) is a line, "Label: value", and a
+    heading across it a line of its own, "Heading:"."""
     import html
     import re
 
@@ -330,6 +332,10 @@ def box_text(box) -> str:
     text = box.text()
     if box.textFormat() != Qt.TextFormat.RichText:
         return text
+    text = re.sub(r'<tr><td colspan="2"[^>]*>(.*?)</td></tr>', r"\1:\n", text)
+    text = re.sub(r"<tr><td[^>]*>(.*?)</td><td[^>]*>(.*?)</td></tr>", r"\1: \2\n", text)
+    text = re.sub(r"</?table\b[^>]*>|</p>", "", text)
+    text = re.sub(r"<p\b[^>]*>", "\n", text)
     text = re.sub(r"</?(?:span|a)\b[^>]*>", "", text).replace("<br>", "\n").replace("&nbsp;", " ")
     return html.unescape(text)
 

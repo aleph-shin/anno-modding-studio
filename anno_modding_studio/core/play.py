@@ -38,7 +38,7 @@ from . import (
     switches,
     truth,
 )
-from .i18n import bullets, number, tr, tr_noop, trn
+from .i18n import bullets, tr, tr_noop, trn
 
 
 @dataclass
@@ -114,24 +114,20 @@ class Plan:
         if lines:
             self.worth.append((heading, lines))
 
-    # Past this many sentences, each kind is a count and its first few, and
-    # the whole list goes behind Show Details.
-    SAID_IN_FULL = 8
-    SAID_OF_EACH = 2
+    # Past this many sentences, the question counts each kind, and the
+    # sentences go behind Show Details. Each kind's first two as well still
+    # left the question taller than a laptop's screen.
+    SAID_IN_FULL = 4
 
     def told(self) -> tuple:
-        """``(the part for the question, all of it)`` -- the second "" when
-        the first already says everything."""
+        """``(all of it, [(kind, how many)])`` -- the second [] when the
+        question has room for the first."""
         whole = "\n".join(
             "%s:\n%s" % (heading, bullets(lines)) for heading, lines in self.worth
         )
         if len(self.warnings) <= self.SAID_IN_FULL:
-            return whole, ""
-        short = []
-        for heading, lines in self.worth:
-            short.append("%s (%s):\n%s" % (heading, number(len(lines)), bullets(lines, self.SAID_OF_EACH)))
-        # Translators: "Show Details" is the button Qt puts on the question.
-        return "\n".join(short) + "\n\n" + tr("Show Details has every one."), whole
+            return whole, []
+        return whole, [(heading, len(lines)) for heading, lines in self.worth]
 
 
 # -- working it out -----------------------------------------------------------------

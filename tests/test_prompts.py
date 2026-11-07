@@ -244,5 +244,98 @@ class TestTheGameIsRunning(unittest.TestCase):
         self.assertEqual(asking, ["prompts.py"])
 
 
+class TestPlaysQuestion(unittest.TestCase):
+    """What Play says it will do, in a box that fits on the screen."""
+
+    def plan(self, switched: int):
+        from types import SimpleNamespace
+
+        from anno_modding_studio.core import play
+
+        plan = play.Plan(folder="C:/mods")
+        plan.moving = {"On %02d" % n: True for n in range(switched)}
+        plan.strays = [SimpleNamespace(name="Stray %02d" % n) for n in range(switched)]
+        return plan
+
+    def asked(self, plan):
+        """The box Play's question is asked in, answered Cancel."""
+        from types import SimpleNamespace
+
+        shown = []
+
+        def answer(box):
+            shown.append(box)
+            return None
+
+        loadout = SimpleNamespace(game=ANNO_1800)
+        with mock.patch.object(prompts.Prompts, "answer", lambda _self, box: answer(box)), \
+                mock.patch.object(prompts.widgets, "answer_of", answer):
+            self.assertFalse(prompts.Prompts(None).confirm_live(plan, True, loadout, "Main"))
+        return shown[0]
+
+    def test_it_is_a_table_naming_a_few_mods_in_a_row(self):
+        box = self.asked(self.plan(2))
+        text = _isolation.box_text(box).replace("\u200b", "")
+        # Off is off, whether the loadout has it off or does not have it.
+        self.assertTrue(text.startswith("Mods folder: C:/mods\nSwitch on: On 00\nOn 01\n"
+                                        "Switch off: Stray 00\nStray 01\n"), text)
+        self.assertTrue(text.endswith("\nThen Anno 1800 starts."))
+        self.assertEqual(box.detailedText(), "")
+
+    def test_more_in_a_row_are_counted_with_every_name_behind_show_details(self):
+        """Four lists of twelve names, each with "and 8 more", ran the box
+        past the bottom of the screen, and its buttons with it."""
+        box = self.asked(self.plan(4))
+        text = _isolation.box_text(box)
+        self.assertIn("\nSwitch on: 4 mods\nSwitch off: 4 mods\n", text)
+        self.assertNotIn("On 00", text)
+        self.assertIn("  • On 03", box.detailedText())
+        self.assertIn("Switch off:\n  • Stray 00", box.detailedText())
+
+    def test_the_loaders_agreement_is_a_count(self):
+        """Which loader it was, and on how many assets of which mod, was more
+        than the question needs; it is behind Show Details."""
+        from anno_modding_studio.core import loadercheck
+
+        plan = self.plan(1)
+        plan.loader = [loadercheck.Verdict(loadercheck.AGREES, name="Mine", checked=27)]
+        box = self.asked(plan)
+        self.assertIn("\nLoader agrees: 1 build\n", _isolation.box_text(box))
+        self.assertIn("Mine", box.detailedText())
+
+    def test_every_kind_of_change_is_a_row(self):
+        """Each was a sentence of its own, and named the first eight mods
+        and left the rest out unsaid."""
+        from types import SimpleNamespace
+
+        plan = self.plan(1)
+        plan.copies = SimpleNamespace(tweaks=[], tweaks_held=["Mine"], generating={}, edited=[],
+                                      reverting=["Mod %02d" % n for n in range(10)])
+        box = self.asked(plan)
+        text = _isolation.box_text(box)
+        self.assertIn("\nBack to library copy: 10 mods\nSettings not written: Mine\n", text)
+        self.assertIn("Mod 00, Mod 01, Mod 02, Mod 03, Mod 04, Mod 05, Mod 06, Mod 07, Mod 08, "
+                      "Mod 09.", box.detailedText())
+
+    def test_much_worth_knowing_is_a_table_of_its_own(self):
+        plan = self.plan(1)
+        plan.worth_knowing("GUIDs taken twice", ["GUID %d is created twice." % n for n in range(5)])
+        plan.worth_knowing("Your changes", ["Mine: a bad Mod ID."])
+        box = self.asked(plan)
+        self.assertIn("\nWorth knowing first:\nGUIDs taken twice: 5\nYour changes: 1\n",
+                      _isolation.box_text(box))
+        self.assertIn("  • GUID 4 is created twice.", box.detailedText())
+        # Its own table: the long headings of what is worth knowing do not
+        # push the first table's values aside.
+        self.assertEqual(box.text().count("<table"), 2)
+
+    def test_that_nothing_is_deleted_is_said_on_the_button(self):
+        for switched in (2, 20):
+            box = self.asked(self.plan(switched))
+            self.assertNotIn("No mod is deleted", _isolation.box_text(box))
+            (play,) = [button for button in box.buttons() if button.text() == "&Play"]
+            self.assertTrue(play.toolTip().startswith("No mod is deleted or rewritten:"))
+
+
 if __name__ == "__main__":
     unittest.main()
