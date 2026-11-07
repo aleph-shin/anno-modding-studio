@@ -1620,6 +1620,15 @@ is made from the label as you type, and it is on unless the player turns it off.
 ModOps go into `<Group Condition="$name">`, one group where they stand together in
 the file and one for each run where they don't. It's one step to undo.
 
+To add to an option later, make the change, pick its row and put it under the same
+option. **Into its existing group** appears, ticked, when the option already
+has a group in the same file and at the same level as the change, so the change joins the ModOps you put there before
+instead of getting a group of its own. A new change goes at the end of the file, so
+it lands straight after the option's group when that group is last. If other ModOps
+stand in between, the dialog says how many it moves past: those then run on the
+other side of it. Untick the box to give the change a group of its own where it
+stands.
+
 In the editor:
 
 - Each option has a name, a kind (toggle, choice or slider), a default, and for a

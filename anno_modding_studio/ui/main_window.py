@@ -2804,8 +2804,10 @@ class MainWindow(QMainWindow):
         """Put the ModOps ``picked`` in the Mod changes panel under one of
         ``origin``'s options: each run of them in the mod's file wrapped in
         ``<Group Condition="$name">``, and applied as typing in the Mod file
-        tab is -- one step to undo.  A new toggle is declared first, so the
-        ops are read with it.  Whether it was done."""
+        tab is -- one step to undo.  Under an option with its group in the
+        file already, they go into that group (:func:`.option_groups.planned`).
+        A new toggle is declared first, so the ops are read with it.  Whether
+        it was done."""
         from ..core import option_groups
         from .option_group_dialog import OptionGroupDialog
 
@@ -2821,22 +2823,36 @@ class MainWindow(QMainWindow):
         found = option_groups.runs(shown, picked)
         if not found:
             return False
-        dialog = OptionGroupDialog(self.loadout, origin, len(picked), len(found), self)
+        mod_id = declaring.mod_id_of(self.loadout, origin)
+
+        def planned(name: str) -> option_groups.Plan:
+            return option_groups.planned(shown, picked, option_groups.spellings(name, mod_id))
+
+        dialog = OptionGroupDialog(
+            self.loadout, origin, len(picked), len(found), self, planned=planned,
+        )
         try:
             if dialog.exec() != int(QDialog.DialogCode.Accepted):
                 return False
-            name, new = dialog.chosen(), dialog.new_option()
+            name, new, plan = dialog.chosen(), dialog.new_option(), dialog.plan()
         finally:
             dialog.deleteLater()
+        if plan is None:
+            plan = option_groups.Plan(shown, found)
+        if plan.nothing_to_do:
+            return False
         was = settings.block_of(self.loadout, origin)
         if new is not None:
             settings.set_block(self.loadout, origin, {**was, **settings.to_block([new])})
         # Named in full, as the mod names its options elsewhere: the loader
         # reads a bare name as the mod's own all the same.
-        mod_id = declaring.mod_id_of(self.loadout, origin)
-        text = option_groups.wrapped(shown.text, found, "%s.%s" % (mod_id, name) if mod_id else name)
+        text = option_groups.wrapped(
+            plan.shown.text, plan.left, "%s.%s" % (mod_id, name) if mod_id else name,
+        )
         with busy_cursor():
-            read, done = modfile.apply(self.workspace, origin, text, shown)
+            read, done = modfile.apply(
+                self.workspace, origin, text, shown, modfile.regions_in(plan.shown, text),
+            )
         if done is None:
             settings.set_block(self.loadout, origin, was)
             QMessageBox.warning(self, tr("Put under an option"), tr(

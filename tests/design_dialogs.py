@@ -177,7 +177,16 @@ def _option_group(window):
     window.loadout.options = {
         "ceres": {"label": "Shrine of Ceres", "type": "toggle", "default": "true"},
     }
-    return OptionGroupDialog(window.loadout, "", 3, 2, window)
+    from anno_modding_studio.core.option_groups import Plan
+
+    # Ceres has its group in the file: two go into it past one other, and
+    # one gets a group of its own.
+    dialog = OptionGroupDialog(
+        window.loadout, "", 3, 2, window,
+        planned=lambda _name: Plan(None, left=[None], joined=2, passed=1),
+    )
+    dialog.which.setCurrentIndex(1)
+    return dialog
 
 
 def _convert(window):
