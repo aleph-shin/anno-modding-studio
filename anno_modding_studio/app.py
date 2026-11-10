@@ -80,6 +80,8 @@ def start_application(argv) -> QApplication:
     widgets.wheel_passes_by_choices(app)
     # Win+V's clipboard history opens beside the field being typed in.
     widgets.caret_follows_focus(app)
+    # A drag after a double-click selects by words, as in a text editor.
+    widgets.drag_selects_by_words(app)
     # Text from mods and mod.io shows as text, never as HTML.
     widgets.external_text_stays_plain(app)
     # And in the language picked in Settings, for the same reason: every
