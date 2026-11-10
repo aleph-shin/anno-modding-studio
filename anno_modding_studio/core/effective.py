@@ -40,13 +40,14 @@ collected, so keeping the element is what makes its identity stable.
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Dict, List, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 from lxml import etree
 
-from . import applying
+from . import applying, modop, paths
 from .changes import (
     OP_ADD,
     OP_ADD_NEXT,
@@ -418,11 +419,26 @@ def new_asset_template(change: Change) -> str:
 class EffectiveAsset:
     """A base asset with this mod's pending changes applied."""
 
-    def __init__(self, element, origins: Dict[int, tuple], guid: str, is_new: bool):
+    def __init__(self, element, origins: Dict[int, tuple], guid: str, is_new: bool,
+                 applied: Optional[Dict[tuple, int]] = None,
+                 targets: Optional[Dict[tuple, Any]] = None,
+                 run: Optional[_Running] = None):
         self.element = element
         self._origins = origins
         self.guid = guid
         self.is_new = is_new
+        # Each change, by key, numbered in the order it was applied: what had
+        # run before it is what the game had by then.
+        self.applied: Dict[tuple, int] = applied if applied is not None else {}
+        # The node each change's path found, where it found one.
+        self.targets: Dict[tuple, Any] = targets if targets is not None else {}
+        run = run if run is not None else _Running()
+        # What each change's path found as it ran: how many nodes, and the
+        # text of the one where it found one -- what the game hands it.
+        self.seen: Dict[tuple, Tuple[int, Optional[str]]] = run.seen
+        # The text a node had before a mod's first change to it, by node and
+        # mod: what that mod was handed (:meth:`handed_form`).
+        self._handed: Dict[Tuple[int, str], str] = run.handed
 
     def origin(self, node) -> Origin:
         if node is None:
@@ -432,6 +448,58 @@ class EffectiveAsset:
 
     def __bool__(self) -> bool:
         return self.element is not None
+
+    def gone_before(self, key=None) -> Callable[[object], bool]:
+        """Whether a node is gone from the game's asset by the time the change
+        with ``key`` runs: struck out by a change applied before it.  With no
+        key, a change made now, which runs after every one of them.
+
+        A removed node stays in this tree and is gone from the game's, so a
+        position the game counts is counted without it: with the fifth of six
+        entries removed, the sixth is ``Item[5]`` to an op that runs after.
+        """
+        limit = self.applied.get(key, len(self.applied)) if key is not None else len(self.applied)
+
+        def gone(node) -> bool:
+            origin = self.origin(node)
+            if not origin.is_removed:
+                return False
+            return origin.change_key is None or self.applied.get(origin.change_key, -1) < limit
+
+        return gone
+
+    def handed_form(self, node, origin: str) -> str:
+        """``node`` and everything in it as it was handed to ``origin``'s
+        ops, as one line: what an entry a path finds by a count is known
+        again by (:attr:`.changes.Change.entry`).
+
+        Not as the tree holds it now: the mod's own edits to the entry are
+        taken back out, so typing a new value into it, or taking a field out,
+        is no reason to think the path finds another entry.  What the mod
+        added is left out, what it set is said without its value, and what
+        a mod before it removed is not there.
+        """
+        def form(one) -> str:
+            known = self.origin(one)
+            by = known.change_key[0] if known.change_key else None
+            if by == origin and known.provenance == PROV_ADDED:
+                return ""
+            if known.is_removed and by != origin:
+                return ""
+            text = self._handed.get((id(one), origin), one.text or "")
+            if by == origin and known.provenance == PROV_SET:
+                text = ""
+            said = "".join("%s=%s;" % pair for pair in sorted(one.attrib.items()))
+            inner = "".join(form(child) for child in one if isinstance(child.tag, str))
+            return "<%s%s>%s%s</%s>" % (one.tag, " " + said if said else "", text.strip(), inner, one.tag)
+
+        return form(node)
+
+    def gone_for(self, node) -> Callable[[object], bool]:
+        """:meth:`gone_before` for a path to ``node``: the change that struck
+        it out, if one did, else one made now."""
+        origin = self.origin(node)
+        return self.gone_before(origin.change_key if origin.is_removed else None)
 
     def as_the_game_reads_it(self):
         """A plain copy with the struck-out nodes actually gone.
@@ -521,15 +589,228 @@ def build(base_element, changes: List[Change], guid: str, is_new: bool = False, 
     for change in changes:
         at = layer.setdefault(change.origin, len(layer))
         blocks.setdefault((at, change.order), []).append(change)
+    applied: Dict[tuple, int] = {}
+    targets: Dict[tuple, Any] = {}
+    run = _Running()
     for where in sorted(blocks):
         # Within the op as the writer writes them, which is what the game is
         # handed: one order, asked for here and not kept as a second.
         for change in emit_order(blocks[where]):
             if change.creates_asset:
                 continue  # the asset itself, already the tree we are building
-            _apply(element, origins, change, game)
+            applied[change.key] = len(applied)
+            target = _apply(element, origins, change, game, run)
+            if target is not None:
+                targets[change.key] = target
 
-    return EffectiveAsset(element, origins, guid, is_new)
+    return EffectiveAsset(element, origins, guid, is_new, applied, targets, run)
+
+
+@dataclass
+class _Running:
+    """What :func:`build` keeps as it goes, change by change."""
+
+    # What the changes so far removed, each the outermost of what one took out.
+    struck: List = field(default_factory=list)
+    # Change key -> (how many nodes its path found, the text of the one).
+    seen: Dict[tuple, Tuple[int, Optional[str]]] = field(default_factory=dict)
+    # (node id, mod) -> its text before that mod's first change to it.
+    handed: Dict[Tuple[int, str], str] = field(default_factory=dict)
+
+
+@contextmanager
+def without(nodes) -> Iterator[None]:
+    """The tree with ``nodes`` taken out of it for a while, and put back
+    where each was, text after it and all, however the block is left.
+
+    What a removal struck out is still in the tree and is not in the game's,
+    and a path is asked of the game's: ``Item[5]`` there is the fifth entry
+    that is left, which XPath can only count with the others out of the way.
+    """
+    taken = []
+    for node in nodes:
+        parent = node.getparent()
+        if parent is None:
+            continue
+        taken.append((parent, parent.index(node), node))
+        parent.remove(node)
+    try:
+        yield
+    finally:
+        # Last out, first back: each goes back to the place it was taken
+        # from, which is where it is again once the ones after it are back.
+        for parent, at, node in reversed(taken):
+            parent.insert(at, node)
+
+
+def outermost(element, gone: Callable[[object], bool]) -> List:
+    """The nodes under ``element`` that ``gone`` says are gone, but for the
+    ones that go with a node above them that is."""
+    found = []
+    stack = [child for child in element if isinstance(child.tag, str)]
+    while stack:
+        node = stack.pop()
+        if gone(node):
+            found.append(node)
+            continue
+        stack.extend(child for child in node if isinstance(child.tag, str))
+    return found
+
+
+def resolve_as_the_game_has_it(element, path: str, gone: Callable[[object], bool]) -> List:
+    """What ``path`` finds once the nodes ``gone`` says are gone are, which
+    is what the game finds: a position counts only what is left."""
+    with without(outermost(element, gone)):
+        return [node for node in _resolve(element, path) if not gone(node)]
+
+
+_POSITION = paths.COUNTED_STEP
+
+
+def counts(path: str) -> bool:
+    """Whether ``path`` picks some entry on its way by a count."""
+    return any(
+        _POSITION.match(step) for step in modop.split_outside((path or "").strip("/"), "/")
+    )
+
+
+def _steps(path: str) -> Optional[List[str]]:
+    """``path``'s steps from the asset down, or ``None`` for one that is not
+    a plain walk down from it.  A slash inside a predicate is no step."""
+    if not path.startswith("/") or path.startswith("//"):
+        return None
+    steps = modop.split_outside(path[1:], "/")
+    return steps if all(steps) else None
+
+
+def repointed(eff: EffectiveAsset, change: Change, gone: Callable[[object], bool]):
+    """The path ``change`` has to take to go on finding what it finds now,
+    once what is gone by the time it runs is what ``gone`` says -- or
+    ``None`` where its own path still finds it, or no path can be had.
+
+    A removal before it, put in or taken back, moves every entry after it in
+    the game's list by one, and a path that names an entry by its position
+    names another one then.  Only the positions are counted again: a step
+    that names an entry by what is in it is left as it is, since what is in
+    it here is what the changes leave, and the change may be the one that
+    sets it -- ``Item[B='9']/B`` for the edit that makes ``B`` 9 finds
+    nothing in the game, which runs it on the 2 that was there.
+    """
+    target = eff.targets.get(change.key)
+    if eff.element is None or target is None or not change.path:
+        return None
+    if gone(target) or any(gone(above) for above in target.iterancestors()):
+        return None  # what it is aimed at is gone itself then
+    found = resolve_as_the_game_has_it(eff.element, change.path, gone)
+    if len(found) == 1 and found[0] is target:
+        return None
+    walked = _walk(eff, change.path, target)
+    if walked is None:
+        return None
+    steps, chain = walked
+    positional = False
+    for at, (step, node) in enumerate(zip(steps, chain, strict=True)):
+        matched = _POSITION.match(step)
+        if matched is None or matched.group(1) != node.tag:
+            continue
+        steps[at] = recounted(node, matched.group(2) or "", gone)
+        positional = True
+    path = "/" + "/".join(steps)
+    found = resolve_as_the_game_has_it(eff.element, path, gone)
+    if path == change.path or len(found) != 1 or found[0] is not target:
+        return None
+    return paths.Generated(path, positional, paths.POSITIONAL_WARNING if positional else "")
+
+
+def _walk(eff: EffectiveAsset, path: str, target) -> Optional[Tuple[List[str], List]]:
+    """``path``'s steps beside the node each step comes to on the way down
+    to ``target``, or ``None`` for a path that is not a plain walk down to it."""
+    steps = _steps(path)
+    chain = [target, *target.iterancestors()]
+    if steps is None or eff.element not in chain:
+        return None
+    chain = list(reversed(chain[: chain.index(eff.element)]))
+    if len(chain) != len(steps):
+        return None
+    return steps, chain
+
+
+def counted_entry(eff: EffectiveAsset, path: str, target) -> Optional[Tuple[int, Any, List[str]]]:
+    """Where ``path`` finds a list entry by a count on its way to ``target``:
+    ``(step, entry, steps)`` for the last such step, or ``None``."""
+    walked = _walk(eff, path, target)
+    if walked is None:
+        return None
+    steps, chain = walked
+    for at in reversed(range(len(steps))):
+        matched = _POSITION.match(steps[at])
+        if matched is not None and matched.group(1) == chain[at].tag:
+            return at, chain[at], steps
+    return None
+
+
+@dataclass(frozen=True)
+class EntryCheck:
+    """A change whose path finds another entry than the one it was made
+    against: that entry as it is (:meth:`EffectiveAsset.handed_form`), and
+    the path to the one it was made against, where exactly one is left."""
+
+    now: str
+    repoint: str = ""
+
+
+def check_entry(eff: EffectiveAsset, change: Change) -> Optional[EntryCheck]:
+    """Whether ``change``'s path still finds, by its count, the entry it was
+    made against: ``None`` where it does, or there is nothing to ask.
+
+    A count is taken in one list.  A patch that adds a slot, or a mod before
+    this one that takes out an entry like it, moves what the count finds
+    without a word: the path still finds one entry, and the wrong one.
+    """
+    if not change.entry or eff.element is None:
+        return None
+    target = eff.targets.get(change.key)
+    if target is None:
+        return None  # it finds nothing: said where what it finds is counted
+    counted = counted_entry(eff, change.path, target)
+    if counted is None:
+        return None
+    at, entry, steps = counted
+    now = eff.handed_form(entry, change.origin)
+    if now == change.entry:
+        return None
+    gone = eff.gone_before(change.key)
+    like = [
+        other for other in entry.getparent()
+        if getattr(other, "tag", None) == entry.tag and not gone(other)
+        and eff.handed_form(other, change.origin) == change.entry
+    ]
+    repoint = ""
+    if len(like) == 1:
+        step, _counted = paths.step_for(like[0], gone=gone)
+        path = "/" + "/".join([*steps[:at], step, *steps[at + 1:]])
+        hits = resolve_as_the_game_has_it(eff.element, path, gone)
+        if len(hits) == 1 and (hits[0] is like[0] or like[0] in hits[0].iterancestors()):
+            repoint = path
+    return EntryCheck(now, repoint)
+
+
+def recounted(node, narrowed: str, gone: Callable[[object], bool]) -> str:
+    """The counting step to ``node`` once what is gone is what ``gone``
+    says: its place among the entries ``narrowed`` picks out of its parent
+    (all of its name, for ``""``) that are left."""
+    parent = node.getparent()
+    try:
+        alike = parent.xpath(node.tag + narrowed) if narrowed else list(parent)
+    except etree.XPathEvalError:
+        alike = []
+    left = [
+        child for child in alike
+        if getattr(child, "tag", None) == node.tag and (child is node or not gone(child))
+    ]
+    if node not in left:
+        return ""
+    return "%s%s[%d]" % (node.tag, narrowed, left.index(node) + 1)
 
 
 def _resolve(element, path: str):
@@ -541,7 +822,12 @@ def _resolve(element, path: str):
         return []
 
 
-def _apply(element, origins, change: Change, game: str) -> None:
+def _apply(element, origins, change: Change, game: str, run: _Running):
+    """Apply one change to the tree, and hand back the node its path found,
+    or ``None`` where it found none or did not look.  ``run.struck`` is what
+    the changes before it removed, each the outermost of what one took out;
+    a removal adds what it takes out to it.  What it found goes in
+    ``run.seen``."""
     # An empty path is the asset itself. Two ops arrive that way and they are
     # opposites: ``addNextSibling`` invents the asset (handled by the caller,
     # which is building that very tree), and ``remove`` deletes it outright --
@@ -551,25 +837,35 @@ def _apply(element, origins, change: Change, game: str) -> None:
     # changed nothing.
     if change.op == OP_REMOVE and not change.path:
         _mark_removed(element, origins, change.key)
-        return
+        return None
+
+    def gone(node) -> bool:
+        return (origin := _known(origins, node)) is not None and origin.is_removed
 
     # A removed node stays in the tree, struck through, so it can be shown and
     # undone -- but the game no longer has it, so no path finds it. *Pin Button
     # Preset* swaps four regions whole: each new region goes in beside the one
     # swapped just before, and that anchor matched the old copy as well as the
     # new, so two regions vanished from the asset as shown.
+    # Nor does it count in a position: with the fifth of six entries removed,
+    # ``Item[6]`` is past the end of the game's list and ``Item[5]`` is the
+    # sixth.  Counted with the struck entry in, a second removal was shown
+    # taking out the entry the game never reached.
     # And ``add`` goes into it: *Orchard Rework* merges ``<Template>`` in at
     # the asset's root to turn an orchard into a farm, and the export wrote it
     # while the Studio showed the asset without it.
-    matches = [element] if change.op in (OP_ADD, OP_MERGE) and not change.path else [
-        node for node in _resolve(element, change.path)
-        if not ((origin := _known(origins, node)) is not None and origin.is_removed)
-    ]
+    if change.op in (OP_ADD, OP_MERGE) and not change.path:
+        matches = [element]
+    else:
+        with without(run.struck):
+            matches = [node for node in _resolve(element, change.path) if not gone(node)]
+    run.seen[change.key] = (len(matches), matches[0].text or "" if len(matches) == 1 else None)
     if len(matches) != 1:
-        return  # unresolvable changes are reported by the verifier, not here
+        return None  # unresolvable changes are reported by the verifier, not here
     target = matches[0]
 
     if change.op == OP_REPLACE:
+        run.handed.setdefault((id(target), change.origin), target.text or "")
         target.text = change.new_value
         previous = _known(origins, target)
         # Editing a node this mod added stays owned by the addition.
@@ -578,11 +874,12 @@ def _apply(element, origins, change: Change, game: str) -> None:
 
     elif change.op == OP_REMOVE:
         _mark_removed(target, origins, change.key)
+        run.struck.append(target)
 
     elif change.op in (OP_ADD, OP_ADD_NEXT, OP_ADD_PREV, OP_MERGE):
         payload = parse_payload(change)
         if payload is None:
-            return
+            return target
         # A payload may be a single element or a wrapper holding several.
         wrapped = payload.tag == WRAPPER
         content = [node for node in payload if isinstance(node.tag, str)] if wrapped else [payload]
@@ -603,9 +900,8 @@ def _apply(element, origins, change: Change, game: str) -> None:
 
         # What a removal took out stays in the tree, struck through, and a
         # merge passes it by as the game does.
-        applying.apply(change.op, target, content, game, noted=noted, gone=lambda node: (
-            (origin := _known(origins, node)) is not None and origin.is_removed
-        ))
+        applying.apply(change.op, target, content, game, noted=noted, gone=gone)
+    return target
 
 
 def _mark_removed(element, origins, key) -> None:

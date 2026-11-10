@@ -1019,6 +1019,9 @@ class MainWindow(QMainWindow):
             lambda origin: self.modio.check_modio_updates(only=[origin])
         )
         self.output.loadoutEdited.connect(self.files.on_loadout_edited)
+        # A change pointed back at its entry from the check: an edit like one
+        # in the asset editor.
+        self.output.changesEdited.connect(self._on_edited)
         # Which mods run scripts, and what they share, is on the mod rows.
         self.output.scriptsEdited.connect(self.changes_panel.refresh)
         # What a mod declares is what its ops that read a setting find.

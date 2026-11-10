@@ -455,6 +455,13 @@ class Change:
     # where nobody has said yet, which the end of the step settles
     # (:func:`.inside.assign`).  See :mod:`.inside`.
     kept_by: Optional[str] = None
+    # For a change whose path finds a list entry by a count -- the second
+    # entry with pool 31361 -- that entry as it was when the change was made,
+    # as :meth:`.effective.EffectiveAsset.handed_form` writes it.  A count is
+    # only as good as the list it was taken in: the check asks whether the
+    # path still finds this, and says so only where it does not.  "" for
+    # every other change, and for one read out of a mod's file.
+    entry: str = ""
     # What the file held for it that this build doesn't read: a newer
     # Studio's fields, written back as they were (see ``_unknown``).
     extra: Optional[dict] = field(default=None, compare=False, repr=False)
@@ -615,6 +622,8 @@ def change_to_dict(change: Change) -> dict:
         out.pop("at_the_end")
     if change.kept_by is None:
         out.pop("kept_by")
+    if not change.entry:
+        out.pop("entry")
     return _with_unknown(out, change.extra)
 
 
@@ -647,6 +656,7 @@ def change_from_dict(raw: dict) -> Optional[Change]:
         written_as=str(raw.get("written_as", "") or ""),
         at_the_end=str(raw.get("at_the_end", "") or ""),
         kept_by=_keeper(raw),
+        entry=str(raw.get("entry", "") or ""),
         extra=_unknown(raw, _CHANGE_KEYS),
     )
     # A structural op may have no Path when it anchors on the asset itself

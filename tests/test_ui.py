@@ -974,20 +974,39 @@ class TestEditingAValue(WorkflowCase):
         self.assertIn("verified", self.window.output.check_summary.text())
         self.assertEqual(self.window.output.check_list.count(), 0)
 
-    def test_positional_edit_is_reported_as_a_warning(self):
-        self.window._open_asset("1010030")
+    def _positional_edit(self):
+        """A positional edit the check can only warn about: one that knows
+        no entry it was made against, as one read out of a mod's file."""
         self._edit("Tag", "manor")  # <Tags><Tag> has no identifying child
         change = next(iter(self.window.loadout))
+        change.entry = ""
+        return change
+
+    def test_positional_edit_is_reported_as_a_warning(self):
+        self.window._open_asset("1010030")
+        change = self._positional_edit()
         self.assertTrue(change.positional)
 
         self.window.tabs.setCurrentIndex(TAB_GENERATE)
         self.assertEqual(self.window.output.check_list.count(), 1)
         self.assertIn("positional", self.window.output.check_list.item(0).text())
 
+    def test_one_made_here_is_said_only_where_its_entry_moved(self):
+        """It knows the entry it was made against, and finds it."""
+        self.window._open_asset("1010030")
+        self._edit("Tag", "manor")
+        change = next(iter(self.window.loadout))
+        self.assertTrue(change.positional)
+        self.assertTrue(change.entry)
+
+        self.window.tabs.setCurrentIndex(TAB_GENERATE)
+        self.assertEqual(self.window.output.check_list.count(), 0)
+        self.assertIn("verified", self.window.output.check_summary.text())
+
     def test_a_validation_row_can_be_opened_rather_than_only_read(self):
         """The list names an asset; getting to it used to mean finding it again."""
         self.window._open_asset("1010030")
-        self._edit("Tag", "manor")
+        self._positional_edit()
         self.window.tabs.setCurrentIndex(TAB_GENERATE)
         item = self.window.output.check_list.item(0)
 
@@ -1001,7 +1020,7 @@ class TestEditingAValue(WorkflowCase):
         from PySide6.QtGui import QGuiApplication
 
         self.window._open_asset("1010030")
-        self._edit("Tag", "manor")
+        self._positional_edit()
         self.window.tabs.setCurrentIndex(TAB_GENERATE)
         item = self.window.output.check_list.item(0)
         menu = self.window.output.menu_for(item)
@@ -3128,6 +3147,234 @@ class TestRemovingAnEntryTheGameMayNotMiss(WorkflowCase):
                 editor._remove_node(self.entry(tag, value))
                 self.assertNotIn("may not notice", editor.warning_label.text())
         self.assertEqual(len(self.window.loadout), 2)
+
+
+class TestRemovingEntriesThatOnlyAPositionTellsApart(WorkflowCase):
+    """Entries nothing in them tells apart are named by a count, and the
+    game counts in what is left of the list when the op runs.  Removing the
+    last two of a list's entries wrote ``Item[5]`` and then ``Item[6]``, and
+    by then the list had five entries: the second removal took nothing out.
+    A count is among the entries alike, ``Item[Fertility='2001'][1]``."""
+
+    # Six entries, the last two alike; four that no one field tells apart;
+    # and three the same.
+    LISTS = (
+        "<Asset><Template>FertilitySet</Template><Values>"
+        "<Standard><GUID>1003</GUID><Name>delta</Name></Standard>"
+        "<FertilitySet><Fertilities>%s</Fertilities></FertilitySet>"
+        "</Values></Asset>"
+        "<Asset><Template>Pairs</Template><Values>"
+        "<Standard><GUID>1004</GUID><Name>epsilon</Name></Standard>"
+        "<Pairs><List>%s</List></Pairs>"
+        "</Values></Asset>"
+        "<Asset><Template>Pools</Template><Values>"
+        "<Standard><GUID>1005</GUID><Name>zeta</Name></Standard>"
+        "<Pools><List>%s</List></Pools>"
+        "</Values></Asset>"
+    ) % (
+        "".join("<Item><Fertility>%s</Fertility></Item>" % f
+                for f in ("1010", "1011", "1012", "1013", "2001", "2001")),
+        "".join("<Item><A>%s</A><B>%s</B></Item>" % ab
+                for ab in (("1", "1"), ("1", "2"), ("2", "1"), ("2", "2"))),
+        "<Item><Pool>5</Pool><Amount>1</Amount></Item>" * 3,
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        import support
+
+        cls._tmp = tempfile.TemporaryDirectory()
+        tmp = Path(cls._tmp.name)
+        cls.assets = tmp / "assets.xml"
+        cls.assets.write_text(
+            support.IMPORT_ASSETS.replace("</Assets>", cls.LISTS + "</Assets>"), encoding="utf-8"
+        )
+        cls.db = tmp / "index.sqlite"
+        index_mod.build_index(cls.assets, cls.db)
+
+    def entries(self):
+        """The list entries as the tree shows them, struck ones too."""
+        from anno_modding_studio.ui.editor_panel import ELEM_ROLE
+
+        rows = [
+            item for item in self.window.editor._iter_items()
+            if item.text(0) == "Item" and item.data(0, ELEM_ROLE) is not None
+        ]
+        # In the order the list has them.
+        return sorted(rows, key=lambda item: item.parent().indexOfChild(item))
+
+    def played(self, guid: str):
+        """The asset once the game has run this mod's changes, in the order
+        they are written: each path asked of what the ones before it left."""
+        import copy
+
+        from anno_modding_studio.core.changes import OP_REMOVE, OP_REPLACE, emit_order
+
+        asset = copy.deepcopy(self.window.index.asset_element(guid))
+        for change in emit_order([c for c in self.window.loadout if c.guid == guid]):
+            found = [n for n in asset.xpath("." + change.path) if isinstance(n.tag, str)]
+            self.assertEqual(len(found), 1, change.path)
+            if change.op == OP_REMOVE:
+                found[0].getparent().remove(found[0])
+            elif change.op == OP_REPLACE:
+                found[0].text = change.new_value
+        return [
+            etree.tostring(item, encoding="unicode", with_tail=False)
+            for item in asset.iterfind(".//Item")
+        ]
+
+    POOL = "/Values/FertilitySet/Fertilities/Item[Fertility='2001']"
+
+    def test_the_last_two_go(self):
+        editor = self.window.editor
+        self.window._open_asset("1003")
+        editor._remove_node(self.entries()[4])
+        editor._remove_node(self.entries()[5])
+        self.assertEqual(
+            [change.path for change in self.window.loadout], [self.POOL + "[1]"] * 2
+        )
+        self.assertEqual(
+            self.played("1003"),
+            ["<Item><Fertility>%s</Fertility></Item>" % f for f in ("1010", "1011", "1012", "1013")],
+        )
+        # And the tree says so: both struck.
+        self.assertEqual(
+            [editor._origin(item).is_removed for item in self.entries()],
+            [False] * 4 + [True] * 2,
+        )
+
+    def test_keeping_the_first_after_all_leaves_the_second_removed(self):
+        """By its key, not its path, which both removals have; and the
+        second, which ran with one entry fewer before it, is one further
+        down now."""
+        editor = self.window.editor
+        self.window._open_asset("1003")
+        editor._remove_node(self.entries()[4])
+        editor._remove_node(self.entries()[5])
+        first = self.entries()[4]
+        editor._undo_remove(first, editor._path_for(first)[0])
+        (left,) = self.window.loadout
+        self.assertEqual(left.path, self.POOL + "[2]")
+        self.assertEqual(
+            [editor._origin(item).is_removed for item in self.entries()],
+            [False] * 5 + [True],
+        )
+
+    def test_the_third_and_then_the_first(self):
+        """One op writes its removals in the order of their paths: made
+        third first, the third's ``[3]`` ran after the first's ``[1]``, on a
+        list with two of the pool left.  It is counted among the ones left
+        before it, so it runs second and finds the entry."""
+        editor = self.window.editor
+        self.window._open_asset("1005")
+        editor._remove_node(self.entries()[2])
+        editor._remove_node(self.entries()[0])
+        self.assertEqual(
+            sorted(change.path for change in self.window.loadout),
+            ["/Values/Pools/List/Item[Pool='5'][1]", "/Values/Pools/List/Item[Pool='5'][2]"],
+        )
+        self.assertEqual(self.played("1005"), ["<Item><Pool>5</Pool><Amount>1</Amount></Item>"])
+
+    def test_the_check_runs_them_in_order(self):
+        """One at a time against the shipped list, a removal of the sixth
+        written ``Item[6]`` was fine; run after the fifth's, it finds
+        nothing, and the check says so."""
+        from anno_modding_studio.core import generator
+
+        editor = self.window.editor
+        self.window._open_asset("1003")
+        editor._remove_node(self.entries()[4])
+        editor._remove_node(self.entries()[5])
+        results = generator.verify_changes(self.window.workspace, self.window.loadout)
+        self.assertEqual([(r.ok, r.warn) for r in results], [(True, False)] * 2)
+
+        # Written as the Studio wrote them before: in the order of their
+        # paths, Item[5] and then Item[6].
+        first, second = self.window.loadout
+        first.path = "/Values/FertilitySet/Fertilities/Item[5]"
+        second.path = "/Values/FertilitySet/Fertilities/Item[6]"
+        self.window.loadout.reindex()
+        results = generator.verify_changes(self.window.workspace, self.window.loadout)
+        said = {r.change.key: (r.ok, r.message) for r in results}
+        self.assertEqual(said[first.key], (True, "ok"))
+        self.assertEqual(
+            said[second.key], (False, "path matches nothing by the time this change runs")
+        )
+
+    def test_an_entry_that_moved_is_said_and_can_be_pointed_back(self):
+        """A count taken in one list finds another entry once the list has
+        moved under it: said, with the way back to the entry it was made
+        against, which is one step to undo."""
+        from anno_modding_studio.ui.output_panel import REPOINT_ROLE
+
+        editor = self.window.editor
+        self.window._open_asset("1004")
+        editor._remove_node(self.entries()[3])
+        (removal,) = self.window.loadout
+        self.assertEqual(removal.path, "/Values/Pairs/List/Item[A='2'][2]")
+        self.assertEqual(removal.entry, "<Item><A>2</A><B>2</B></Item>")
+        # As a patch that put an entry of pool 2 before it would leave it.
+        removal.path = "/Values/Pairs/List/Item[A='2'][1]"
+        self.window.loadout.reindex()
+        self.window.record()
+
+        out = self.window.output
+        self.window.tabs.setCurrentIndex(TAB_GENERATE)
+        self.assertEqual(out.check_list.count(), 1)
+        row = out.check_list.item(0)
+        self.assertIn("finds another list entry", row.text())
+        self.assertIn("finds another list entry", out.check_summary.text())
+        self.assertEqual(row.data(REPOINT_ROLE)[1], "/Values/Pairs/List/Item[A='2'][2]")
+        menu = out.menu_for(row)
+        point = next(
+            a for a in menu.actions() if a.text() == "Point it at the entry it was made against"
+        )
+        point.trigger()
+        self.assertEqual(removal.path, "/Values/Pairs/List/Item[A='2'][2]")
+        self.assertEqual(out.check_list.count(), 0)
+        self.window.undo_last()
+        self.assertEqual(
+            next(iter(self.window.loadout)).path, "/Values/Pairs/List/Item[A='2'][1]"
+        )
+
+    def test_a_count_among_the_alike_is_not_moved_by_others(self):
+        """Taking an entry of another value back moves nothing."""
+        editor = self.window.editor
+        self.window._open_asset("1004")
+        editor._remove_node(self.entries()[1])
+        editor._remove_node(self.entries()[3])
+        self.assertEqual(
+            [change.path for change in self.window.loadout],
+            ["/Values/Pairs/List/Item[A='1'][2]", "/Values/Pairs/List/Item[A='2'][2]"],
+        )
+        first = self.entries()[1]
+        editor._undo_remove(first, editor._path_for(first)[0])
+        (left,) = self.window.loadout
+        self.assertEqual(left.path, "/Values/Pairs/List/Item[A='2'][2]")
+        self.assertEqual(
+            self.played("1004"),
+            ["<Item><A>1</A><B>1</B></Item>", "<Item><A>1</A><B>2</B></Item>",
+             "<Item><A>2</A><B>1</B></Item>"],
+        )
+
+    def test_an_edit_further_down_follows_a_removal_above_it(self):
+        """Removals are written first, so the edit runs with one entry fewer
+        before it, and the entry it named by a count is one further up --
+        counted among the entries of its pool, whatever the edit set."""
+        editor = self.window.editor
+        self.window._open_asset("1005")
+        amount = self.entries()[2].child(1)
+        self.assertEqual(amount.text(0), "Amount")
+        amount.setText(1, "9")
+        edit = next(iter(self.window.loadout))
+        self.assertEqual(edit.path, "/Values/Pools/List/Item[Pool='5'][3]/Amount")
+        editor._remove_node(self.entries()[0])
+        self.assertEqual(edit.path, "/Values/Pools/List/Item[Pool='5'][2]/Amount")
+        self.assertEqual(
+            self.played("1005"),
+            ["<Item><Pool>5</Pool><Amount>1</Amount></Item>",
+             "<Item><Pool>5</Pool><Amount>9</Amount></Item>"],
+        )
 
 
 class TestTheAddFieldDialog(WorkflowCase):

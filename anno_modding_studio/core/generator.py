@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from xml.sax.saxutils import escape, unescape
 
 from . import changes as changes_mod
-from . import disk, games, modfolder, modinfo, scripts, texts
+from . import disk, effective, games, modfolder, modinfo, scripts, texts
 from .changes import Change, Loadout, is_own_mod, own_record, switched_off
 from .paths import resolve, verify
 
@@ -30,6 +30,12 @@ class VerifyResult:
     change: Change
     ok: bool
     message: str
+    # It applies, and still wants a look: its count finds another list entry
+    # than the one it was made against (:func:`.effective.check_entry`).
+    warn: bool = False
+    # Where that is so and the entry it was made against is found again, the
+    # path that finds it.
+    repoint: str = ""
 
 
 def _comment_safe(text: str) -> str:
@@ -349,7 +355,12 @@ def verify_changes(index, loadout: Loadout) -> List[VerifyResult]:
         index, "asset_element", None
     )
     layered = getattr(index, "asset_before", None)
+    in_order = _in_order(index, loadout, source)
     for change in loadout.active():
+        settled = in_order.get(change.key)
+        if settled is not None:
+            results.append(settled)
+            continue
         root = cache.get(change.guid)
         if root is None:
             root = source(change.guid) if source is not None else None
@@ -375,6 +386,97 @@ def verify_changes(index, loadout: Loadout) -> List[VerifyResult]:
                     message += " (checked against the mods loaded before it)"
         results.append(VerifyResult(change, ok, message))
     return results
+
+
+def _in_order(index, loadout: Loadout, source) -> Dict[tuple, VerifyResult]:
+    """The changes checked as the game runs them, by key: each against the
+    asset as the mods before it and its own mod's changes before it leave
+    it, rather than against the shipped asset alone.
+
+    Asked of an asset a mod changes more than once, or changes through an
+    entry it finds by a count.  Checked one at a time, a removal of the
+    fifth of six entries and then of the sixth were both fine, each finding
+    its entry in the shipped list of six; the game ran the second on a list
+    of five, where it found nothing.
+
+    A value that is not what the change expects is still taken where the
+    shipped asset has it, as the check one at a time takes it: what a mod
+    before it set there is no fault of this one.  A path that finds nothing,
+    or more than one node, by the time it runs is one.
+    """
+    build = getattr(index, "effective_asset", None)
+    if build is None:
+        return {}
+    groups: Dict[tuple, List[Change]] = {}
+    for change in loadout.active():
+        if not change.creates_asset:
+            groups.setdefault((change.guid, change.origin), []).append(change)
+    settled: Dict[tuple, VerifyResult] = {}
+    for (guid, origin), group in groups.items():
+        if len(group) < 2 and not any(change.positional or change.entry for change in group):
+            continue
+        try:
+            asset = build(guid, upto=origin)
+        except Exception:  # noqa: BLE001 - left to the check one at a time
+            continue
+        if not asset:
+            continue
+        for change in group:
+            result = _as_run(asset, change, source, index, group)
+            if result is not None:
+                settled[change.key] = result
+    return settled
+
+
+def _as_run(asset, change: Change, source, index, group: List[Change]) -> Optional[VerifyResult]:
+    """One change, checked against what its path found as it ran in
+    ``asset``; ``None`` where the asset does not say.  ``group`` is its
+    mod's changes to the asset."""
+    seen = asset.seen.get(change.key)
+    if seen is None:
+        return None
+    count, held = seen
+    if count == 0:
+        return VerifyResult(change, False, "path matches nothing by the time this change runs")
+    if count > 1:
+        return VerifyResult(
+            change, False,
+            "path matches %d nodes by the time this change runs, so a ModOp would "
+            "change them all" % count,
+        )
+    if change.op == changes_mod.OP_REPLACE and (held or "").strip() != (change.old_value or "").strip():
+        shipped = source(change.guid) if source is not None else None
+        if shipped is None or not _verify_one(shipped, change, index)[0]:
+            return VerifyResult(
+                change, False,
+                "expected %r here, but by the time this change runs it holds %r"
+                % (change.old_value, held),
+            )
+    moved = effective.check_entry(asset, change)
+    if moved is None or any(
+        # Two removals with one path take the first two entries alike that
+        # are left, whichever runs first: each found the other's, and both
+        # go.
+        other is not change and other.path == change.path and other.op == change.op
+        and other.order == change.order and other.entry == moved.now
+        for other in group
+    ):
+        return VerifyResult(change, True, "ok")
+    return VerifyResult(
+        change, True,
+        "finds another list entry than the one it was made against: %s, where it "
+        "was made against %s%s" % (
+            _shortly(moved.now), _shortly(change.entry),
+            ". That one is still in the list" if moved.repoint else "",
+        ),
+        warn=True, repoint=moved.repoint,
+    )
+
+
+def _shortly(form: str, most: int = 90) -> str:
+    """An entry as :meth:`.effective.EffectiveAsset.handed_form` writes it,
+    cut to fit a line."""
+    return form if len(form) <= most else form[: most - 1] + "…"
 
 
 def _verify_one(root, change: Change, index):

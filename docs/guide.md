@@ -1808,12 +1808,29 @@ List entries are addressed by content where an entry has something unique:
 
 ```
 /Values/Maintenance/Maintenances/Item[Product='1010365']/Amount   by content
+/Values/FertilitySet/Fertilities/Item[Fertility='31361'][2]       by a count
 /Values/Tags/Tag[2]                                               by position
 ```
 
-The key can be one level down (`Item[VectorElement/InheritedIndex='2']`). An entry
-addressed by position is flagged in the editor, in the Mod changes panel, and under
-**Validation** on the Export tab.
+The key can be one level down (`Item[VectorElement/InheritedIndex='2']`). Where
+entries are alike, as a fertility set that lists one pool twice, the entry is
+counted among the ones that hold the same value: the second with pool 31361. A slot
+added or removed anywhere else in the list then moves nothing. Only an entry with no
+value at all is counted in the whole list.
+
+A count is taken among the entries still there when the ModOp runs, as the game
+counts. Remove the fifth and sixth of six alike and both removals are the first of
+that pool: the fifth is gone by the time the sixth's runs. Take a removal back, or
+remove an entry before one you edited, and the Studio moves your other changes to
+that list so each still finds its entry.
+
+A change made in the asset editor remembers the entry its count found. The check on
+the Export tab runs each asset's changes in the order the game does, and says so
+where a count now finds another entry, after a game patch or another mod has added
+or removed one alike. Where the entry it was made against is still in the list,
+right-click the row and choose **Point it at the entry it was made against**. A
+count it cannot check, such as one read from a mod's file, is flagged in the editor,
+in the Mod changes panel, and under **Validation**.
 
 Why: [design notes](design-notes.md#why-one-modop-per-change).
 

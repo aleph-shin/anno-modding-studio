@@ -14522,6 +14522,13 @@ msgstr[1] "%(n)s von %(total)s Änderungen ließen sich nicht anwenden (siehe un
 
 #: anno_modding_studio/ui/output_panel.py
 #, python-format
+msgid "All %(total)s changes verified against the base file. %(n)s finds another list entry than the one it was made against."
+msgid_plural "All %(total)s changes verified against the base file. %(n)s find another list entry than the one they were made against."
+msgstr[0] "Alle Änderungen (%(total)s) gegen die Basisdatei geprüft. %(n)s davon findet einen anderen Listeneintrag als den, für den sie gemacht wurde."
+msgstr[1] "Alle Änderungen (%(total)s) gegen die Basisdatei geprüft. %(n)s davon finden einen anderen Listeneintrag als den, für den sie gemacht wurden."
+
+#: anno_modding_studio/ui/output_panel.py
+#, python-format
 msgid "All %(total)s changes verified against the base file. %(n)s uses a positional path."
 msgid_plural "All %(total)s changes verified against the base file. %(n)s use a positional path."
 msgstr[0] "Alle Änderungen (%(total)s) gegen die Basisdatei geprüft. %(n)s davon verwendet einen positionsabhängigen Pfad."
@@ -14566,6 +14573,10 @@ msgid "%(status)s %(n)s more is switched off, so it was not checked."
 msgid_plural "%(status)s %(n)s more are switched off, so they were not checked."
 msgstr[0] "%(status)s %(n)s weitere ist deaktiviert und wurde deshalb nicht geprüft."
 msgstr[1] "%(status)s %(n)s weitere sind deaktiviert und wurden deshalb nicht geprüft."
+
+#: anno_modding_studio/ui/output_panel.py
+msgid "Point it at the entry it was made against"
+msgstr "Auf den Eintrag richten, für den sie gemacht wurde"
 
 #: anno_modding_studio/ui/output_panel.py
 #, python-format

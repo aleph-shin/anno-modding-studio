@@ -226,6 +226,12 @@ def property_path(prop: str, path: str) -> str:
 def branches(path: str) -> List[str]:
     """The parts of an XPath union, split on the ``|`` that are not inside a
     predicate or a quoted string."""
+    return [part.strip() for part in split_outside(path, "|")]
+
+
+def split_outside(path: str, separator: str) -> List[str]:
+    """``path`` split on each ``separator`` that is not inside a predicate
+    or a quoted string: a union's parts on ``|``, a path's steps on ``/``."""
     parts, depth, quote, start = [], 0, "", 0
     for at, char in enumerate(path):
         if quote:
@@ -236,11 +242,11 @@ def branches(path: str) -> List[str]:
             depth += 1
         elif char == "]":
             depth -= 1
-        elif char == "|" and depth == 0:
+        elif char == separator and depth == 0:
             parts.append(path[start:at])
             start = at + 1
     parts.append(path[start:])
-    return [part.strip() for part in parts]
+    return parts
 
 
 def reaches_other_assets(path: str) -> bool:
@@ -257,17 +263,21 @@ def targets_otherwise(attrs: Dict[str, str]) -> bool:
 
 
 # One step of a path that names its node: a tag, or a tag picked out by the
-# literal value of one field.
+# literal value of one field -- and among the entries holding that value, by
+# its place, ``Item[Fertility='31361'][2]``: what the Studio writes for an
+# entry others are alike (:func:`.paths.step_for`).  A place in the whole
+# list, ``Item[6]``, stays a pattern.
 _NAMING_STEP = re.compile(
-    r"""^[A-Za-z_][\w.-]*(\[\s*[A-Za-z_][\w./-]*\s*=\s*('[^']*'|"[^"]*"|\d+)\s*\])?$"""
+    r"""^[A-Za-z_][\w.-]*(\[\s*[A-Za-z_][\w./-]*\s*=\s*('[^']*'|"[^"]*"|\d+)\s*\](\[\s*[1-9]\d*\s*\])?)?$"""
 )
 
 
 def names_its_node(path: str) -> bool:
     """Whether a path inside an asset can only ever find the one node: plain
-    steps down from the asset, each a tag or an entry picked out by a value.
+    steps down from the asset, each a tag or an entry picked out by a value,
+    or by its place among the entries holding that value.
 
-    Anything else -- ``*``, ``//``, a position, a function, ``or``, an entry
+    Anything else -- ``*``, ``//``, a place in a whole list, a function, ``or``, an entry
     picked out by merely having a field -- is a pattern: what it finds
     depends on what is there when the game loads the op.  Read strictly, so
     a path this cannot follow counts as a pattern and not as a name.
@@ -277,7 +287,9 @@ def names_its_node(path: str) -> bool:
         return True
     if inner.startswith("//") or len(branches(inner)) > 1:
         return False
-    return all(_NAMING_STEP.match(step.strip()) for step in inner.strip("/").split("/"))
+    return all(
+        _NAMING_STEP.match(step.strip()) for step in split_outside(inner.strip("/"), "/")
+    )
 
 
 def reach(guid: str, path: str) -> str:

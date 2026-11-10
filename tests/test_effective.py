@@ -23,6 +23,7 @@ from anno_modding_studio.core import (  # noqa: E402
     conflicts,
     effective,
     games,
+    paths,
 )
 from anno_modding_studio.core import (  # noqa: E402
     index as index_mod,
@@ -355,6 +356,130 @@ class TestEffectiveTree(unittest.TestCase):
         change = _change(path="/Values/Nope/Missing", tag="Missing", op=OP_REMOVE)
         eff = effective.build(_base(), [change], "1000")
         self.assertIsNotNone(eff.element)
+
+
+class TestAPositionCountsWhatTheGameHasLeft(unittest.TestCase):
+    """A removed entry stays in the tree, struck through, and is gone from
+    the game's list: an op after it counts positions without it.  Removing
+    the last two of six entries alike wrote ``Item[5]`` and ``Item[6]``, and
+    the second was past the end of the list by the time it ran."""
+
+    SIX = (
+        "<Asset><Values><Standard><GUID>1000</GUID></Standard><Set><List>"
+        + "".join("<Item><F>%s</F></Item>" % f for f in ("1", "2", "3", "4", "5", "5"))
+        + "</List></Set></Values></Asset>"
+    )
+
+    def build(self, *paths):
+        made = [
+            Change(guid="1000", asset_label="six", path=path, tag="Item", op=OP_REMOVE)
+            for path in paths
+        ]
+        return effective.build(etree.fromstring(self.SIX), made, "1000"), made
+
+    def struck(self, eff):
+        return [
+            index for index, item in enumerate(eff.element.findall("Values/Set/List/Item"), 1)
+            if eff.origin(item).is_removed
+        ]
+
+    def test_the_sixth_is_the_fifth_once_the_fifth_is_gone(self):
+        eff, _made = self.build("/Values/Set/List/Item[5]", "/Values/Set/List/Item[5]")
+        self.assertEqual(self.struck(eff), [5, 6])
+        self.assertEqual(len(eff.as_the_game_reads_it().findall("Values/Set/List/Item")), 4)
+
+    def test_counted_with_the_struck_one_in_it_finds_nothing(self):
+        """As the game reads it: the Studio showed both entries struck."""
+        eff, _made = self.build("/Values/Set/List/Item[5]", "/Values/Set/List/Item[6]")
+        self.assertEqual(self.struck(eff), [5])
+
+    def test_the_tree_is_left_as_it_was(self):
+        """The struck entries go back where they were, text and all."""
+        eff, _made = self.build("/Values/Set/List/Item[2]", "/Values/Set/List/Item[2]")
+        self.assertEqual(
+            [item.findtext("F") for item in eff.element.findall("Values/Set/List/Item")],
+            ["1", "2", "3", "4", "5", "5"],
+        )
+        self.assertEqual(self.struck(eff), [2, 3])
+
+    FIFTH = "/Values/Set/List/Item[F='5'][1]"
+
+    def test_a_path_written_after_a_removal_counts_without_it(self):
+        eff, _made = self.build(self.FIFTH)
+        sixth = eff.element.findall("Values/Set/List/Item")[5]
+        self.assertEqual(paths.path_for(eff.element, sixth).path, "/Values/Set/List/Item[F='5'][2]")
+        generated = paths.path_for(eff.element, sixth, gone=eff.gone_for(sixth))
+        self.assertEqual((generated.path, generated.positional), (self.FIFTH, True))
+
+    def test_a_struck_entry_keeps_the_path_it_was_removed_by(self):
+        eff, made = self.build(self.FIFTH, self.FIFTH)
+        self.assertEqual(self.struck(eff), [5, 6])
+        items = eff.element.findall("Values/Set/List/Item")
+        for item, change in zip(items[4:], made, strict=True):
+            self.assertEqual(
+                paths.path_for(eff.element, item, gone=eff.gone_for(item)).path, change.path
+            )
+
+    def test_taking_the_first_removal_back_repoints_the_second(self):
+        for first, then, after in (
+            ("/Values/Set/List/Item[5]",) * 2 + ("/Values/Set/List/Item[6]",),
+            (self.FIFTH, self.FIFTH, "/Values/Set/List/Item[F='5'][2]"),
+        ):
+            with self.subTest(first):
+                eff, (fifth, sixth) = self.build(first, then)
+                before = eff.gone_before(sixth.key)
+                kept = fifth.key
+                generated = effective.repointed(
+                    eff, sixth,
+                    lambda node, before=before, eff=eff, kept=kept: (
+                        before(node) and eff.origin(node).change_key != kept
+                    ),
+                )
+                self.assertEqual(generated.path, after)
+                # Where nothing it counts moves, it stays as it is.
+                self.assertIsNone(effective.repointed(eff, sixth, eff.gone_before(sixth.key)))
+
+
+class TestTheEntryAChangeWasMadeAgainst(unittest.TestCase):
+    """What a change whose path counts keeps of the entry it found, so the
+    check can tell whether the count still finds it."""
+
+    LIST = (
+        "<Asset><Values><Standard><GUID>1000</GUID></Standard><List>"
+        "<Item><A>2</A><B>1</B></Item><Item><A>2</A><B>2</B></Item>"
+        "</List></Values></Asset>"
+    )
+
+    def test_it_is_kept_in_the_loadout_file_and_left_out_where_there_is_none(self):
+        from anno_modding_studio.core.changes import change_from_dict, change_to_dict
+
+        made = _change(path="/Values/List/Item[A='2'][2]", op=OP_REMOVE,
+                       entry="<Item><A>2</A><B>2</B></Item>")
+        self.assertEqual(change_from_dict(change_to_dict(made)).entry, made.entry)
+        self.assertNotIn("entry", change_to_dict(_change(path="/Values/X")))
+
+    def test_the_mods_own_edits_to_it_are_taken_back_out(self):
+        """Typing a new value into the entry is no reason to think the
+        count finds another one."""
+        edit = Change(guid="1000", asset_label="list", path="/Values/List/Item[A='2'][2]/B",
+                      tag="B", old_value="2", new_value="9", origin="mine")
+        eff = effective.build(etree.fromstring(self.LIST), [edit], "1000")
+        second = eff.element.findall("Values/List/Item")[1]
+        self.assertEqual(second.findtext("B"), "9")
+        self.assertEqual(eff.handed_form(second, "mine"), "<Item><A>2</A><B>2</B></Item>")
+        self.assertEqual(eff.handed_form(second, "other"), "<Item><A>2</A><B>9</B></Item>")
+
+    def test_a_count_that_finds_another_entry_is_said_with_the_way_back(self):
+        moved = Change(guid="1000", asset_label="list", path="/Values/List/Item[A='2'][1]",
+                       tag="Item", op=OP_REMOVE, entry="<Item><A>2</A><B>2</B></Item>")
+        eff = effective.build(etree.fromstring(self.LIST), [moved], "1000")
+        found = effective.check_entry(eff, moved)
+        self.assertEqual(found.now, "<Item><A>2</A><B>1</B></Item>")
+        # B alone tells it apart: the way back needs no count.
+        self.assertEqual(found.repoint, "/Values/List/Item[B='2']")
+        moved.path = found.repoint
+        eff = effective.build(etree.fromstring(self.LIST), [moved], "1000")
+        self.assertIsNone(effective.check_entry(eff, moved))
 
 
 class TestPayloadEditing(unittest.TestCase):

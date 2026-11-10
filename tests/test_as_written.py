@@ -744,6 +744,19 @@ class TestWhatThereIsToSayOfAnOp(unittest.TestCase):
         )
         self.assertEqual(found.target, "")
 
+    def test_so_is_one_picked_out_by_its_place_among_those_holding_a_value(self):
+        """What the Studio writes for an entry others are alike, and reads
+        back as the change it wrote rather than as a pattern.  A value with
+        a slash in it, or a key a level down, is one step too."""
+        for path in (
+            "/Values/Cost/Costs/Item[Ingredient='1010'][2]",
+            "/Values/Cost/Costs/Item[Ingredient='a/b'][2]/Amount",
+            "/Values/Cost/Costs/Item[V/I='3']/Amount",
+        ):
+            with self.subTest(path=path):
+                found = self.said('<ModOp Type="remove" GUID="1000" Path="%s" />' % path)
+                self.assertEqual(found.target, "")
+
     def test_a_payload_that_is_copied_computed_or_flags(self):
         cases = {
             modop.PAYLOAD_COPY: TestNothingIsSettledOrReplayed.COPY,
