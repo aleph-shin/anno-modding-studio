@@ -40,6 +40,7 @@ from ..core import (
     builtby,
     declaring,
     disk,
+    effective,
     filecache,
     games,
     generator,
@@ -98,6 +99,9 @@ COLUMN_GAP = 8
 # The Mod to export box's last choice: every mod you changed, at once. Not an
 # origin -- a mod's folder name cannot start with a NUL.
 ALL_YOURS = "\0yours"
+# On a row of the check: (change key, path) for a change that can be pointed
+# back at the list entry it was made against.
+REPOINT_ROLE = Qt.ItemDataRole.UserRole + 1
 
 
 class _Column(QScrollArea):
@@ -127,6 +131,9 @@ class OutputPanel(QWidget):
     """Mod metadata, live XML preview, validation, and export."""
 
     loadoutEdited = Signal()
+    # A change pointed back at the list entry it was made against, from a
+    # row of the check: an edit, one step to undo.
+    changesEdited = Signal()
     # A mod's Scripts block was kept: which mods run code, and what their
     # scripts share, has moved for every list that says so.
     scriptsEdited = Signal()
@@ -2247,8 +2254,12 @@ class OutputPanel(QWidget):
         for result in results:
             if not result.ok:
                 problems.append(("error", result.change, result.message))
+            elif result.warn:
+                problems.append(("moved", result.change, result.message, result.repoint))
         for change in exported.active():
-            if change.positional:
+            # One that knows the entry it was made against was asked whether
+            # it still finds it, and is said above only where it does not.
+            if change.positional and not change.entry:
                 problems.append(
                     (
                         "warn",
@@ -2755,7 +2766,8 @@ class OutputPanel(QWidget):
         # for its row, one of them raised, on every refresh under a difference.
         self._loader_rows = []
         errors = [p for p in problems if p[0] == "error"]
-        warns = [p for p in problems if p[0] == "warn"]
+        moved = [p for p in problems if p[0] == "moved"]
+        warns = moved + [p for p in problems if p[0] == "warn"]
         why, instead = refused
 
         if why:
@@ -2829,6 +2841,16 @@ class OutputPanel(QWidget):
             ))
             self.check_summary.setObjectName("Error")
             self._say_what_is_off(shown)
+        elif moved:
+            self.check_summary.setText(trn(
+                "All %(total)s changes verified against the base file. %(n)s "
+                "finds another list entry than the one it was made against.",
+                "All %(total)s changes verified against the base file. %(n)s "
+                "find another list entry than the one they were made against.",
+                len(moved), total=number(checked),
+            ))
+            self.check_summary.setObjectName("Warn")
+            self._say_what_is_off(shown)
         elif warns:
             self.check_summary.setText(trn(
                 "All %(total)s changes verified against the base file. %(n)s "
@@ -2869,7 +2891,7 @@ class OutputPanel(QWidget):
             ))
             item.setData(Qt.ItemDataRole.UserRole, ("", "", why, instead))
             self.check_list.addItem(item)
-        for kind, change, message in errors + warns:
+        for kind, change, message, *more in errors + warns:
             item = QListWidgetItem(
                 "%s  ·  %s\n    %s" % (tr_stored(change.asset_label), change.tag, message)
             )
@@ -2881,6 +2903,9 @@ class OutputPanel(QWidget):
             item.setData(
                 Qt.ItemDataRole.UserRole, (change.guid, change.path, message, "")
             )
+            if more and more[0]:
+                # Where the entry it was made against is found again.
+                item.setData(REPOINT_ROLE, (change.key, more[0]))
             self.check_list.addItem(item)
         self.check_list.setVisible(self.check_list.count() > 0)
 
@@ -2907,6 +2932,18 @@ class OutputPanel(QWidget):
         if not instead or not self.details_are_yours(self.current_origin()):
             return
         self.modid_edit.setText(instead)
+
+    def repoint(self, key, path: str) -> None:
+        """Point the change ``key`` at ``path``: the list entry it was made
+        against, which a patch or a mod before it moved."""
+        change = self.loadout.changes.get(tuple(key))
+        if change is None or not path:
+            return
+        change.path = path
+        change.positional = effective.counts(path)
+        self.loadout.reindex()
+        self.changesEdited.emit()
+        self.refresh()
 
     # -- getting from a problem to the change it is about -------------------
     def _open_problem(self, item) -> None:
@@ -2940,6 +2977,13 @@ class OutputPanel(QWidget):
             "",
         )
         menu = QMenu(self)
+        repoint = item.data(REPOINT_ROLE)
+        if repoint:
+            key, path_to = repoint
+            menu.addAction(
+                tr("Point it at the entry it was made against"),
+                lambda: self.repoint(key, path_to),
+            )
         if instead:
             # The Mod ID row: nothing to open, but something to take.
             take = menu.addAction(

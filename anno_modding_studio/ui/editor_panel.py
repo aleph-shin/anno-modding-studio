@@ -1897,7 +1897,7 @@ class EditorPanel(QWidget):
         if grown is False:
             return
         if grown is None:
-            generated = pathmod.path_for(self.asset_root, values)
+            generated = pathmod.path_for(self.asset_root, values, gone=self._gone_for(values))
             self.loadout.set_change(
                 self.loadout.place(Change(
                     guid=self.guid,
@@ -1910,6 +1910,7 @@ class EditorPanel(QWidget):
                     positional=generated.positional,
                     origin=self.editing(),
                     exception_of=kept.uid if kept is not None else "",
+                    entry=self._entry_of(values, generated.path),
                 ))
             )
 
@@ -1962,6 +1963,7 @@ class EditorPanel(QWidget):
                     positional=positional,
                     origin=self.editing(),
                     exception_of=kept.uid if kept is not None else "",
+                    entry=self._entry_of(parent_item.data(0, ELEM_ROLE), path),
                 ))
             )
 
@@ -2007,23 +2009,38 @@ class EditorPanel(QWidget):
             if path is None:
                 return
             # Asked of the entry while it is still in the asset.
+            doomed = item.data(0, ELEM_ROLE)
             unnoticed = recording.Inert(
                 getattr(self.index, "index", self.index)
-            )(item.data(0, ELEM_ROLE))
-            self.loadout.set_change(
-                self.loadout.place(Change(
-                    guid=self.guid,
-                    asset_label=self.asset_label,
-                    path=path,
-                    tag=item.text(0),
-                    op=OP_REMOVE,
-                    old_value=item.data(0, ORIG_ROLE) or "",
-                    summary=tr_noop("remove %s", context=STORED) % item.text(0),
-                    positional=positional,
-                    origin=self.editing(),
-                    exception_of=kept.uid if kept is not None else "",
-                ))
-            )
+            )(doomed)
+            removal = self.loadout.place(Change(
+                guid=self.guid,
+                asset_label=self.asset_label,
+                path=path,
+                tag=item.text(0),
+                op=OP_REMOVE,
+                old_value=item.data(0, ORIG_ROLE) or "",
+                summary=tr_noop("remove %s", context=STORED) % item.text(0),
+                positional=positional,
+                origin=self.editing(),
+                exception_of=kept.uid if kept is not None else "",
+                entry=self._entry_of(doomed, path),
+            ))
+            # It runs after the removals already there and before everything
+            # else of its op: what comes after it in the game's list moves
+            # up one for those, and an edit there named by position follows.
+            def moved(asset):
+                found = effective.resolve_as_the_game_has_it(
+                    asset.element, removal.path, asset.gone_before()
+                )
+                if len(found) != 1:
+                    return
+                for change in self._own_on_this_asset():
+                    if change.order >= removal.order:
+                        yield change, self._gone_when(asset, change, doomed=found[0])
+
+            self._keep_pointing(moved)
+            self.loadout.set_change(removal)
 
         self.revert_asset_button.setEnabled(True)
         self.changesUpdated.emit()
@@ -2293,10 +2310,100 @@ class EditorPanel(QWidget):
         elem = item.data(0, ELEM_ROLE)
         if elem is None or self.asset_root is None:
             return None, False
-        generated = pathmod.path_for(self.asset_root, elem)
+        generated = pathmod.path_for(self.asset_root, elem, gone=self._gone_for(elem))
         item.setData(0, PATH_ROLE, generated.path)
         item.setData(0, POS_ROLE, generated.positional)
         return generated.path, generated.positional
+
+    def _gone_for(self, elem):
+        """What the game no longer has when a ModOp to ``elem`` runs: the
+        entries struck out before it, which count in no position the game
+        counts (:meth:`.effective.EffectiveAsset.gone_for`)."""
+        if self.effective is None or self.effective.element is not self.asset_root:
+            return None
+        return self.effective.gone_for(elem)
+
+    def _entry_of(self, elem, path: str) -> str:
+        """What a change made now at ``path`` keeps of the list entry it
+        finds by a count (:attr:`.changes.Change.entry`), ``elem`` being the
+        node it is about; "" where it counts nothing.
+
+        Of the tree shown, not of one built again: a value typed since it
+        was drawn is in its row and not in its node, and what this mod set
+        before is taken back out of the entry either way."""
+        if self.effective is None or elem is None or not path:
+            return ""
+        counted = effective.counted_entry(self.effective, path, elem)
+        return self.effective.handed_form(counted[1], self.editing()) if counted else ""
+
+    def _keep_pointing(self, moved) -> None:
+        """Re-point this mod's other changes to the asset whose paths a
+        removal put in or taken back makes name another entry.
+
+        ``moved(asset)`` gives ``(change, gone)`` for each change that runs
+        after that removal, ``gone`` being what the game no longer has when
+        it runs, once the removal is in or out.  ``asset`` is the asset as
+        the changes make it now, built for this: the tree shown is not drawn
+        again for a value typed in it, and an edit typed since is one of the
+        changes to keep pointing where it did.
+        """
+        if self.guid is None or not hasattr(self.index, "effective_asset"):
+            return
+        asset = self.index.effective_asset(self.guid, upto=self.editing())
+        if not asset:
+            return
+        repointed = False
+        for change, gone in moved(asset):
+            generated = effective.repointed(asset, change, gone)
+            if generated is None or not generated.path:
+                continue
+            change.path = generated.path
+            change.positional = generated.positional
+            repointed = True
+        if repointed:
+            self.loadout.reindex()
+
+    def _gone_when(self, asset, change, doomed=None, kept=None):
+        """What the game no longer has, as far as the place of what
+        ``change`` finds goes, once a removal is put in (``doomed``, the node
+        it takes out) or taken back (``kept``, its key).
+
+        Every entry struck out by a change that runs no later than its op,
+        whatever order they were made in: one op writes its removals in the
+        order of their paths, and an entry counted among the ones left
+        before it has the lower count of two alike, so it is written, and
+        runs, first.  What comes after an entry in its list is no part of
+        its count either way.  Not what ``change`` finds itself, which its
+        own removal strikes out.
+        """
+        found = asset.targets.get(change.key)
+        # It and all in it: its own removal strikes out what is in it too,
+        # and taken out of the tree for the asking, the fields its path
+        # finds it by went with them.
+        mine = {id(node) for node in found.iter()} if found is not None else set()
+
+        def gone(node) -> bool:
+            if id(node) in mine:
+                return False
+            if doomed is not None and node is doomed:
+                return True
+            known = asset.origin(node)
+            if not known.is_removed or not known.change_key or tuple(known.change_key) == kept:
+                return False
+            remover = self.loadout.changes.get(tuple(known.change_key))
+            # Another mod's ran before this one's: the tree stops at this mod.
+            return remover is None or remover.origin != change.origin or remover.order <= change.order
+
+        return gone
+
+    def _own_on_this_asset(self):
+        """This mod's changes to the asset open, each the Studio writes the
+        ModOp for: what a removal here can make it re-point."""
+        return [
+            change for change in self.loadout.changes.values()
+            if change.guid == self.guid and change.origin == self.editing()
+            and not change.op_uid and change.path
+        ]
 
     def _on_item_changed(self, item, column) -> None:
         if self._loading or column != 1 or self.guid is None:
@@ -2346,6 +2453,7 @@ class EditorPanel(QWidget):
                 positional=positional,
                 origin=self.editing(),
                 exception_of=kept.uid if kept is not None else "",
+                entry=self._entry_of(item.data(0, ELEM_ROLE), path),
             ))
         )
         self._mark_item(item)
@@ -3076,7 +3184,21 @@ class EditorPanel(QWidget):
 
     def _undo_remove(self, item, path: str) -> None:
         key = self._item_key(item)
-        self.loadout.remove(self.guid, path, OP_REMOVE, self.editing())
+        # By the removal's key, not its path: two removals in one list can
+        # have the same path, each the fifth entry left when it runs.
+        removal = self._change_by_key(self._origin(item).change_key)
+        if removal is None:
+            self.loadout.remove(self.guid, path, OP_REMOVE, self.editing())
+        else:
+            # What runs after it finds one entry more in the list now, and
+            # what it named by position is one further down.
+            def moved(asset):
+                for change in self._own_on_this_asset():
+                    if change is not removal and change.order >= removal.order:
+                        yield change, self._gone_when(asset, change, kept=removal.key)
+
+            self._keep_pointing(moved)
+            self.loadout.remove_key(removal.key)
         self.changesUpdated.emit()
         self._reload_keeping_view(focus_key=key)
 

@@ -1315,6 +1315,7 @@ class TestPathKeys(CoreTestBase):
         self.assertEqual(len(paths.resolve(root, generated.path)), 1)
 
     def test_still_positional_when_neither_depth_identifies_the_entry(self):
+        """Counted among the entries alike, not in the whole list."""
         xml = (
             b"<Asset><Values><L>"
             b"<Item><W><X>same</X></W></Item>"
@@ -1323,8 +1324,29 @@ class TestPathKeys(CoreTestBase):
         )
         root = etree.fromstring(xml)
         generated = paths.path_for(root, root.xpath("Values/L/Item")[1])
-        self.assertEqual(generated.path, "/Values/L/Item[2]")
+        self.assertEqual(generated.path, "/Values/L/Item[W/X='same'][2]")
         self.assertTrue(generated.positional)
+
+    def test_counted_among_the_entries_alike_in_the_field_fewest_share(self):
+        """A fertility set lists a pool twice: the second of that pool, so a
+        slot added anywhere else in the list moves nothing."""
+        xml = (
+            b"<Asset><Values><L>"
+            b"<Item><Pool>7</Pool><Tier>1</Tier></Item>"
+            b"<Item><Pool>5</Pool><Tier>1</Tier></Item>"
+            b"<Item><Pool>9</Pool><Tier>1</Tier></Item>"
+            b"<Item><Pool>5</Pool><Tier>1</Tier></Item>"
+            b"<Item><Pool>7</Pool><Tier>2</Tier></Item>"
+            b"</L></Values></Asset>"
+        )
+        root = etree.fromstring(xml)
+        entries = root.xpath("Values/L/Item")
+        generated = paths.path_for(root, entries[3])
+        self.assertEqual(generated.path, "/Values/L/Item[Pool='5'][2]")
+        self.assertTrue(generated.positional)
+        self.assertEqual(paths.resolve(root, generated.path), [entries[3]])
+        # Tier 1 is four entries' and pool 5 two's.
+        self.assertEqual(paths.path_for(root, entries[1]).path, "/Values/L/Item[Pool='5'][1]")
 
     def test_still_positional_when_entries_are_indistinguishable(self):
         xml = b"<Asset><Values><L><I>a</I><I>a</I></L></Values></Asset>"

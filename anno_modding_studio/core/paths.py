@@ -8,10 +8,12 @@ they are the whole of this module:
 *Addressing*   repeated list entries are the norm in Anno's files, so a path
                through one has to say which entry it means.  A *content*
                predicate (``Item[Product='1010365']``) survives the list being
-               reordered by a patch or another mod; a position (``Tag[2]``)
-               does not, and is used only where an entry holds nothing that
-               identifies it.  Those are flagged all the way out to the
-               generated file, because a reordering silently retargets them.
+               reordered by a patch or another mod; a count does not, and is
+               used only where entries alike hold nothing that tells them
+               apart: ``Item[Fertility='31361'][2]``, the second of those, or
+               ``Tag[2]`` where an entry holds no value at all.  Those are
+               flagged all the way out to the generated file, because adding
+               or removing one alike silently retargets them.
 
 *Checking*     a path written earlier is only as good as the file it was
                written against.  Before anything is exported, every change is
@@ -22,6 +24,7 @@ they are the whole of this module:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
@@ -52,10 +55,15 @@ KEY_CHILDREN = (
 # What a list's entries are called: the step ``path_for(..., keyed=True)`` keys.
 LIST_ENTRY = "Item"
 
+# A step that picks an entry by a count: ``Item[2]``, or ``Item[Fertility='31361'][2]``
+# counting among the entries alike (:func:`step_for`).  Groups: the tag, what
+# narrows the count where something does, the count.
+COUNTED_STEP = re.compile(r"\A([^\[\]/]+)(\[.*\])?\[(\d+)\]\Z")
+
 POSITIONAL_WARNING = (
-    "This entry holds nothing that identifies it, so the path picks it by "
-    "position — positional paths break if a game patch or another mod reorders "
-    "the list."
+    "Nothing in this entry tells it apart from the others, so the path picks "
+    "it by a count -- positional paths break if a game patch or another mod "
+    "adds or removes an entry like it."
 )
 
 
@@ -155,7 +163,7 @@ def _key_predicate(elem, siblings: List) -> str:
     return ""
 
 
-def path_for(root, node, keyed: bool = False) -> Generated:
+def path_for(root, node, keyed: bool = False, gone=None) -> Generated:
     """The ModOp path addressing ``node`` inside the asset ``root``.
 
     Written against the asset element, which is what a ModOp's ``Path`` is
@@ -168,6 +176,12 @@ def path_for(root, node, keyed: bool = False) -> Generated:
     three times over, and ``Products/Item`` matched two entries on the second
     and four on the third.  Only a content key, never a position.
 
+    ``gone`` says which nodes of ``root`` the game no longer has when the op
+    runs: struck out in a tree that still shows them, by a removal before it.
+    Those are no siblings to count or to tell apart from.  With the fifth of
+    six entries removed, the sixth is ``Item[5]``; written ``Item[6]`` it was
+    past the end of the list by then and removed nothing.
+
     The empty path is ``root`` itself (see :func:`resolve`), so a ``node`` that
     is not inside ``root`` at all raises :class:`ValueError` rather than being
     given one: written down, it would be a ModOp aimed at the whole asset.
@@ -178,26 +192,67 @@ def path_for(root, node, keyed: bool = False) -> Generated:
     positional = False
     current = node
     while current is not root:
-        parent = current.getparent()
-        if parent is None:
+        if current.getparent() is None:
             raise ValueError("%r is not inside the asset it was asked about" % node.tag)
-        siblings = [child for child in _children(parent) if child.tag == current.tag]
-        step = current.tag
-        if len(siblings) > 1 or (keyed and current.tag == LIST_ENTRY):
-            predicate = _key_predicate(current, siblings)
-            if predicate:
-                step += predicate
-            elif len(siblings) > 1:
-                step += "[%d]" % (siblings.index(current) + 1)
-                positional = True
+        step, counted = step_for(current, keyed=keyed, gone=gone)
+        positional = positional or counted
         steps.append(step)
-        current = parent
+        current = current.getparent()
     steps.reverse()
     return Generated(
         "/" + "/".join(steps) if steps else "",
         positional,
         POSITIONAL_WARNING if positional else "",
     )
+
+
+def step_for(node, keyed: bool = False, gone=None) -> Tuple[str, bool]:
+    """The one step of a path that picks ``node`` out of its parent, and
+    whether it picks it by a count: see :func:`path_for`.
+
+    Where no field tells the entry apart, it is counted among the entries
+    that look like it in the field the fewest share -- the second entry with
+    pool 31361, ``Item[Fertility='31361'][2]`` -- rather than among every
+    entry in the list.  A fertility set lists one pool twice, and a slot the
+    game adds anywhere else in it moves no entry of that pool.  Only an entry
+    with no field to go by at all is counted in the whole list.
+    """
+    siblings = [child for child in _children(node.getparent()) if child.tag == node.tag]
+    if len(siblings) <= 1 and not (keyed and node.tag == LIST_ENTRY):
+        return node.tag, False
+    predicate = _key_predicate(node, siblings)
+    if predicate:
+        return node.tag + predicate, False
+    if len(siblings) <= 1:
+        return node.tag, False
+    # A key is told apart from the struck entries too: with the removal
+    # before it switched off, a key two entries share matches both.  The
+    # count is of what is left: the game counts only that.
+    tag = _fewest_alike(node, siblings)
+    alike = siblings if tag is None else [
+        child for child in siblings if value_of(child, tag) == value_of(node, tag)
+    ]
+    left = [child for child in alike if child is node or gone is None or not gone(child)]
+    # Even where it is the one left: a bare step would find every entry the
+    # struck ones are again, switched off.
+    narrowed = "" if tag is None else "[%s=%s]" % (tag, quote(value_of(node, tag)))
+    return "%s%s[%d]" % (node.tag, narrowed, left.index(node) + 1), True
+
+
+def _fewest_alike(elem, siblings: List) -> Optional[str]:
+    """The field of ``elem`` the fewest of its ``siblings`` share the value
+    of, or ``None`` where it holds no field with a value.  Of two as few,
+    the one :func:`key_candidates` tries first."""
+    best: Optional[str] = None
+    fewest = 0
+    for tag in key_candidates(elem):
+        value = value_of(elem, tag)
+        if not value:
+            continue
+        alike = sum(1 for other in siblings if value_of(other, tag) == value)
+        if best is None or alike < fewest:
+            best, fewest = tag, alike
+    return best
 
 
 def resolve(root, path: str) -> List:
