@@ -681,6 +681,97 @@ class TestTheWheelPassesByChoices(unittest.TestCase):
         self.assertIn("widgets.wheel_passes_by_choices(app)", app_py.read_text(encoding="utf-8"))
 
 
+class TestADragAfterADoubleClickSelectsWords(unittest.TestCase):
+    """Double-click a word in a field and drag: the word stays selected, and
+    the words dragged over join it, backwards as well as forwards.
+
+    Qt kept the word's start as the anchor and moved by characters, so a drag
+    back from the word dropped it and selected from its start.
+    """
+
+    TEXT = "alpha beta gamma"
+
+    def setUp(self):
+        from PySide6.QtWidgets import QLineEdit
+
+        widgets.drag_selects_by_words(_app)
+        self.edit = QLineEdit(self.TEXT)
+        self.edit.resize(400, 30)
+        self.edit.show()
+        QApplication.processEvents()
+
+    def tearDown(self):
+        self.edit.hide()
+        _app.removeEventFilter(_app._word_drag_filter)
+        _app._word_drag_filter = None
+
+    def x_of(self, pos):
+        from PySide6.QtCore import QPoint
+
+        middle = self.edit.height() // 2
+        return next(
+            x for x in range(self.edit.width())
+            if self.edit.cursorPositionAt(QPoint(x, middle)) == pos
+        )
+
+    def send(self, kind, pos, held):
+        from PySide6.QtCore import QPointF
+        from PySide6.QtGui import QMouseEvent
+
+        left = widgets.Qt.MouseButton.LeftButton
+        point = QPointF(self.x_of(pos), self.edit.height() // 2)
+        button = widgets.Qt.MouseButton.NoButton if kind == QMouseEvent.Type.MouseMove else left
+        event = QMouseEvent(kind, point, QPointF(self.edit.mapToGlobal(point)), button,
+                            left if held else widgets.Qt.MouseButton.NoButton,
+                            widgets.Qt.KeyboardModifier.NoModifier)
+        QApplication.sendEvent(self.edit, event)
+
+    def double_click_and_drag(self, at, to):
+        from PySide6.QtCore import QEvent
+
+        self.send(QEvent.Type.MouseButtonPress, at, True)
+        self.send(QEvent.Type.MouseButtonRelease, at, False)
+        self.send(QEvent.Type.MouseButtonDblClick, at, True)
+        self.send(QEvent.Type.MouseMove, to, True)
+        self.send(QEvent.Type.MouseButtonRelease, to, False)
+
+    def test_dragging_back_keeps_the_word(self):
+        self.double_click_and_drag(at=7, to=1)
+        self.assertEqual(self.edit.selectedText(), "alpha beta")
+        self.assertEqual(self.edit.cursorPosition(), 0)
+
+    def test_dragging_on_adds_the_next_word(self):
+        self.double_click_and_drag(at=7, to=13)
+        self.assertEqual(self.edit.selectedText(), "beta gamma")
+        self.assertEqual(self.edit.cursorPosition(), len(self.TEXT))
+
+    def test_dragging_inside_the_word_keeps_just_it(self):
+        self.double_click_and_drag(at=7, to=8)
+        self.assertEqual(self.edit.selectedText(), "beta")
+
+    def test_a_plain_drag_is_left_to_qt(self):
+        from PySide6.QtCore import QEvent
+
+        self.send(QEvent.Type.MouseButtonPress, 8, True)
+        self.send(QEvent.Type.MouseMove, 3, True)
+        self.send(QEvent.Type.MouseButtonRelease, 3, False)
+        self.assertEqual(self.edit.selectedText(), "ha be")
+
+    def test_the_word_is_the_one_qt_picks(self):
+        self.assertEqual(widgets.word_at(self.TEXT, 7), (6, 10))
+        self.assertEqual(widgets.word_at(self.TEXT, 0), (0, 5))
+        self.assertEqual(widgets.word_at(self.TEXT, len(self.TEXT)), (11, 16))
+        # Positions are UTF-16 units: a character past the BMP counts two.
+        self.assertEqual(widgets.word_at("\U0001F600 word", 5), (3, 7))
+
+    def test_the_filter_is_installed_once_and_by_the_app(self):
+        first = _app._word_drag_filter
+        widgets.drag_selects_by_words(_app)
+        self.assertIs(_app._word_drag_filter, first)
+        app_py = Path(widgets.__file__).resolve().parents[1] / "app.py"
+        self.assertIn("widgets.drag_selects_by_words(app)", app_py.read_text(encoding="utf-8"))
+
+
 class TestADialogKeepsItsSize(unittest.TestCase):
     """Opened at the size it was left at, within the screen it opens on."""
 

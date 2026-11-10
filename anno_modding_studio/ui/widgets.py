@@ -1089,6 +1089,92 @@ def caret_follows_focus(app) -> None:
     app.focusObjectChanged.connect(focus_moved)
 
 
+def _unit(text: str, index: int) -> str:
+    """The UTF-16 unit at ``index`` of ``text``, as a string: Qt counts a
+    line edit's positions in those, and Python counts characters."""
+    return text.encode("utf-16-le")[2 * index:2 * index + 2].decode("utf-16-le", "ignore")
+
+
+def word_at(text: str, pos: int) -> tuple[int, int]:
+    """Where the word a double-click at ``pos`` selects starts and ends.
+
+    Qt's own rule (``QWidgetLineControl::selectWordAtPos``), which it keeps
+    private: from the word boundary before the position to the one after it,
+    without the spaces that follow the word.
+    """
+    from PySide6.QtGui import QTextLayout
+
+    layout = QTextLayout(text)
+    length = len(text.encode("utf-16-le")) // 2
+    start = layout.previousCursorPosition(min(pos + 1, length), QTextLayout.CursorMode.SkipWords)
+    end = layout.nextCursorPosition(start, QTextLayout.CursorMode.SkipWords)
+    while end > pos and _unit(text, end - 1).isspace():
+        end -= 1
+    return start, end
+
+
+class _DragSelectsWords(QObject):
+    """After a double-click in a line edit, a drag goes on by whole words."""
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        # The field double-clicked in, and the word Qt selected there: None
+        # until the first move reads it.
+        self._edit = None
+        self._word = None
+
+    def eventFilter(self, watched, event):
+        kind = event.type()
+        if kind == QEvent.Type.MouseButtonDblClick:
+            self._edit = None
+            if (
+                isinstance(watched, QLineEdit)
+                and event.button() == Qt.MouseButton.LeftButton
+                and watched.echoMode() == QLineEdit.EchoMode.Normal
+            ):
+                self._edit, self._word = watched, None
+        elif kind in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease):
+            self._edit = None
+        elif (
+            kind == QEvent.Type.MouseMove
+            and self._edit is not None
+            and watched is self._edit
+            and event.buttons() & Qt.MouseButton.LeftButton
+        ):
+            if self._word is None:
+                if not watched.hasSelectedText():
+                    self._edit = None
+                    return False
+                start = watched.selectionStart()
+                self._word = (start, start + watched.selectionLength())
+            pos = watched.cursorPositionAt(event.position().toPoint())
+            first, last = self._word
+            if pos < first:
+                anchor, cursor = last, word_at(watched.text(), pos)[0]
+            elif pos > last:
+                anchor, cursor = first, word_at(watched.text(), pos)[1]
+            else:
+                anchor, cursor = first, last
+            # A negative length selects backwards: the cursor ends at ``cursor``.
+            watched.setSelection(anchor, cursor - anchor)
+            return True
+        return False
+
+
+def drag_selects_by_words(app) -> None:
+    """In every one-line field, a drag after a double-click selects by words.
+
+    Qt keeps the start of the double-clicked word as the anchor and moves the
+    cursor a character at a time, so dragging back from a word dropped the
+    word and selected from its start. Text editors keep the word, and add the
+    words dragged over in either direction. Multi-line fields do this already.
+    """
+    if getattr(app, "_word_drag_filter", None) is not None:
+        return
+    app._word_drag_filter = _DragSelectsWords(app)
+    app.installEventFilter(app._word_drag_filter)
+
+
 # What a cell sorts as, where its text is not it: a number written with its
 # thousands apart, a size in MB, a date.  See sort_as.
 SORT_ROLE = Qt.ItemDataRole.UserRole + 97
