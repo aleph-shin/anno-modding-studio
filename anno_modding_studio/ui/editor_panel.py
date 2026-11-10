@@ -1897,7 +1897,9 @@ class EditorPanel(QWidget):
         if grown is False:
             return
         if grown is None:
-            generated = pathmod.path_for(self.asset_root, values, gone=self._gone_for(values))
+            generated = pathmod.path_for(
+                self.asset_root, values, gone=self._gone_for(values), text=self._as_found()
+            )
             self.loadout.set_change(
                 self.loadout.place(Change(
                     guid=self.guid,
@@ -2310,10 +2312,21 @@ class EditorPanel(QWidget):
         elem = item.data(0, ELEM_ROLE)
         if elem is None or self.asset_root is None:
             return None, False
-        generated = pathmod.path_for(self.asset_root, elem, gone=self._gone_for(elem))
+        generated = pathmod.path_for(
+            self.asset_root, elem, gone=self._gone_for(elem), text=self._as_found()
+        )
         item.setData(0, PATH_ROLE, generated.path)
         item.setData(0, POS_ROLE, generated.positional)
         return generated.path, generated.positional
+
+    def _as_found(self):
+        """A field's value as the ModOp written for an edit here finds it:
+        before this mod's own replacements, which its op runs after
+        everything it finds an entry through (:func:`.changes.after_their_entry`)."""
+        if self.effective is None or self.effective.element is not self.asset_root:
+            return None
+        asset, origin = self.effective, self.editing()
+        return lambda node: asset.handed_text(node, origin)
 
     def _gone_for(self, elem):
         """What the game no longer has when a ModOp to ``elem`` runs: the

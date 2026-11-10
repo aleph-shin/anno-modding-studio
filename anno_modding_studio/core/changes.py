@@ -31,7 +31,18 @@ import uuid
 from dataclasses import asdict, dataclass, field, fields, replace
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+)
 from xml.etree import ElementTree
 from xml.sax.saxutils import unescape
 
@@ -55,7 +66,9 @@ STRUCTURAL_OPS = (OP_ADD, OP_ADD_NEXT, OP_ADD_PREV, OP_REMOVE, OP_MERGE)
 
 # ``…/Item[GoodsOrPool='174519']/GoodsOrPool``: a field named by the predicate
 # that finds its own list entry. See :attr:`Change.replaces_its_own_key`.
-_KEYED_FIELD = re.compile(r"\[\s*([\w.-]+)\s*=\s*(['\"])(.*?)\2\s*\]/([\w.-]+)$")
+# Groups: the key, its quote, its value, the count among the entries holding
+# that value where there is one (``Item[F='5'][2]/F``), the field replaced.
+_KEYED_FIELD = re.compile(r"\[\s*([\w.-]+)\s*=\s*(['\"])(.*?)\2\s*\](?:\[\s*(\d+)\s*\])?/([\w.-]+)$")
 # A payload that is one field holding a value and nothing else.
 _ONE_VALUE = re.compile(r"\s*<([\w.-]+)\s*(?:/>|>([^<]*)</\1\s*>)\s*$")
 
@@ -517,9 +530,9 @@ class Change:
             return None
         path = self.path.rstrip("/")
         keyed = _KEYED_FIELD.search(path)
-        if keyed is None or keyed.group(1) != keyed.group(4):
+        if keyed is None or keyed.group(1) != keyed.group(5):
             return None
-        return path[: keyed.start(4) - 1]
+        return path[: keyed.start(5) - 1]
 
     @property
     def ensured(self) -> str:
@@ -4610,6 +4623,13 @@ def after_their_entry(ordered: List[Change]) -> List[Change]:
     Innermost first, so an entry inside another is settled before the outer key
     moves.
 
+    An entry found by a count among the ones holding its key,
+    ``Item[Fertility='2001'][1]``, leaves those when its key is replaced, and
+    the ones after it count one fewer: ``[2]`` finds nothing then.  So its key
+    goes behind the op's changes to every entry counted after it as well, and
+    of two such the higher count's goes first.  Paths are counted against the
+    entries as the op found them.
+
     And behind the op's changes to the entry the new key names: once the key
     is replaced, a path by that key finds this entry too.  A wide replace of
     every ``Item`` with ``<Item><Product>2002</Product><X>1</X></Item>``, read
@@ -4626,6 +4646,7 @@ def after_their_entry(ordered: List[Change]) -> List[Change]:
         out.remove(change)
         entries = [entry]
         keyed = _KEYED_FIELD.search(change.path.rstrip("/"))
+        later = _counted_after(entry, keyed)
         new = str(change.new_value or "")
         if keyed is not None and keyed.group(2) not in new:
             became = "%s%s%s" % (entry[: keyed.start(3)], new, entry[keyed.end(3):])
@@ -4636,10 +4657,29 @@ def after_their_entry(ordered: List[Change]) -> List[Change]:
             if (other.origin, other.order) != (change.origin, change.order):
                 continue
             path = other.path.rstrip("/")
-            if any(path == one or path.startswith(one + "/") for one in entries):
+            if any(path == one or path.startswith(one + "/") for one in entries) or (
+                later is not None and later(path)
+            ):
                 last = position
         out.insert(last + 1 if last >= was else was, change)
     return out
+
+
+def _counted_after(entry: str, keyed) -> Optional[Callable[[str], bool]]:
+    """For a key replacement whose entry is found by a count, ``entry`` being
+    ``…/Item[F='5'][2]``: whether a path goes through an entry counted after
+    it among the same ones, ``…/Item[F='5'][3]``.  ``None`` for an entry
+    found by its key alone."""
+    if keyed is None or keyed.group(4) is None:
+        return None
+    count = int(keyed.group(4))
+    alike = re.compile(re.escape(entry[: entry.rindex("[")]) + r"\[\s*(\d+)\s*\](?:/|$)")
+
+    def after(path: str) -> bool:
+        found = alike.match(path)
+        return found is not None and int(found.group(1)) > count
+
+    return after
 
 
 # The path to an asset's GUID, and every node on the way to it.

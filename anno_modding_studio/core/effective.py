@@ -468,6 +468,11 @@ class EffectiveAsset:
 
         return gone
 
+    def handed_text(self, node, origin: str) -> str:
+        """``node``'s text as it was handed to ``origin``'s ops: before the
+        first of them that replaced it."""
+        return self._handed.get((id(node), origin), node.text or "")
+
     def handed_form(self, node, origin: str) -> str:
         """``node`` and everything in it as it was handed to ``origin``'s
         ops, as one line: what an entry a path finds by a count is known
@@ -486,7 +491,7 @@ class EffectiveAsset:
                 return ""
             if known.is_removed and by != origin:
                 return ""
-            text = self._handed.get((id(one), origin), one.text or "")
+            text = self.handed_text(one, origin)
             if by == origin and known.provenance == PROV_SET:
                 text = ""
             said = "".join("%s=%s;" % pair for pair in sorted(one.attrib.items()))
