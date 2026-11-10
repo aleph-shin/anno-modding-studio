@@ -67,6 +67,10 @@ _OP_WARNING = re.compile(
     r"|Include file missing or empty: (?P<include>.+?))"
     r"(?: \((?P<where>[^()]*:\d+)\))?\s*$"
 )
+# 117 refusing a mod for its ModID, before it enables any: ``<id>: Invalid
+# ModID format. ...``.  The id is not always the one written: it logged
+# "117-immersive-flagship-mod-aj-my-patch" with the "117-" dropped.
+_REFUSED_ID = re.compile(r"^(?P<id>.*?): Invalid ModID format\b")
 NO_MATCH = "no match"
 NO_INCLUDE = "include missing"
 
@@ -148,6 +152,20 @@ class LoaderLog:
             if any(name in lowered for name in wanted):
                 return text
         return ""
+
+    def refused_id(self, mod_id: str) -> bool:
+        """Whether 117 refused ``mod_id`` as a ModID.  Matched as written, or
+        from its first letter on, which is how the game logged one that
+        started with a digit."""
+        mod_id = (mod_id or "").strip().lower()
+        if not mod_id:
+            return False
+        wanted = {mod_id, re.sub(r"^[^a-z]+", "", mod_id)} - {""}
+        for _level, text in self.problems:
+            refused = _REFUSED_ID.match(text)
+            if refused and refused.group("id").strip().lower() in wanted:
+                return True
+        return False
 
 
 def layer_keys(layer) -> set:
@@ -605,9 +623,13 @@ def check(log: LoaderLog, found, loadout) -> Check:
     replaced = getattr(getattr(found, "needs", None), "dropped", None) or set()
     for key, mod in wanted.items():
         if key not in seen and key not in replaced:
-            result.missing.append(
-                (mod.name, log.reason_for(mod.installed.folder_name, mod.installed.mod_id, mod.name))
-            )
+            if log.refused_id(mod.installed.mod_id):
+                why = tr("the game refused its Mod ID, %(id)s. %(rule)s",
+                         id=mod.installed.mod_id.strip(),
+                         rule=games.get(ANNO_117).mod_id_problem(""))
+            else:
+                why = log.reason_for(mod.installed.folder_name, mod.installed.mod_id, mod.name)
+            result.missing.append((mod.name, why))
     if found.game == ANNO_117:
         result.options = _options_differ(log, loadout)
     # Every one of its mods has a row in the changes panel, whose tooltip

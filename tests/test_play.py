@@ -483,6 +483,33 @@ class TestCheckingTheLogAgainstTheLoadout(_Folder):
                       "([Gameplay] Wanted is missing a dependency: shared-thing)", said)
         self.assertIn("2 mods it does not have on loaded: [Gameplay] Stray, [Building] Windmill", said)
 
+    def test_117_a_mod_refused_for_its_id_says_so(self):
+        # The game logs the ID from its first letter on: "117-" dropped.
+        from anno_modding_studio.core import loaderlog
+        from anno_modding_studio.core.changes import Loadout
+
+        refused = LOG_117.replace(
+            "[info] Enabled mod: mods/Mine",
+            "[error] flagship-aj-my-patch: Invalid ModID format. Please use only lowercase "
+            'letters, numbers and dashes, e.g. "fancy-mod-creatorname"\n'
+            "[2026-09-23 18:54:37.676] [info] Enabled mod: mods/Mine",
+        )
+        log = loaderlog.read(ANNO_117, self._log(refused))
+        found = self.found(
+            ANNO_117,
+            self.mod("Mine", "mine-serp", "Mine", True),
+            self.mod("Flagship (my patch)", "117-flagship-aj-my-patch", "Flagship (my patch)", True),
+        )
+        checked = loaderlog.check(log, found, Loadout(game=ANNO_117))
+        self.assertEqual(len(checked.missing), 1)
+        name, why = checked.missing[0]
+        self.assertEqual(name, "Flagship (my patch)")
+        self.assertIn("the game refused its Mod ID, 117-flagship-aj-my-patch.", why)
+        self.assertIn("starting with a letter", why)
+        # Another mod's refusal is not this one's.
+        self.assertFalse(log.refused_id("other-mod"))
+        self.assertFalse(log.refused_id(""))
+
     def test_117_options_the_game_ran_differently_are_named(self):
         from anno_modding_studio.core import loaderlog, settings
         from anno_modding_studio.core.changes import Loadout, ModLayer
