@@ -167,6 +167,14 @@ class TestWhatAModIDMayBe(unittest.TestCase):
         self.assertEqual(game.mod_id_problem("faster-lumber-tester"), "")
         self.assertEqual(game.mod_id_problem("mod2"), "")
 
+    def test_117_refuses_an_id_that_starts_with_a_digit(self):
+        # The game refused "117-immersive-flagship-mod-aj-my-patch" (9 Nov
+        # 2026); a digit further on loads ("taludas-3rdpartykontorstorage").
+        game = games.get(games.ANNO_117)
+        for bad in ("117-flagship-my-patch", "3d-trees", "-flagship"):
+            self.assertIn("starting with a letter", game.mod_id_problem(bad), bad)
+        self.assertEqual(game.mod_id_problem("taludas-3rdpartykontorstorage"), "")
+
     def test_1800_minds_none_of_it(self):
         game = games.get(games.ANNO_1800)
         for anything in ("Faster_Lumber", "faster lumber", "FasterLumber", ""):
@@ -174,10 +182,14 @@ class TestWhatAModIDMayBe(unittest.TestCase):
 
     def test_the_offered_id_is_one_117_would_take(self):
         game = games.get(games.ANNO_117)
-        for typed in ("Faster_Lumber", "Faster Lumber!", "FASTER--lumber"):
+        for typed in ("Faster_Lumber", "Faster Lumber!", "FASTER--lumber", "117 Flagship", "2nd"):
             offered = game.usable_mod_id(typed)
             self.assertEqual(game.mod_id_problem(offered), "", offered)
         self.assertEqual(game.usable_mod_id("Faster_Lumber"), "faster-lumber")
+        # From its first letter on: a name that starts with the game's number.
+        self.assertEqual(game.usable_mod_id("117 - Immersive Flagship Mod (AJ) (my patch)"),
+                         "immersive-flagship-mod-aj-my-patch")
+        self.assertEqual(game.usable_mod_id("117"), "anno-mod")
         # And 1800's stays what a blank field was always filled in with.
         self.assertEqual(games.get(games.ANNO_1800).usable_mod_id("Faster Lumber"), "Faster-Lumber")
 

@@ -148,26 +148,37 @@ class Game:
         brackets are in published mods that load ("[Map] Lost World", "More
         Water": 7 of the 549 IDs in the bench's mods), so nothing about an
         1800 ID is a problem.
+
+        Its message does not say the ID must start with a letter, but the
+        game refused "117-immersive-flagship-mod-aj-my-patch" with it, and
+        logged the ID with the "117-" dropped (9 Nov 2026).  The check is in
+        the game, not in the loader's public source, so that one refusal is
+        the evidence; a digit later on ("taludas-3rdpartykontorstorage")
+        loads.
         """
         if self.key != ANNO_117 or _MOD_ID_117.match(mod_id or ""):
             return ""
         return tr(
             "Anno 117 refuses a Mod ID that is not lowercase letters, numbers "
-            "and dashes, e.g. fancy-mod-authorname."
+            "and dashes, starting with a letter, e.g. fancy-mod-authorname."
         )
 
     def usable_mod_id(self, text: str) -> str:
         """The nearest ID this game's loader would take, made from ``text``.
 
-        For Anno 117 that is the slug in lowercase; for Anno 1800 the slug as
-        it is, which is what a blank Mod ID has always been filled in with.
+        For Anno 117 that is the slug in lowercase, from its first letter on
+        ("117 Flagship (my patch)" is "flagship-my-patch"); for Anno 1800 the
+        slug as it is, which is what a blank Mod ID has always been filled in
+        with.
         """
         slug = slugify(text)
-        return slug.lower() if self.key == ANNO_117 else slug
+        if self.key != ANNO_117:
+            return slug
+        return re.sub(r"^[^a-z]+", "", slug.lower()) or "anno-mod"
 
 
-# What Anno 117's loader accepts as a ModID.
-_MOD_ID_117 = re.compile(r"^[a-z0-9-]+$")
+# What Anno 117's loader accepts as a ModID: see Game.mod_id_problem.
+_MOD_ID_117 = re.compile(r"^[a-z][a-z0-9-]*$")
 
 
 def slugify(text: str) -> str:

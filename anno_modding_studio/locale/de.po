@@ -802,8 +802,8 @@ msgid "the game has not changed since this was read"
 msgstr "das Spiel hat sich seit dem Lesen nicht geändert"
 
 #: anno_modding_studio/core/games.py
-msgid "Anno 117 refuses a Mod ID that is not lowercase letters, numbers and dashes, e.g. fancy-mod-authorname."
-msgstr "Anno 117 lehnt eine ModID ab, die nicht nur aus Kleinbuchstaben, Ziffern und Bindestrichen besteht, z. B. fancy-mod-authorname."
+msgid "Anno 117 refuses a Mod ID that is not lowercase letters, numbers and dashes, starting with a letter, e.g. fancy-mod-authorname."
+msgstr "Anno 117 lehnt eine ModID ab, die nicht nur aus Kleinbuchstaben, Ziffern und Bindestrichen besteht oder nicht mit einem Buchstaben beginnt, z. B. fancy-mod-authorname."
 
 #: anno_modding_studio/core/grouping.py anno_modding_studio/core/keptops.py anno_modding_studio/ui/change_rows.py anno_modding_studio/ui/changes_dock.py anno_modding_studio/ui/file_panel.py anno_modding_studio/ui/history_dialog.py anno_modding_studio/ui/main_window.py anno_modding_studio/ui/mod_import_dialog.py anno_modding_studio/ui/mods_folder_dialog.py anno_modding_studio/ui/pattern_dialog.py anno_modding_studio/ui/patterns_controller.py
 #, python-format
@@ -2309,6 +2309,11 @@ msgid "When the game started, it loaded %(n)s mod."
 msgid_plural "When the game started, it loaded %(n)s mods."
 msgstr[0] "Als das Spiel startete, lud es %(n)s Mod."
 msgstr[1] "Als das Spiel startete, lud es %(n)s Mods."
+
+#: anno_modding_studio/core/loaderlog.py
+#, python-format
+msgid "the game refused its Mod ID, %(id)s. %(rule)s"
+msgstr "das Spiel hat seine ModID %(id)s abgelehnt. %(rule)s"
 
 #: anno_modding_studio/core/loaderlog.py anno_modding_studio/core/releases.py anno_modding_studio/core/sidefiles.py anno_modding_studio/ui/history_dialog.py
 #, python-format
