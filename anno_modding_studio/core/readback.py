@@ -78,6 +78,56 @@ def moved(loadout: Loadout) -> List[str]:
     ]
 
 
+def over_a_read(loadout: Loadout) -> Dict[str, tuple]:
+    """What the loadout holds of each loaded mod a project of yours keeps --
+    its record, its ops, its changes and what of it is carried unread --
+    taken before a read of the mods folder drops every layer, for
+    :func:`put_back_over_a_read`.
+
+    The folder holds the mod's last build, which can be older than its
+    project: Play or Export writes it, an edit does not.  Read from there,
+    the build's ops came back beside the project's, ops written before the
+    project was reworked among them, and some of them unread; and its
+    modinfo was the build's, without an option added since, so a group that
+    asks for it could not be read.  Not a mod
+    whose project is missing: that one is read from its build already
+    (:func:`stand_in`).
+    """
+    kept: Dict[str, tuple] = {}
+    for origin, ref in loadout.projects.items():
+        layer = loadout.layer(origin)
+        if is_own_mod(origin) or layer is None or ref.held == project_files.MISSING:
+            continue
+        kept[origin] = (
+            [op for op in loadout.ops if op.origin == origin],
+            [change for change in loadout.changes.values() if change.origin == origin],
+            [entry for entry in loadout.unread if entry.origin == origin],
+            layer,
+        )
+    return kept
+
+
+def put_back_over_a_read(loadout: Loadout, kept: Dict[str, tuple]) -> List[str]:
+    """Put back what :func:`over_a_read` took, in place of what the folder
+    read brought of each of those mods, each where the read put it and
+    switched as it is now; the mods put back.  One the read left out is left
+    out: unticked, it is no longer loaded."""
+    back: List[str] = []
+    for origin, (ops, changes, unread, was) in kept.items():
+        now = loadout.layer(origin)
+        if now is None:
+            continue
+        loadout.set_layer(replace(was, order=now.order, active=now.active, patches=now.patches or was.patches))
+        loadout.ops = [op for op in loadout.ops if op.origin != origin] + list(ops)
+        for key in [key for key, change in loadout.changes.items() if change.origin == origin]:
+            loadout.changes.pop(key)
+        for change in changes:
+            loadout.changes[change.key] = change
+        loadout.unread = [entry for entry in loadout.unread if entry.origin != origin] + list(unread)
+        back.append(origin)
+    return back
+
+
 def shown(loadout: Loadout, origin: str) -> modfile.Shown:
     """``origin``'s file as its project holds it: its ops, the ModOps the
     Studio wrote for it each written as an op among them, and the ops

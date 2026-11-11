@@ -2246,6 +2246,7 @@ class MainWindow(QMainWindow):
             with busy_cursor():
                 step(0)
                 from ..core import held as held_edits
+                from ..core import readback
 
                 # What of yours is made to each op of theirs, while those ops
                 # are still here to say so: an update may have changed them.
@@ -2265,6 +2266,9 @@ class MainWindow(QMainWindow):
                 # and the mod changes go to is asked for while this runs.
                 patches = patching.held_over_a_read(self.loadout)
                 mine = patching.mine_over_a_read(self.loadout)
+                # And each mod a project of yours keeps, as its project has it:
+                # the folder holds its last build, which can be an older one.
+                projects = readback.over_a_read(self.loadout)
                 editing = self.loadout.editing
                 for layer in list(self.loadout.layers):
                     # Keeping what you edited into them: those changes exist
@@ -2322,6 +2326,13 @@ class MainWindow(QMainWindow):
                 self.readings.settle()
                 step(3)
                 self.loadout.take_read(dialog.changes)
+                back = readback.put_back_over_a_read(self.loadout, projects)
+                if back:
+                    # The mods after them were read over the builds: read again.
+                    was = {origin: self.loadout.layer(origin).edited for origin in back}
+                    stale.edited(self.loadout, dict.fromkeys(back, 0))
+                    for origin, edited in was.items():
+                        self.loadout.layer(origin).edited = edited
                 kept = yours
                 # Each op of theirs an edit of yours was made to, looked for in
                 # what was just read: one an update changed holds the edit.
