@@ -631,7 +631,7 @@ class TestDroppingAZipOnTheWindow(_Folders):
         with mock.patch.object(self.window, "load_installed_mods", return_value=True) as read:
             landed, asked = self.drop("add")
         self.assertTrue(landed)
-        read.assert_called_once_with(arrived={"[Gameplay] Thing"}, keep_switches=True)
+        read.assert_called_once_with(arrived={"[Gameplay] Thing"}, keep_switches=True, unasked=True)
         self.assertTrue(asked.call_args[0][3])
 
     def test_opened_as_a_loadout_somebody_elses_mod_gets_the_patch_aim(self):

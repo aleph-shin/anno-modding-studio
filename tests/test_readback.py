@@ -975,5 +975,60 @@ class TestShownAsTheProjectHasIt(_Case):
         self.assertLess(text.index("<Radius>8"), text.index("<Radius>12"))
 
 
+class TestAFolderReadKeepsWhatAProjectHolds(unittest.TestCase):
+    """Adding a mod zip read the mods folder again, and a mod a project
+    keeps came back as its last build: the build's ops beside the project's,
+    some unread, and the build's modinfo, without an option added since."""
+
+    MINE = "[Gameplay] Mine"
+    THEIRS = "[Gameplay] Theirs"
+
+    def loadout(self, held=""):
+        loadout = Loadout()
+        loadout.set_layer(ModLayer(origin=self.THEIRS, folder="theirs"))
+        loadout.set_layer(ModLayer(origin=self.MINE, folder="mine", kept=True, version="2",
+                                   declared={"Options": {"old": {}, "new": {}}}))
+        loadout.projects[self.MINE] = projects.Ref("projects/mine.annoproj", held=held)
+        loadout.set_op(Op(origin=self.MINE, source=ALPHA, uid="project", authored=True))
+        return loadout
+
+    def read_the_folder(self, loadout):
+        """As the window's read does: every layer dropped, keeping what is
+        yours, and the folder's in their place -- the build's, behind."""
+        for layer in list(loadout.layers):
+            loadout.drop_layer(layer.origin, keep_authored=True)
+        loadout.set_layer(ModLayer(origin=self.MINE, folder="mine", version="1", active=False,
+                                   declared={"Options": {"old": {}}}))
+        loadout.set_layer(ModLayer(origin=self.THEIRS, folder="theirs"))
+        loadout.set_op(Op(origin=self.MINE, source=DOUBLED, uid="build"))
+
+    def test_the_mod_is_its_project_where_the_read_put_it(self):
+        loadout = self.loadout()
+        kept = readback.over_a_read(loadout)
+        self.read_the_folder(loadout)
+        self.assertEqual(readback.put_back_over_a_read(loadout, kept), [self.MINE])
+        self.assertEqual([op.uid for op in loadout.ops_of(self.MINE)], ["project"])
+        layer = loadout.layer(self.MINE)
+        self.assertEqual((layer.version, list(layer.declared["Options"]), layer.kept),
+                         ("2", ["old", "new"], True))
+        # Where the read put it, and switched as it is now.
+        self.assertEqual([layer.origin for layer in loadout.layers], [self.MINE, self.THEIRS])
+        self.assertFalse(layer.active)
+
+    def test_one_whose_project_is_missing_is_its_build(self):
+        loadout = self.loadout(held=projects.MISSING)
+        kept = readback.over_a_read(loadout)
+        self.read_the_folder(loadout)
+        self.assertEqual(readback.put_back_over_a_read(loadout, kept), [])
+        self.assertEqual(sorted(op.uid for op in loadout.ops_of(self.MINE)), ["build", "project"])
+
+    def test_one_the_read_left_out_stays_out(self):
+        loadout = self.loadout()
+        kept = readback.over_a_read(loadout)
+        loadout.drop_layer(self.MINE, keep_authored=True)
+        self.assertEqual(readback.put_back_over_a_read(loadout, kept), [])
+        self.assertIsNone(loadout.layer(self.MINE))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -757,7 +757,12 @@ unless you choose **Install anyway**. To install it for its own game, load that
 game's files on the Start tab and drop the zip again.
 
 - **Add to loadout** installs them into the library and reads them in. With a loadout
-  read from a mods folder open, the folder is read again. Otherwise each mod is imported on its own.
+  read from a mods folder open, the folder is read again with the loadout's mods and the
+  new ones, and they come in without the list of the folder to tick: a progress box
+  shows the reading, and **Cancel** stops it. The list opens only when the reading
+  stops for an answer, such as a mod for the other game. Mods your projects keep come
+  in as their projects hold them, not as the folder's last build. Otherwise each mod is
+  imported on its own. A mod got from mod.io into such a loadout is read in the same way.
 - **Open as loadout** is offered for a zip of one mod. It starts a new loadout for
   that mod. A mod with your author name is opened as yours. Any other mod gets a
   patch. With no loadout open and nothing chosen on the Start tab, it is the only
