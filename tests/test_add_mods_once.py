@@ -214,6 +214,21 @@ class TestAddingModsReadsOnce(test_library._PickerCase):
         dialog._accept()
         self.assertIn(("[Gameplay] Later", True), self.layers(dialog))
 
+    def test_after_an_install_only_the_loadouts_mods_and_the_new_one_start_ticked(self):
+        """Adding a mod zip read the whole folder with every readable mod
+        in it ticked: the game's own example mods, and mods the loadout did
+        not have, came in with the one mod installed."""
+        keep = {layer.origin: layer.active for layer in self.window.loadout.layers}
+        dialog = self.dialog(arrived={"[Gameplay] New"}, keep=keep)
+        ticked = {
+            name: self.row(dialog, name).checkState() == Qt.CheckState.Checked
+            for name in ("[Gameplay] On", "[Gameplay] Theirs", "[Gameplay] New", "[Gameplay] Newer")
+        }
+        self.assertEqual(ticked, {
+            "[Gameplay] On": True, "[Gameplay] Theirs": True,
+            "[Gameplay] New": True, "[Gameplay] Newer": False,
+        })
+
     def test_import_brings_what_the_full_read_brought(self):
         """The same folder and the same tick, read at once as Add mods did
         before and read at the tick: the same layers and the same changes."""

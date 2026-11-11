@@ -1426,10 +1426,17 @@ class ModsFolderDialog(QDialog):
         A mod with nothing readable in it would come in as an empty heading,
         so it starts unticked rather than hidden -- the count in "Not read"
         is the reason, and it is worth seeing.  With a focus, only the mods
-        it names start ticked."""
+        it names start ticked.  Adding to a loadout (``keep``), only its own
+        mods and the ones that just arrived do: the rest of the folder -- the
+        game's own example mods, a mod another loadout plays, a loadout's own
+        mod as Play last built it -- was ticked as well, and came in with the
+        one mod installed."""
+        top = read.origin.split("/")[0]
         own = bool(
             self._readable(read)
-            and (self.focus is None or read.origin.split("/")[0] in self.focus)
+            and (self.focus is None or top in self.focus)
+            and (not self.keep or top in {origin.split("/")[0] for origin in self.keep}
+                 or top in self.arrived)
             and read.origin not in mismatched
         )
         return own, bool(self._kept_ticks.get(read.origin, own))
