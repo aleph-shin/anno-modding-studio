@@ -64,16 +64,28 @@ def same_op(one: str, other: str) -> bool:
 
 
 # -- before ---------------------------------------------------------------------------
+def _yours(layer) -> bool:
+    """Whether ``layer`` is a mod of yours, whose ops no update of somebody
+    else's replaces: a fork, a patch, or a mod a project keeps."""
+    return layer is not None and bool(
+        getattr(layer, "fork_of", "") or getattr(layer, "patches", "") or getattr(layer, "kept", False)
+    )
+
+
 def stock(loadout: Loadout, origins: Iterable[str]) -> Dict[str, list]:
     """For each of ``origins``, every op of theirs an edit of yours is made
     to: ``{"kind", "source", "order", "yours": [...], "active": [...],
     "kept_by"}``, ``yours`` what stands in its place (``["op", uid]`` or
     ``["change", key]``), ``active`` whether each was on, and ``kept_by`` the
     mod of yours that keeps the edit (:mod:`.inside`)."""
-    # A fork's ops are its own, and an update of the mod it was made of no
-    # longer reaches it (core.forking).
-    wanted = {origin for origin in origins
-              if not getattr(loadout.layer(origin), "fork_of", "")}
+    # Only somebody else's mod has an update to hold an edit against.  A
+    # fork's ops are its own, and an update of the mod it was made of no
+    # longer reaches it (core.forking).  A patch of yours and a mod a project
+    # of yours keeps are built from your edits: their copy in the folder has
+    # none of the ops you edited away, and every edit read as one an update
+    # took away -- the "Edits held after an update" a re-read of the mods
+    # folder showed for them, with nothing updated.
+    wanted = {origin for origin in origins if not _yours(loadout.layer(origin))}
     found: Dict[str, list] = {}
     for entry in loadout.taken_out:
         origin, source, _within, *order = entry
