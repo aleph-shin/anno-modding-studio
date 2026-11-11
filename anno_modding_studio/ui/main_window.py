@@ -11,6 +11,7 @@ from PySide6.QtCore import (
     QByteArray,
     QDataStream,
     QEvent,
+    QEventLoop,
     QObject,
     QSettings,
     QSize,
@@ -71,6 +72,7 @@ from ..core.changes import (
     keep_folders_inside,
 )
 from ..core.i18n import (
+    join_list,
     number,
     tr,
     tr_stored,
@@ -401,6 +403,58 @@ def _answer_of(dialog) -> Optional[bool]:
     if dialog.detour is not None:
         return bool(dialog.detour())
     if shut != int(QDialog.DialogCode.Accepted) or not (dialog.changes or dialog.ops):
+        return False
+    return None
+
+
+def _read_unasked(dialog, parent, names) -> Optional[bool]:
+    """Read a mods folder and import it without showing the dialog that
+    reads it, where the mods to read were chosen before it: the loadout and
+    ``names``, just installed into it, as a mod zip or a mod from mod.io is.
+    The same answer as :func:`_answer_of`.
+
+    The read says how far it has got in a progress box, which can stop it.
+    Where what was read wants an answer first -- a mod for the other game,
+    say -- or the read fails, the dialog is shown at what it read.
+    """
+    if not dialog.import_once_read():
+        return _answer_of(dialog)
+    progress = QProgressDialog(
+        tr("Reading this loadout's mods again, with %s…", join_list(sorted(names))),
+        tr("Cancel"), 0, 0, parent,
+    )
+    progress.setWindowTitle(tr("Adding to this loadout"))
+    progress.setWindowModality(Qt.WindowModality.WindowModal)
+    progress.setMinimumDuration(0)
+    progress.setAutoClose(False)
+    progress.setAutoReset(False)
+
+    def moved(done: int, total: int, said: str) -> None:
+        progress.setRange(0, total)
+        progress.setValue(done)
+        if said:
+            progress.setLabelText(said)
+
+    dialog.readProgress.connect(moved)
+    settled, stopped = [], []
+    waiting = QEventLoop()
+    dialog.readSettled.connect(lambda: (settled.append(True), waiting.quit()))
+    progress.canceled.connect(lambda: (stopped.append(True), dialog.reject(), waiting.quit()))
+    progress.show()
+    try:
+        if not settled:
+            waiting.exec()
+    finally:
+        # Closing it says Cancel too.
+        progress.canceled.disconnect()
+        progress.close()
+        progress.deleteLater()
+    if stopped:
+        return False
+    if dialog.result() != int(QDialog.DialogCode.Accepted):
+        # Stopped for an answer, or the read failed: the dialog says which.
+        return _answer_of(dialog)
+    if not (dialog.changes or dialog.ops):
         return False
     return None
 
@@ -2101,8 +2155,11 @@ class MainWindow(QMainWindow):
         """
         placed = list(placed)
         if self.loadout.mods_folder and self.loadout.layers:
+            # The loadout and the mods installed into it are the read: no
+            # list of the whole folder to tick them in.
             return self.load_installed_mods(
                 arrived={link.name for link in placed} | set(also), keep_switches=True,
+                unasked=True,
             )
         landed = False
         for link in placed:
@@ -2112,7 +2169,7 @@ class MainWindow(QMainWindow):
 
     def load_installed_mods(self, focus=None, arrived=None, keep_switches: bool = False,
                             picked=None, adding=None, standing: bool = False,
-                            detours=()) -> bool:
+                            detours=(), unasked: bool = False) -> bool:
         """Read a whole mods folder in, so the Studio shows the game as played.
 
         ``focus`` names the folders to start ticked -- the mods a collection
@@ -2133,6 +2190,10 @@ class MainWindow(QMainWindow):
         read, and reads the folder only once a mod is ticked to add (D3):
         see :class:`ModsFolderDialog`.
         ``detours`` are other ways to the mods, as :meth:`import_mod` has them.
+        ``unasked`` reads the mods that start ticked and imports them with
+        the dialog not shown, unless the read wants an answer: for one mod
+        installed into the loadout, which says what is to be read
+        (:func:`_read_unasked`).
         Returns whether anything actually landed -- see :meth:`import_mod`.
         """
         if self.index is None:
@@ -2196,8 +2257,13 @@ class MainWindow(QMainWindow):
         if start and not standing and (
             focus is not None or arrived or keep_switches or picked is not None
         ):
-            dialog.reload()
-        answer = _answer_of(dialog)
+            if unasked:
+                answer = _read_unasked(dialog, self, arrived or ())
+            else:
+                dialog.reload()
+                answer = _answer_of(dialog)
+        else:
+            answer = _answer_of(dialog)
         if answer is not None:
             return answer
         chosen_folder = dialog.folder_box.text().strip()

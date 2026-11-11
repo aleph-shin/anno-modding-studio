@@ -282,6 +282,39 @@ class TestAddingModsReadsOnce(test_library._PickerCase):
         )
         self.assertEqual(library.links_into(self.library), self.mods)
 
+    def test_one_mod_installed_into_the_loadout_is_read_in_with_no_list_to_tick(self):
+        """A mod zip or a mod from mod.io added to a loadout read from its
+        mods folder: the loadout and that mod are the read, so the list of
+        the whole folder is not shown to tick them in."""
+        self.addCleanup(self.window.files.mark_saved)
+        self.window.loadout.mods_folder = str(self.mods)
+        self.window.settings.setValue(self.window.mods_key("last_mods_folder"), str(self.mods))
+        shown = mock.Mock(side_effect=AssertionError("the list was shown"))
+        with mock.patch.object(mods_folder_dialog.ModsFolderDialog, "exec", shown):
+            self.assertTrue(self.window.read_installed([self.mods / "[Gameplay] New"]))
+        self.assertEqual(
+            sorted((layer.origin, layer.active) for layer in self.window.loadout.layers),
+            [("[Gameplay] New", True), ("[Gameplay] On", True), ("[Gameplay] Theirs", True)],
+        )
+
+    def test_a_read_that_wants_an_answer_shows_the_list(self):
+        """Stopped by what it read, the list is shown at what it read."""
+        self.addCleanup(self.window.files.mark_saved)
+        self.window.loadout.mods_folder = str(self.mods)
+        self.window.settings.setValue(self.window.mods_key("last_mods_folder"), str(self.mods))
+        seen = []
+
+        def driven(inner):
+            seen.append(inner.session is not None)
+            inner._accept()
+            return int(QDialog.DialogCode.Accepted)
+
+        with mock.patch.object(mods_folder_dialog.ModsFolderDialog, "_refresh_button",
+                               lambda inner: inner.load_button.setEnabled(False)), \
+                mock.patch.object(mods_folder_dialog.ModsFolderDialog, "exec", driven):
+            self.window.read_installed([self.mods / "[Gameplay] New"])
+        self.assertEqual(seen, [True])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -19,7 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -224,6 +224,12 @@ class ModsFolderDialog(QDialog):
     read until a mod is ticked to add -- then the folder is, once, with the
     library's mods besides, so no tick after it reads again (D3).
     """
+
+    # A read is over, and no other is to follow: it was imported, if it was
+    # asked to be (:meth:`import_once_read`), or it stopped for an answer.
+    readSettled = Signal()
+    # How far a read has got, and what it is doing: done, of all, said.
+    readProgress = Signal(int, int, str)
 
     def __init__(
         self, index, parent=None, start_dir: str = "", game: str = "",
@@ -702,6 +708,7 @@ class ModsFolderDialog(QDialog):
         if name:
             self.status.setText(tr("Reading %(mod)s… (%(done)s of %(total)s)", mod=name,
                                    done=number(position + 1), total=number(total)))
+        self.readProgress.emit(position, total, self.status.text())
 
     def _on_searching(self, position: int, total: int) -> None:
         """A mod that targets by search means reading the whole file once."""
@@ -712,6 +719,7 @@ class ModsFolderDialog(QDialog):
             "Looking through all %(n)s assets for the mods that target by search…",
             total,
         ))
+        self.readProgress.emit(position, total, self.status.text())
 
     def _on_translating(self, position: int, total: int) -> None:
         """The half after the reading: every op answered against the stack.
@@ -721,6 +729,7 @@ class ModsFolderDialog(QDialog):
         """
         self.progress.setRange(0, total)
         self.progress.setValue(position)
+        self.readProgress.emit(position, total, self.status.text())
 
     def _on_failed(self, message: str) -> None:
         self._import_when_read = False
@@ -737,6 +746,20 @@ class ModsFolderDialog(QDialog):
             # Ticked on the shelf while the last read ran.
             self._read_again = False
             self.reload()
+        if self._worker is None:
+            self.readSettled.emit()
+
+    def import_once_read(self) -> bool:
+        """Read the folder and import what starts ticked as soon as it is
+        read, as Import pressed during the read does; whether a read was
+        started.  For a read whose mods were chosen before the dialog: the
+        loadout and the mod just installed into it."""
+        self._import_when_read = True
+        self.reload()
+        if self._worker is None:
+            self._import_when_read = False
+            return False
+        return True
 
     # -- the library's mods, listed and read once ticked -------------------
     def _on_item_changed(self, item) -> None:

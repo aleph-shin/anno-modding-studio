@@ -5857,7 +5857,7 @@ msgstr "Eine wie geschrieben behaltene oder eine nicht gelesene ModOp kann auch 
 msgid "Finishing background work"
 msgstr "Hintergrundarbeit wird abgeschlossen"
 
-#: anno_modding_studio/ui/background.py anno_modding_studio/ui/game_files_controller.py
+#: anno_modding_studio/ui/background.py anno_modding_studio/ui/game_files_controller.py anno_modding_studio/ui/main_window.py
 msgid "Cancel"
 msgstr "Abbrechen"
 
@@ -10290,6 +10290,15 @@ msgid "%(mod)s re-read at %(settings)s: %(n)s change."
 msgid_plural "%(mod)s re-read at %(settings)s: %(n)s changes."
 msgstr[0] "%(mod)s neu eingelesen mit %(settings)s: %(n)s Änderung."
 msgstr[1] "%(mod)s neu eingelesen mit %(settings)s: %(n)s Änderungen."
+
+#: anno_modding_studio/ui/main_window.py
+#, python-format
+msgid "Reading this loadout's mods again, with %s…"
+msgstr "Die Mods dieses Loadouts werden erneut gelesen, mit %s…"
+
+#: anno_modding_studio/ui/main_window.py
+msgid "Adding to this loadout"
+msgstr "Zu diesem Loadout hinzufügen"
 
 #: anno_modding_studio/ui/main_window.py
 msgid "Drop to install in the library"
