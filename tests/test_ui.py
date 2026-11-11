@@ -3243,6 +3243,45 @@ class TestRemovingEntriesThatOnlyAPositionTellsApart(WorkflowCase):
             [False] * 4 + [True] * 2,
         )
 
+    def test_giving_two_alike_entries_new_keys(self):
+        """Fertility is what both entries are counted by: once the first
+        has a new one, the second is the first 2001 left.  Replaced in the
+        order of their paths, the second's ``[2]`` found nothing, in game as
+        in the reader.  Counted against the entries as the op found them,
+        and the higher count's key goes first."""
+        from anno_modding_studio.core import generator, modops, reader
+
+        for reopened in (False, True):
+            with self.subTest(reopened=reopened):
+                self.window.loadout.changes.clear()
+                self.window._open_asset("1003")
+                self.entries()[4].child(0).setText(1, "9001")
+                if reopened:
+                    self.window._open_asset("1003")
+                self.entries()[5].child(0).setText(1, "9002")
+                self.assertEqual(
+                    sorted(change.path for change in self.window.loadout),
+                    [self.POOL + "[1]/Fertility", self.POOL + "[2]/Fertility"],
+                )
+                self.assertEqual(
+                    self.played("1003"),
+                    ["<Item><Fertility>%s</Fertility></Item>" % f
+                     for f in ("1010", "1011", "1012", "1013", "9001", "9002")],
+                )
+                results = generator.verify_changes(self.window.workspace, self.window.loadout)
+                self.assertEqual([(r.ok, r.warn) for r in results], [(True, False)] * 2)
+                # And read back from the file as written, both are read.
+                written = etree.fromstring(
+                    generator.build_modops_xml(self.window.loadout).encode("utf-8")
+                )
+                read = reader.Translator(self.window.index, True).run_all(
+                    modops.parse_ops(written, [], "assets.xml")
+                )
+                self.assertEqual(
+                    sorted(c.new_value for r in read for c in r.changes), ["9001", "9002"]
+                )
+                self.assertEqual({r.status for r in read}, {modops.IMPORTED})
+
     def test_keeping_the_first_after_all_leaves_the_second_removed(self):
         """By its key, not its path, which both removals have; and the
         second, which ran with one entry fewer before it, is one further

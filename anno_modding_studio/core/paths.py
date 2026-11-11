@@ -80,11 +80,14 @@ def _children(elem) -> List:
     return [child for child in elem if isinstance(child.tag, str)]
 
 
-def value_of(elem, tag: str) -> str:
+def value_of(elem, tag: str, text=None) -> str:
+    """What ``elem``'s field ``tag`` holds, "" where it holds fields instead.
+    ``text`` reads a node's text where the tree's own is not the one to go
+    by (:func:`path_for`)."""
     child = elem.find(tag)
     if child is None or len(_children(child)):
         return ""
-    return (child.text or "").strip()
+    return ((text(child) if text is not None else child.text) or "").strip()
 
 
 def quote(value: str) -> str:
@@ -141,7 +144,7 @@ def key_candidates(elem) -> List[str]:
     return tried
 
 
-def _key_predicate(elem, siblings: List) -> str:
+def _key_predicate(elem, siblings: List, text=None) -> str:
     """``[Product='1010365']`` for this entry, or "" if nothing identifies it.
 
     Unique among its siblings, not merely present: a predicate that matches two
@@ -151,11 +154,11 @@ def _key_predicate(elem, siblings: List) -> str:
     tried = key_candidates(elem)
 
     for tag in tried:
-        value = value_of(elem, tag)
+        value = value_of(elem, tag, text)
         if not value:
             continue
         if any(
-            other is not elem and value_of(other, tag) == value
+            other is not elem and value_of(other, tag, text) == value
             for other in siblings
         ):
             continue
@@ -163,7 +166,7 @@ def _key_predicate(elem, siblings: List) -> str:
     return ""
 
 
-def path_for(root, node, keyed: bool = False, gone=None) -> Generated:
+def path_for(root, node, keyed: bool = False, gone=None, text=None) -> Generated:
     """The ModOp path addressing ``node`` inside the asset ``root``.
 
     Written against the asset element, which is what a ModOp's ``Path`` is
@@ -182,6 +185,12 @@ def path_for(root, node, keyed: bool = False, gone=None) -> Generated:
     six entries removed, the sixth is ``Item[5]``; written ``Item[6]`` it was
     past the end of the list by then and removed nothing.
 
+    ``text`` reads a field's value as the op finds it, where the tree holds
+    what the op's own changes make of it.  An op replaces an entry's key
+    after everything else it does through that entry: with the first of two
+    pools of 2001 given a new one, the second is still the second 2001 to
+    the op, not the only one.
+
     The empty path is ``root`` itself (see :func:`resolve`), so a ``node`` that
     is not inside ``root`` at all raises :class:`ValueError` rather than being
     given one: written down, it would be a ModOp aimed at the whole asset.
@@ -194,7 +203,7 @@ def path_for(root, node, keyed: bool = False, gone=None) -> Generated:
     while current is not root:
         if current.getparent() is None:
             raise ValueError("%r is not inside the asset it was asked about" % node.tag)
-        step, counted = step_for(current, keyed=keyed, gone=gone)
+        step, counted = step_for(current, keyed=keyed, gone=gone, text=text)
         positional = positional or counted
         steps.append(step)
         current = current.getparent()
@@ -206,7 +215,7 @@ def path_for(root, node, keyed: bool = False, gone=None) -> Generated:
     )
 
 
-def step_for(node, keyed: bool = False, gone=None) -> Tuple[str, bool]:
+def step_for(node, keyed: bool = False, gone=None, text=None) -> Tuple[str, bool]:
     """The one step of a path that picks ``node`` out of its parent, and
     whether it picks it by a count: see :func:`path_for`.
 
@@ -220,7 +229,7 @@ def step_for(node, keyed: bool = False, gone=None) -> Tuple[str, bool]:
     siblings = [child for child in _children(node.getparent()) if child.tag == node.tag]
     if len(siblings) <= 1 and not (keyed and node.tag == LIST_ENTRY):
         return node.tag, False
-    predicate = _key_predicate(node, siblings)
+    predicate = _key_predicate(node, siblings, text)
     if predicate:
         return node.tag + predicate, False
     if len(siblings) <= 1:
@@ -228,28 +237,28 @@ def step_for(node, keyed: bool = False, gone=None) -> Tuple[str, bool]:
     # A key is told apart from the struck entries too: with the removal
     # before it switched off, a key two entries share matches both.  The
     # count is of what is left: the game counts only that.
-    tag = _fewest_alike(node, siblings)
+    tag = _fewest_alike(node, siblings, text)
     alike = siblings if tag is None else [
-        child for child in siblings if value_of(child, tag) == value_of(node, tag)
+        child for child in siblings if value_of(child, tag, text) == value_of(node, tag, text)
     ]
     left = [child for child in alike if child is node or gone is None or not gone(child)]
     # Even where it is the one left: a bare step would find every entry the
     # struck ones are again, switched off.
-    narrowed = "" if tag is None else "[%s=%s]" % (tag, quote(value_of(node, tag)))
+    narrowed = "" if tag is None else "[%s=%s]" % (tag, quote(value_of(node, tag, text)))
     return "%s%s[%d]" % (node.tag, narrowed, left.index(node) + 1), True
 
 
-def _fewest_alike(elem, siblings: List) -> Optional[str]:
+def _fewest_alike(elem, siblings: List, text=None) -> Optional[str]:
     """The field of ``elem`` the fewest of its ``siblings`` share the value
     of, or ``None`` where it holds no field with a value.  Of two as few,
     the one :func:`key_candidates` tries first."""
     best: Optional[str] = None
     fewest = 0
     for tag in key_candidates(elem):
-        value = value_of(elem, tag)
+        value = value_of(elem, tag, text)
         if not value:
             continue
-        alike = sum(1 for other in siblings if value_of(other, tag) == value)
+        alike = sum(1 for other in siblings if value_of(other, tag, text) == value)
         if best is None or alike < fewest:
             best, fewest = tag, alike
     return best

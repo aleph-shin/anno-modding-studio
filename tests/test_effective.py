@@ -440,6 +440,29 @@ class TestAPositionCountsWhatTheGameHasLeft(unittest.TestCase):
                 self.assertIsNone(effective.repointed(eff, sixth, eff.gone_before(sixth.key)))
 
 
+class TestKeysOfEntriesFoundByACount(unittest.TestCase):
+    """Replacing the key an entry is counted by takes it out of the entries
+    alike, and the ones after it count one fewer."""
+
+    def test_it_goes_behind_the_entries_counted_after_it_highest_first(self):
+        pool = "/Values/L/Item[F='5']"
+        made = [
+            Change(guid="1000", asset_label="x", path=path, tag=path.rsplit("/", 1)[1],
+                   old_value="5", new_value=new)
+            for path, new in (
+                (pool + "[1]/F", "8"), (pool + "[2]/F", "9"), (pool + "[2]/N", "z"),
+                (pool + "[3]/N", "y"), ("/Values/L/Item[F='1']/N", "w"),
+            )
+        ]
+        self.assertEqual(
+            [change.path for change in emit_order(made)],
+            # An entry of another value is not moved past: nothing of it counts.
+            [pool + "[2]/N", pool + "[3]/N", pool + "[2]/F", pool + "[1]/F",
+             "/Values/L/Item[F='1']/N"],
+        )
+        self.assertTrue(made[0].replaces_its_own_key)
+
+
 class TestTheEntryAChangeWasMadeAgainst(unittest.TestCase):
     """What a change whose path counts keeps of the entry it found, so the
     check can tell whether the count still finds it."""
