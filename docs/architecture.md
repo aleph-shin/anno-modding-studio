@@ -404,6 +404,7 @@ Grouped by what they are about. `tools/check.py` fails when a module under
 |---|---|
 | `widgets` | small controls that behave the same way everywhere |
 | `workers` | background threads |
+| `collector` | Python's garbage collected on the window's thread only, so a worker's thread never destroys the window's Qt objects |
 | `modio_task_dialog` | a dialog running mod.io jobs on one of them, with progress and Stop |
 | `xml_view` | ModOps XML shown: its colouring, and a dialog holding some to read |
 | `language` | which language the Studio speaks, chosen as it starts |

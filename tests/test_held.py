@@ -120,6 +120,21 @@ class TestAnUpdateChangesTheOp(_Updated):
         held.keep_theirs(self.loadout, record)
         self.assertEqual(self.loadout.taken_out, [])
 
+    # A patch of yours and a mod a project keeps are built from your edits,
+    # so the ops you edited away are never in the folder's copy: each was
+    # held as gone, with nothing updated.
+    def taken_out_of_yours_and_read_again(self, **yours):
+        self.loadout.set_layer(replace(self.loadout.layer(NAME), **yours))
+        self.loadout.drop_op(self.op("<Name>Theirs</Name>").uid)
+        self.update(THEIRS.split("  <ModOp Type=\"replace\"")[0] + "</ModOps>\n")
+        self.assertEqual(self.loadout.held_edits, [])
+
+    def test_a_patch_of_yours_holds_nothing(self):
+        self.taken_out_of_yours_and_read_again(patches="[Gameplay] Somebody's")
+
+    def test_a_mod_a_project_keeps_holds_nothing(self):
+        self.taken_out_of_yours_and_read_again(kept=True)
+
     def test_an_op_switched_off_and_then_changed_is_held(self):
         self.op("<Name>Theirs</Name>").active = False
         self.update(THEIRS.replace("<Name>Theirs</Name>", "<Name>Theirs 1.1</Name>"))

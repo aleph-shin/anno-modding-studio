@@ -25,7 +25,7 @@
   },
   "mypy": {},
   "vulture": {
-    "anno_modding_studio/core/changes.py": 4,
+    "anno_modding_studio/core/changes.py": 3,
     "anno_modding_studio/core/dependencies.py": 1,
     "anno_modding_studio/core/discovery.py": 1,
     "anno_modding_studio/core/gamefiles.py": 1,
@@ -59,7 +59,7 @@
     "anno_modding_studio/ui/browser_panel.py": 23,
     "anno_modding_studio/ui/conflicts_dialog.py": 24,
     "anno_modding_studio/ui/convert_dialog.py": 6,
-    "anno_modding_studio/ui/editor_panel.py": 30,
+    "anno_modding_studio/ui/editor_panel.py": 18,
     "anno_modding_studio/ui/file_panel.py": 20,
     "anno_modding_studio/ui/install_plan_dialog.py": 21,
     "anno_modding_studio/ui/loadout_check_dialog.py": 6,

@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication
 from . import __version__
 from .core import dataversion, places
 from .core.changes import LOADOUT_SUFFIX
-from .ui import appearance, help_tip, language, one_studio, theme, widgets
+from .ui import appearance, collector, help_tip, language, one_studio, theme, widgets
 from .ui.main_window import MainWindow, open_settings
 
 APP_ID = "AnnoModdingStudio.Studio"
@@ -66,6 +66,8 @@ def start_application(argv) -> QApplication:
     scale = appearance.set_scale(appearance.saved_size(settings))
     app = QApplication(argv)
     appearance.clear_scale(scale)
+    # Garbage collected here, never on a worker's thread: see ui.collector.
+    collector.collect_on_this_thread(app)
     app.setApplicationName("Anno Modding Studio")
     app.setApplicationVersion(__version__)
     app.setOrganizationName("AnnoModdingStudio")
