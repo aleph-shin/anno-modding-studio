@@ -29,9 +29,10 @@ from . import theme
 
 # The main window's tabs, in order.
 # Finding an asset and editing it are one step: search lives inside the editor.
-# The file of the mod changes go to comes straight after the editor: the two
-# are where a mod is written, by asset and by file.
-TAB_SOURCE, TAB_EDIT, TAB_FILE, TAB_REFS, TAB_GENERATE = 0, 1, 2, 3, 4
+# The references come straight after the editor: going from an asset to what
+# refers to it and back is done all the time, and looking over the mod's file
+# now and then.
+TAB_SOURCE, TAB_EDIT, TAB_REFS, TAB_FILE, TAB_GENERATE = 0, 1, 2, 3, 4
 
 
 class AssetTrail(QObject):
@@ -43,6 +44,9 @@ class AssetTrail(QObject):
         super().__init__(parent)
         self._history: List[str] = []
         self._pos = -1
+        # Whether the last move was Back or Forward, rather than a visit: an
+        # asset gone back to is shown as it was left.
+        self.stepped = False
 
     @property
     def current(self) -> Optional[str]:
@@ -64,6 +68,7 @@ class AssetTrail(QObject):
         del self._history[self._pos + 1:]
         self._history.append(guid)
         self._pos = len(self._history) - 1
+        self.stepped = False
         self.changed.emit()
         return True
 
@@ -78,6 +83,7 @@ class AssetTrail(QObject):
         if not self.can_go_back():
             return None
         self._pos -= 1
+        self.stepped = True
         self.changed.emit()
         return self.current
 
@@ -85,6 +91,7 @@ class AssetTrail(QObject):
         if not self.can_go_forward():
             return None
         self._pos += 1
+        self.stepped = True
         self.changed.emit()
         return self.current
 
@@ -105,6 +112,7 @@ class AssetTrail(QObject):
     def clear(self) -> None:
         self._history = []
         self._pos = -1
+        self.stepped = False
         self.changed.emit()
 
 

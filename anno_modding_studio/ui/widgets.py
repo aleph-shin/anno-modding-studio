@@ -605,20 +605,23 @@ def listing_table(headings, name: str) -> QTableWidget:
 FIT_MINIMUM = 48
 
 
-def _share_out(weights: dict, width: int, floors: dict) -> dict:
+def _share_out(weights: dict, width: int, floors: dict, caps: dict | None = None) -> dict:
     """``width`` pixels shared out by ``weights``, in their order, none
-    narrower than its floor in ``floors``.
+    narrower than its floor in ``floors`` and, while another column can
+    take the rest, none wider than its cap in ``caps``.
 
     A column whose share is under its floor is held at it and the others
     share what is left, so the widths still add up to ``width``: raised to
     the floor and nothing taken back, unequal shares ran past the edge of a
     view they had room in.  Only where ``width`` cannot give each column
-    its floor do they come to more.
+    its floor do they come to more.  A column whose share is over its cap
+    is held at that, and the others share what it leaves.
     """
+    caps = caps or {}
     free = dict(weights)
-    floored = []
+    held = {}
     while True:
-        left = width - sum(floors[logical] for logical in floored)
+        left = width - sum(held.values())
         total = sum(free.values())
         # Under one pixel above the floor counts as on it: a rounded edge
         # can take that pixel off.
@@ -626,12 +629,25 @@ def _share_out(weights: dict, width: int, floors: dict) -> dict:
             logical for logical, weight in free.items()
             if not total or left * weight / total < floors[logical] + 1
         ]
-        if not low:
+        if low:
+            for logical in low:
+                held[logical] = floors[logical]
+                del free[logical]
+            continue
+        high = [
+            logical for logical, weight in free.items()
+            if logical in caps and left * weight / total > max(caps[logical], floors[logical])
+        ]
+        # The widths still come to the view's: with every column at its cap,
+        # the ones that are share the room past them by weight.
+        if not high or len(high) == len(free):
             break
-        floored += low
-        for logical in low:
+        for logical in high:
+            held[logical] = max(caps[logical], floors[logical])
             del free[logical]
-    sizes = {logical: floors[logical] for logical in floored}
+    left = width - sum(held.values())
+    total = sum(free.values())
+    sizes = dict(held)
     # Each edge rounded where it falls, so no one column takes all the
     # pixels the others' rounding left over.
     edge = 0
@@ -662,7 +678,12 @@ class FitColumns(QObject):
     are not them, and :meth:`shares` and :meth:`set_shares` read and set
     them again, for a view that remembers where it was left. ``floors``
     are the least some columns may be, where the header's least is not
-    enough to read them by.
+    enough to read them by. ``caps`` are the most a shared column is given
+    while others can take the rest, for a column that has no use for more;
+    one dragged wider than its cap is capped at the width it was dragged
+    to. ``spare`` are columns that are hidden while the view is narrower
+    than the width given for each: worth their room only when there is
+    room to spare.
 
     Columns sized to their contents, or fixed, keep the width they have and
     the rest share what is left. A stretched column becomes one more that
@@ -671,12 +692,14 @@ class FitColumns(QObject):
     set up by then, and only a view with a column the mouse can drag.
     """
 
-    def __init__(self, view, shares=None, keep=(), floors=None):
+    def __init__(self, view, shares=None, keep=(), floors=None, caps=None, spare=None):
         super().__init__(view)
         self.view = view
         self._given = dict(shares or {})
         self._keep = set(keep)
         self._floors = dict(floors or {})
+        self._caps = dict(caps or {})
+        self._spare = dict(spare or {})
         # Each shared column's weight and each kept one's pixels, once taken
         # over: None until then, and empty for a view this leaves alone.
         self._weights = None
@@ -814,10 +837,33 @@ class FitColumns(QObject):
             }
         return True
 
+    def set_limits(self, floors=None, caps=None, spare=None) -> None:
+        """New floors, caps and spare widths -- say for another text size --
+        and the columns laid out by them."""
+        if floors is not None:
+            self._floors = dict(floors)
+        if caps is not None:
+            self._caps = dict(caps)
+        if spare is not None:
+            self._spare = dict(spare)
+        self.fit()
+
+    def _hide_spare(self) -> None:
+        width = self.view.viewport().width()
+        self._laying = True
+        try:
+            for logical, least in self._spare.items():
+                hide = width < least
+                if self.header.isSectionHidden(logical) != hide:
+                    self.header.setSectionHidden(logical, hide)
+        finally:
+            self._laying = False
+
     def fit(self) -> None:
         """Lay the columns out across the view's width."""
         if self._laying or not self._take_over():
             return
+        self._hide_spare()
         shared = self._shared()
         floors = self._floors_of(shared)
         kept = {logical: self._kept[logical] for logical in shared if logical in self._kept}
@@ -833,6 +879,7 @@ class FitColumns(QObject):
         sizes.update(_share_out(
             {logical: self._weights[logical] for logical in rest},
             available - sum(kept.values()), floors,
+            {logical: cap for logical, cap in self._caps.items() if logical in rest},
         ))
         self._set(sizes)
 
@@ -883,16 +930,21 @@ class FitColumns(QObject):
             sizes[after[0]] = self.header.sectionSize(after[0]) - delta
         self._set(sizes)
         for column in shared:
+            width = self.header.sectionSize(column)
             if column in self._kept:
-                self._kept[column] = self.header.sectionSize(column)
+                self._kept[column] = width
             else:
-                self._weights[column] = self.header.sectionSize(column)
+                self._weights[column] = width
+            if column in self._caps and width > self._caps[column]:
+                # Dragged past its cap: the width it was dragged to is the
+                # cap now, or the next resize of the view takes it back.
+                self._caps[column] = width
 
 
-def fit_columns(view, shares=None, keep=(), floors=None) -> FitColumns:
+def fit_columns(view, shares=None, keep=(), floors=None, caps=None, spare=None) -> FitColumns:
     """Hold ``view``'s columns to its width: see :class:`FitColumns`. Kept as
     the view's ``column_fit``."""
-    view.column_fit = FitColumns(view, shares, keep, floors)
+    view.column_fit = FitColumns(view, shares, keep, floors, caps, spare)
     return view.column_fit
 
 

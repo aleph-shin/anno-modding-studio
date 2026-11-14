@@ -7348,6 +7348,10 @@ msgid_plural "&Convert %(n)s mods"
 msgstr[0] "%(n)s Mod &umstellen"
 msgstr[1] "%(n)s Mods &umstellen"
 
+#: anno_modding_studio/ui/editor_panel.py anno_modding_studio/ui/new_asset_dialog.py
+msgid "Choose asset…"
+msgstr "Asset wählen…"
+
 #: anno_modding_studio/ui/editor_panel.py
 msgid "New asset…"
 msgstr "Neues Asset…"
@@ -7624,6 +7628,11 @@ msgstr "gesetzt von %s"
 #, python-format
 msgid "overwritten by %s"
 msgstr "überschrieben von %s"
+
+#: anno_modding_studio/ui/editor_panel.py
+#, python-format
+msgid "%s holds an asset's GUID. Click to choose the asset, or type its GUID in the value."
+msgstr "%s enthält die GUID eines Assets. Klicke, um das Asset zu wählen, oder gib seine GUID als Wert ein."
 
 #: anno_modding_studio/ui/editor_panel.py
 #, python-format
@@ -7929,10 +7938,6 @@ msgstr "Wert kopieren"
 #: anno_modding_studio/ui/editor_panel.py
 msgid "Edit value"
 msgstr "Wert bearbeiten"
-
-#: anno_modding_studio/ui/editor_panel.py anno_modding_studio/ui/new_asset_dialog.py
-msgid "Choose asset…"
-msgstr "Asset wählen…"
 
 #: anno_modding_studio/ui/editor_panel.py
 #, python-format
@@ -10360,16 +10365,16 @@ msgstr "Start"
 msgid "Asset editor"
 msgstr "Asset-Editor"
 
-#. Translators: the tab that holds the file of the mod being written, to type in.
-#: anno_modding_studio/ui/main_window.py anno_modding_studio/ui/shortcuts_dialog.py
-msgid "Mod file"
-msgstr "Mod-Datei"
-
 #. Translators: the tab that draws which assets refer to which.
 #. Translators: the Studio's graph of which assets point at which.
 #: anno_modding_studio/ui/main_window.py anno_modding_studio/ui/reference_panel.py
 msgid "References"
 msgstr "Verweise"
+
+#. Translators: the tab that holds the file of the mod being written, to type in.
+#: anno_modding_studio/ui/main_window.py anno_modding_studio/ui/shortcuts_dialog.py
+msgid "Mod file"
+msgstr "Mod-Datei"
 
 #. Translators: the tab that writes the mod out, named for the act.
 #. Translators: a button with a menu: export the mod as a folder, as a zip, or its ModOps as XML.
