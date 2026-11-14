@@ -14,6 +14,7 @@ matches the shipped file.
 from __future__ import annotations
 
 import json
+import math
 from contextlib import nullcontext
 from pathlib import Path
 from typing import List, Optional
@@ -25,7 +26,9 @@ from PySide6.QtGui import (
     QAction,
     QBrush,
     QColor,
+    QFont,
     QFontMetrics,
+    QFontMetricsF,
     QGuiApplication,
     QKeySequence,
     QPainter,
@@ -119,6 +122,9 @@ IDENT_ROLE = Qt.ItemDataRole.UserRole + 13
 # What the row says of the mod it came from, for as long as its value is not
 # edited: the text and colour of the last column, and the value's colour.
 NOTE_ROLE = Qt.ItemDataRole.UserRole + 14
+# An empty field that takes an asset: its "Refers to" cell holds a button
+# that opens the picker.
+PICK_ROLE = Qt.ItemDataRole.UserRole + 15
 
 # The inline add affordance, painted at the right edge of the Property column.
 # Odd width so there is an exact centre pixel: at an even size the arms sit a
@@ -126,6 +132,8 @@ NOTE_ROLE = Qt.ItemDataRole.UserRole + 14
 PLUS_SIZE = 15
 PLUS_MARGIN = 6
 PLUS_ARM = 4
+PICK_MARGIN = 4
+PICK_PADDING = 8
 
 # Rows must be tall enough to hold a QLineEdit editor; at the default height the
 # editor overflows its cell and the user sees only the top half of what they type.
@@ -145,6 +153,29 @@ def plus_rect(row_rect: QRect) -> QRect:
     return QRect(
         row_rect.right() - PLUS_SIZE - PLUS_MARGIN, top, PLUS_SIZE, PLUS_SIZE
     )
+
+
+def pick_font(font: QFont) -> QFont:
+    """The button's words upright, whatever the row's are: an added row is
+    in italics, and the button is the same button on every row."""
+    font = QFont(font)
+    font.setItalic(False)
+    return font
+
+
+def pick_rect(cell: QRect, metrics) -> QRect:
+    """Where the "Choose asset…" button sits inside a Refers-to cell."""
+    width = math.ceil(metrics.horizontalAdvance(pick_text())) + 2 * PICK_PADDING
+    height = min(cell.height() - 4, math.ceil(metrics.height()) + 6)
+    return QRect(
+        cell.left() + PICK_MARGIN, cell.top() + (cell.height() - height) // 2,
+        min(width, max(0, cell.width() - 2 * PICK_MARGIN)), height,
+    )
+
+
+def pick_text() -> str:
+    # The words of the row's menu entry that does the same.
+    return tr("Choose asset…")
 
 
 def paint_plus(painter, box: QRect, colour) -> None:
@@ -214,6 +245,10 @@ class RowHeightDelegate(QStyledItemDelegate):
 
     def paint(self, painter, option, index):
         """Draw a "+" on rows that can take a child, so adding is one click."""
+        if index.column() == 2 and index.data(PICK_ROLE):
+            super().paint(painter, option, index)
+            self._paint_pick(painter, option, index)
+            return
         add = index.data(ADD_ROLE) if index.column() == 0 else None
         ident = index.data(IDENT_ROLE) if index.column() == 0 else None
         if not add and not ident:
@@ -244,6 +279,35 @@ class RowHeightDelegate(QStyledItemDelegate):
         paint_plus(painter, box, colour)
         painter.restore()
 
+
+    def _paint_pick(self, painter, option, index) -> None:
+        """The button an empty field that takes an asset opens the picker
+        with. The cell was empty, and a click on it opened the picker only
+        for someone who already knew it would."""
+        font = pick_font(option.font)
+        metrics = QFontMetricsF(font, painter.device())
+        box = pick_rect(option.rect, metrics)
+        if box.width() <= 2 * PICK_PADDING:
+            return
+        hot = self._panel is not None and self._panel.is_pick_hovered(index)
+        colour = QColor(theme.ACCENT_TEXT)
+        border = QColor(colour)
+        border.setAlpha(255 if hot else 130)
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(QPen(border, 1))
+        if hot:
+            fill = QColor(colour)
+            fill.setAlpha(36)
+            painter.setBrush(fill)
+        painter.drawRoundedRect(QRectF(box).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4)
+        painter.setFont(font)
+        painter.setPen(colour)
+        shown = metrics.elidedText(
+            pick_text(), Qt.TextElideMode.ElideRight, box.width() - 2 * PICK_PADDING
+        )
+        painter.drawText(box, int(Qt.AlignmentFlag.AlignCenter), shown)
+        painter.restore()
 
     def _paint_ident(self, painter, option, index, ident) -> None:
         """An entry's identifier, dimmed, just past its tag: ``Item (Marble)``.
@@ -349,6 +413,8 @@ class EditorPanel(QWidget):
         self.asset_label = ""
         self._loading = False
         self._plus_hover = None
+        self._pick_hover = None
+        self._pick_pressed = None
         self._entry_values = {}
         # Values typed since the tree was drawn, by the element of their row.
         self._typed = {}
@@ -583,6 +649,9 @@ class EditorPanel(QWidget):
         self.fold_button.clicked.connect(self._toggle_fold)
         tools.addWidget(self.fold_button)
         self._all_open = False
+        # How each asset's tree was left -- the rows open, where it was
+        # scrolled to, the row picked -- for going back to it.
+        self._views = {}
         fields.addLayout(tools)
 
         self.tree = QTreeWidget()
@@ -690,6 +759,7 @@ class EditorPanel(QWidget):
         self.tree.clear()
         self._loading = False
         self._set_all_open(False)
+        self._views = {}
         self.guid = None
         self.asset_root = None
         self.effective = None
@@ -737,6 +807,9 @@ class EditorPanel(QWidget):
             standing = standing(guid) if standing is not None else None
 
         arrived = guid != self.guid
+        if arrived and self.guid is not None:
+            self._views[self.guid] = self._view_state()
+        all_open = self._all_open
         self.guid = guid
         # What to do here is for an empty editor. With an asset open, the
         # room is the asset's.
@@ -797,6 +870,8 @@ class EditorPanel(QWidget):
         self.subtitle_label.setToolTip("\n\n".join(tip for tip in tips if tip))
 
         self._populate()
+        if arrived:
+            self._show_arrived(guid, all_open)
         self.search.set_current_guid(guid)
         self.revert_asset_button.setEnabled(bool(self.loadout.for_asset(guid, self.editing())))
         self._show_in_game_button(guid)
@@ -1121,6 +1196,8 @@ class EditorPanel(QWidget):
     def _draw(self) -> None:
         self._loading = True
         self._plus_hover = None   # the item it pointed at is about to be deleted
+        self._pick_hover = None
+        self._pick_pressed = None
         self._entry_values = {}
         self._typed = {}
         self.tree.clear()
@@ -1604,7 +1681,14 @@ class EditorPanel(QWidget):
             )
         item.setText(2, label)
         item.setForeground(2, QBrush(QColor(theme.TEXT_DIM)))
-        if label:
+        picks = not label and self._takes_an_asset(item)
+        item.setData(2, PICK_ROLE, picks or None)
+        if picks:
+            item.setToolTip(2, tr(
+                "%s holds an asset's GUID. Click to choose the asset, or type "
+                "its GUID in the value.", item.text(0)
+            ))
+        elif label:
             note = ""
             evidence = self._field_evidence(item)
             if evidence is not None:
@@ -2286,6 +2370,10 @@ class EditorPanel(QWidget):
                         break
                 if target is None:
                     target = parent_of_new
+            if all_open:
+                # Everything was open, so what was just added or pasted is too:
+                # it is in no list of rows that were.
+                self.tree.expandAll()
         finally:
             self.tree.setUpdatesEnabled(True)
         # The rows that were open are open again, and the button says so.
@@ -2303,6 +2391,57 @@ class EditorPanel(QWidget):
             self.tree.scrollToItem(
                 target, QAbstractItemView.ScrollHint.EnsureVisible
             )
+
+    def _view_state(self) -> dict:
+        """How the tree stands: what Back puts it back to."""
+        current = self.tree.currentItem()
+        return {
+            "open": {self._item_key(i) for i in self._iter_items()
+                     if i.childCount() and i.isExpanded()},
+            "all_open": self._all_open,
+            "scroll": self.tree.verticalScrollBar().value(),
+            "current": self._item_key(current) if current is not None else None,
+        }
+
+    def _show_arrived(self, guid: str, all_open: bool) -> None:
+        """The tree of an asset just come to, opened as it should be.
+
+        Gone back or forward to, it is as it was left: browsing between two
+        assets to compare them, each opened at the rows being compared, lost
+        them at every step. Come to any other way, Expand all carries on
+        from the asset before, as a way of reading assets and not a click
+        to make on each.
+        """
+        view = self._views.get(guid) if self.trail.stepped and self.trail.current == guid else None
+        if view is None:
+            if all_open:
+                self._loading = True
+                self.tree.expandAll()
+                self._loading = False
+                self._set_all_open(True)
+            return
+        self._loading = True
+        self.tree.setUpdatesEnabled(False)
+        target = None
+        try:
+            if view["all_open"]:
+                self.tree.expandAll()
+            for item in self._iter_items():
+                key = self._item_key(item)
+                if not view["all_open"]:
+                    item.setExpanded(bool(item.childCount()) and key in view["open"])
+                if key == view["current"]:
+                    target = item
+        finally:
+            self.tree.setUpdatesEnabled(True)
+            self._loading = False
+        self._set_all_open(view["all_open"])
+        if target is not None:
+            # Before the scroll is put back: picking a row scrolls to it.
+            self.tree.setCurrentItem(target)
+        # The range is worked out when the rows are laid out, which is later.
+        self.tree.doItemsLayout()
+        self.tree.verticalScrollBar().setValue(view["scroll"])
 
     def _path_for(self, item):
         """Compute (and cache) the ModOp path for a tree item."""
@@ -3133,6 +3272,36 @@ class EditorPanel(QWidget):
         return menu
 
     # -- the inline "+" ----------------------------------------------------
+    def is_pick_hovered(self, index) -> bool:
+        item = self.tree.itemFromIndex(index)
+        return item is not None and item is self._pick_hover
+
+    def _pick_item_at(self, point):
+        """The item whose "Choose asset…" button is under ``point``, if any."""
+        index = self.tree.indexAt(point)
+        if not index.isValid() or index.column() != 2:
+            return None
+        item = self.tree.itemFromIndex(index)
+        if item is None or not item.data(2, PICK_ROLE):
+            return None
+        metrics = QFontMetricsF(pick_font(self.tree.font()), self.tree.viewport())
+        if not pick_rect(self.tree.visualRect(index), metrics).contains(point):
+            return None
+        return item
+
+    def _set_pick_hover(self, item) -> None:
+        if item is self._pick_hover:
+            return
+        self._pick_hover = item
+        self._set_hand()
+        self.tree.viewport().update()
+
+    def _set_hand(self) -> None:
+        over = self._plus_hover is not None or self._pick_hover is not None
+        self.tree.viewport().setCursor(
+            Qt.CursorShape.PointingHandCursor if over else Qt.CursorShape.ArrowCursor
+        )
+
     def is_plus_hovered(self, index) -> bool:
         """Whether the cursor is on this row's "+", not merely on the row."""
         item = self.tree.itemFromIndex(index)
@@ -3154,9 +3323,7 @@ class EditorPanel(QWidget):
         if item is self._plus_hover:
             return
         self._plus_hover = item
-        self.tree.viewport().setCursor(
-            Qt.CursorShape.PointingHandCursor if item else Qt.CursorShape.ArrowCursor
-        )
+        self._set_hand()
         self.tree.viewport().update()
 
     def eventFilter(self, watched, event):
@@ -3182,17 +3349,34 @@ class EditorPanel(QWidget):
                 # Working in the asset means the search results have served their
                 # purpose; they overlay the tree, so they must not linger.
                 self.search.close_results()
-                item = self._plus_item_at(event.position().toPoint())
+                point = event.position().toPoint()
+                item = self._plus_item_at(point)
                 if item is not None:
                     # Press and double-click are swallowed too, or the tree
                     # selects the row and starts an edit under the click.
                     if kind == QEvent.Type.MouseButtonRelease:
                         self._add_here(item)
                     return True
+                item = self._pick_item_at(point)
+                if item is not None and event.button() == Qt.MouseButton.LeftButton:
+                    # Opened by a release on the press that began on it: the
+                    # second click of a double-click opens nothing again.
+                    if kind == QEvent.Type.MouseButtonPress:
+                        self._pick_pressed = item
+                    elif kind == QEvent.Type.MouseButtonRelease:
+                        pressed, self._pick_pressed = self._pick_pressed, None
+                        if pressed is item:
+                            self.tree.setCurrentItem(item)
+                            self._set_pick_hover(None)
+                            self._pick_asset(item)
+                    return True
             elif kind == QEvent.Type.MouseMove:
-                self._set_plus_hover(self._plus_item_at(event.position().toPoint()))
+                point = event.position().toPoint()
+                self._set_plus_hover(self._plus_item_at(point))
+                self._set_pick_hover(self._pick_item_at(point))
             elif kind == QEvent.Type.Leave:
                 self._set_plus_hover(None)
+                self._set_pick_hover(None)
         return super().eventFilter(watched, event)
 
     def _undo_remove(self, item, path: str) -> None:

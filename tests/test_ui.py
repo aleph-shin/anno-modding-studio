@@ -1422,6 +1422,78 @@ class TestTheEditorTree(WorkflowCase):
             QTest.keyClick(tree, Qt.Key.Key_Return)
         self.assertEqual(pick.call_args_list, [mock.call(ingredient), mock.call(ingredient)])
 
+    @staticmethod
+    def _child(entry, tag):
+        return next(
+            entry.child(i) for i in range(entry.childCount())
+            if entry.child(i).text(0) == tag
+        )
+
+    def test_an_empty_field_that_takes_an_asset_shows_a_button_for_it(self):
+        """Its Refers to cell was empty, and opened the picker only for
+        someone who knew to double-click it."""
+        from anno_modding_studio.ui.editor_panel import PICK_ROLE
+
+        self.window._open_asset("1010030")
+        editor = self.window.editor
+        editor._add_list_entry(self._container("Costs"))
+        added = next(
+            item for item, _ingredient in self._cost_entries()
+            if item.text(3) == "added by this mod"
+        )
+        ingredient = self._child(added, "Ingredient")
+        amount = self._child(added, "Amount")
+        self.assertTrue(ingredient.data(2, PICK_ROLE))
+        self.assertIn("Click to choose the asset", ingredient.toolTip(2))
+        amount.setText(1, "")
+        self.assertFalse(amount.data(2, PICK_ROLE))
+        # Filled in, the cell names the asset instead.
+        ingredient.setText(1, "1010208")
+        self.assertFalse(ingredient.data(2, PICK_ROLE))
+        ingredient.setText(1, "")
+        self.assertTrue(ingredient.data(2, PICK_ROLE))
+
+    def test_one_click_on_the_button_opens_the_picker_once(self):
+        from PySide6.QtCore import QPointF
+        from PySide6.QtGui import QMouseEvent
+
+        from anno_modding_studio.ui.editor_panel import pick_rect
+
+        self.window._open_asset("1010030")
+        editor = self.window.editor
+        editor._add_list_entry(self._container("Costs"))
+        added = next(
+            item for item, _ingredient in self._cost_entries()
+            if item.text(3) == "added by this mod"
+        )
+        ingredient = self._child(added, "Ingredient")
+        tree = editor.tree
+        self.window.show()
+        self.window.tabs.setCurrentWidget(editor)
+        tree.scrollToItem(ingredient)
+        _app.processEvents()
+        viewport = tree.viewport()
+        cell = tree.visualRect(tree.indexFromItem(ingredient, 2))
+        at = QPointF(pick_rect(cell, tree.fontMetrics()).center())
+        left = Qt.MouseButton.LeftButton
+
+        def send(kind, held):
+            QApplication.sendEvent(viewport, QMouseEvent(
+                kind, at, viewport.mapToGlobal(at), left, held,
+                Qt.KeyboardModifier.NoModifier,
+            ))
+
+        with mock.patch.object(editor, "_pick_asset") as pick:
+            send(QEvent.Type.MouseButtonPress, left)
+            self.assertEqual(pick.call_args_list, [])
+            send(QEvent.Type.MouseButtonRelease, Qt.MouseButton.NoButton)
+            self.assertEqual(pick.call_args_list, [mock.call(ingredient)])
+            # The second click of a double-click opens nothing again.
+            send(QEvent.Type.MouseButtonDblClick, left)
+            send(QEvent.Type.MouseButtonRelease, Qt.MouseButton.NoButton)
+            self.assertEqual(pick.call_args_list, [mock.call(ingredient)])
+        self.assertIs(tree.currentItem(), ingredient)
+
     def test_a_row_that_cannot_be_typed_in_is_not_offered_edit_value(self):
         """The asset's own GUID: *Edit value* was offered, and did nothing
         (A11-63)."""
@@ -2910,6 +2982,96 @@ class TestStructuralEdits(WorkflowCase):
         self.assertNotIn("<%s>" % tag, change.payload)
 
 
+class TestBrowsingKeepsTheView(WorkflowCase):
+    """Expand all is a way of reading assets, and Back and Forward come
+    back to an asset as it was left: they are how two assets are compared."""
+
+    def _open_rows(self):
+        editor = self.window.editor
+        return {
+            editor._item_key(i) for i in editor._iter_items()
+            if i.childCount() and i.isExpanded()
+        }
+
+    def _containers(self):
+        return [i for i in self.window.editor._iter_items() if i.childCount()]
+
+    def test_expand_all_carries_on_to_the_next_asset(self):
+        editor = self.window.editor
+        self.window._open_asset("1010340")
+        editor.fold_button.click()
+        editor.load_asset("1010030")
+        self.assertEqual(editor.fold_button.text(), "Collapse all")
+        self.assertTrue(all(i.isExpanded() for i in self._containers()))
+        # And collapsed, the next one opens collapsed as before.
+        editor.fold_button.click()
+        editor.load_asset("1010340")
+        self.assertEqual(editor.fold_button.text(), "Expand all")
+        deep = [i for i in self._containers() if i.parent() is not None]
+        self.assertTrue(deep)
+        self.assertFalse(any(i.isExpanded() for i in deep))
+
+    def test_back_and_forward_come_back_to_the_asset_as_it_was_left(self):
+        editor = self.window.editor
+        tree = editor.tree
+        self.window.show()
+        self.window.tabs.setCurrentWidget(editor)
+        self.window._open_asset("1010340")
+        editor.fold_button.click()
+        _app.processEvents()
+        bar = tree.verticalScrollBar()
+        self.assertGreater(bar.maximum(), 0, "the open tree should scroll")
+        bar.setValue(bar.maximum() // 2)
+        scrolled = bar.value()
+        picked = self._containers()[-1]
+        tree.setCurrentItem(picked)
+        picked_key = editor._item_key(picked)
+        bar.setValue(scrolled)
+
+        editor.load_asset("1010030")
+        # One row opened by hand there, the rest shut.
+        editor.fold_button.click()
+        some = next(i for i in self._containers() if i.parent() is not None)
+        some.setExpanded(True)
+        there = self._open_rows()
+
+        editor.go_back()
+        self.assertEqual(editor.guid, "1010340")
+        self.assertEqual(editor.fold_button.text(), "Collapse all")
+        self.assertTrue(all(i.isExpanded() for i in self._containers()))
+        self.assertEqual(editor._item_key(tree.currentItem()), picked_key)
+        self.assertEqual(bar.value(), scrolled)
+
+        editor.go_forward()
+        self.assertEqual(editor.guid, "1010030")
+        self.assertEqual(self._open_rows(), there)
+        self.assertEqual(editor.fold_button.text(), "Expand all")
+
+    def test_an_asset_come_to_again_another_way_is_not_put_back(self):
+        """Opened from a search, it is a new step on the trail: as any other."""
+        editor = self.window.editor
+        self.window._open_asset("1010340")
+        some = next(i for i in self._containers() if i.parent() is not None)
+        some.setExpanded(True)
+        key = editor._item_key(some)
+        editor.load_asset("1010030")
+        editor.load_asset("1010340")
+        self.assertNotIn(key, self._open_rows())
+
+    def test_back_in_the_graph_puts_the_editor_back_too(self):
+        editor = self.window.editor
+        self.window._open_asset("1010340")
+        some = next(i for i in self._containers() if i.parent() is not None)
+        some.setExpanded(True)
+        key = editor._item_key(some)
+        editor.load_asset("1010030")
+        self.window.tabs.setCurrentIndex(TAB_REFS)
+        self.window.references.go_back()
+        self.window.tabs.setCurrentIndex(TAB_EDIT)
+        self.assertEqual(editor.guid, "1010340")
+        self.assertIn(key, self._open_rows())
+
+
 class TestCopyingAndPastingABlock(WorkflowCase):
     """Copy a row and what is in it, and paste it where its shape fits:
     another entry like one already in a list, without rebuilding it."""
@@ -2956,6 +3118,16 @@ class TestCopyingAndPastingABlock(WorkflowCase):
         current = editor.tree.currentItem()
         self.assertEqual(editor._item_key(current), "Factory7[0]/FactoryInputs[0]/Item[1]")
         self.assertEqual(current.text(3), "added by this mod")
+
+    def test_under_expand_all_a_pasted_entry_is_open_too(self):
+        self.window._open_asset("1010340")
+        editor = self.window.editor
+        editor.fold_button.click()
+        editor._copy_block(self._inputs()[0])
+        editor._paste(self._inputs()[0])
+        pasted = self._inputs()[1]
+        self.assertTrue(pasted.isExpanded())
+        self.assertEqual(editor.fold_button.text(), "Collapse all")
 
     def test_what_is_copied_is_what_the_rows_say_now(self):
         """A value typed since the tree was drawn is copied as typed, and a
@@ -3461,6 +3633,15 @@ class TestTheAddFieldDialog(WorkflowCase):
         for i in range(entry.childCount()):
             self.assertEqual(entry.child(i).text(1), "")
             self.assertFalse(entry.child(i).isHidden())
+
+    def test_the_filter_has_the_keyboard_when_it_opens(self):
+        """Typing is what comes next, and the help button had it."""
+        dialog = self._open_add_field_dialog("/Values/Building", [])
+        self.addCleanup(dialog.deleteLater)
+        dialog.show()
+        _app.processEvents()
+        self.assertIs(dialog.focusWidget(), dialog.search_box)
+        dialog.reject()
 
     def test_picking_a_field_does_not_type_a_value_for_you(self):
         dialog = self._open_add_field_dialog("/Values/Building", [])

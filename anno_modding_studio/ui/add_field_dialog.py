@@ -85,6 +85,9 @@ class AddFieldDialog(QDialog):
 
         self._build_ui()
         self._refresh()
+        # Typing is what comes next: the list is long, and the help button
+        # before the box in the tab order had the keyboard instead.
+        self.search_box.setFocus()
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)

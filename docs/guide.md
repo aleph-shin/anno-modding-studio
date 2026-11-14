@@ -200,8 +200,8 @@ Five tabs, a panel on the right, and a **Play** button after the last tab.
 |---|---|
 | **Start** (Ctrl+1) | Game files, what you're here to do, your loadout, and what the game will load. |
 | **Asset editor** (Ctrl+2, Ctrl+Shift+2 moves it to a separate window) | Search for an asset and edit it in a tree. |
-| **Mod file** (Ctrl+3, Ctrl+Shift+3 moves it to a separate window) | A mod's file, with an outline of its ModOps. The file of the mod your changes go to is typed in; any other is shown. |
-| **References** (Ctrl+4, Ctrl+Shift+4 moves it to a separate window) | A graph of what refers to an asset and what it refers to. |
+| **References** (Ctrl+3, Ctrl+Shift+3 moves it to a separate window) | A graph of what refers to an asset and what it refers to. |
+| **Mod file** (Ctrl+4, Ctrl+Shift+4 moves it to a separate window) | A mod's file, with an outline of its ModOps. The file of the mod your changes go to is typed in; any other is shown. |
 | **Export** (Ctrl+5) | Your mod's details, the XML it will write, validation, export and publishing. |
 | **Mod changes** panel (F9 folds it away, Shift+F9 moves it to a separate window) | Every change in the loadout, grouped by mod, then by kept ModOp or asset. Each has a checkbox. |
 | **▶ Play** (F5) | Makes the loadout what the game loads, then starts the game. |
@@ -224,8 +224,8 @@ Where the menus put things:
   re-index the game's data and its texts), *Settings…* (Ctrl+,) and *Exit*.
 - **Edit** holds *Undo*, *Redo*, *New asset…* and *New rule…*, then whatever the
   selected row in the asset editor offers.
-- **View** folds the Mod changes panel away, moves it or the Asset editor, Mod
-  file or References tab to a separate window, finds text in the open asset or the
+- **View** folds the Mod changes panel away, moves it or the Asset editor,
+  References or Mod file tab to a separate window, finds text in the open asset or the
   file (Ctrl+F), searches for an asset (Ctrl+P), and lists the tabs.
 - **Mods** holds what is in the loadout: *Add mods…*, *Install a mod from mod.io…*,
   *Mods this loadout uses…*, *Unload mods…*, *Check mod.io for updates…*, and the two
@@ -243,10 +243,10 @@ Where the menus put things:
   Python's, Qt's and lxml's versions and the Windows version on the clipboard, for
   a bug report.
 
-With a second monitor, the Mod changes panel and the Asset editor, Mod file and
-References tabs can each sit there in a window of its own. *View › Separate window*
+With a second monitor, the Mod changes panel and the Asset editor, References and
+Mod file tabs can each sit there in a window of its own. *View › Separate window*
 moves each (Shift+F9 for Mod changes, Ctrl+Shift+2 for Asset editor, Ctrl+Shift+3
-for Mod file, Ctrl+Shift+4 for References), and so does the arrow at the end of its
+for References, Ctrl+Shift+4 for Mod file), and so does the arrow at the end of its
 top row. The same arrow, the same key, or closing the window puts it back.
 
 - The window stays above the main window and is minimised with it.
@@ -1183,7 +1183,9 @@ Search is at the top of the asset editor. Type an in-game name, an internal name
 - **Right-click a result** for **Open in asset editor**, **References for this
   asset…**, **Copy GUID**, **Copy internal name** and **Show only &lt;template&gt;**.
 - **Back** and **Forward** (Alt+Left, Alt+Right, or the mouse's side buttons) walk
-  the assets you have visited. The References tab shares the same history.
+  the assets you have visited. The References tab shares the same history. An asset
+  gone back or forward to opens as you left it: the same rows open, the same row
+  picked, scrolled to the same place.
 
 ### Editing
 
@@ -1193,10 +1195,14 @@ edit it.
 - **Original** shows the value before your change. Changed rows are highlighted.
 - **Typing the original value back** removes the change.
 - **Refers to** shows the asset a GUID field points at. Double-click it, or
-  right-click › *Choose asset…*, to pick another.
+  right-click › *Choose asset…*, to pick another. An empty field that takes a GUID
+  shows a **Choose asset…** button there instead, which opens the picker in one
+  click.
 - **Filter fields…** searches within the asset, and Ctrl+F puts the keyboard there.
   **Only changed** shows what the mod touches. **Show empty** shows empty fields and
   list padding. **Expand all** opens every row, and then reads **Collapse all**.
+  It stays on: the next asset you open, and what you add or paste, opens expanded
+  too, until you collapse.
 - **ModOp path** shows the path the selected value will be targeted by. **Copy**
   copies it.
 - **The asset's own GUID is read-only.** Other GUID fields are editable.
