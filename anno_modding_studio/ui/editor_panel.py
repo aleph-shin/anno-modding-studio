@@ -363,12 +363,33 @@ def _is_identity_guid(elem) -> bool:
     return grandparent is not None and grandparent.tag == "Values"
 
 
-PROPERTY_WIDTH = 300
-# How Value, Refers to and Original share what Property leaves. A header can
-# only stretch one column, and "Refers to" swallowed every extra pixel of a
-# wide window while Value and Original -- the longer, more often cut short
-# -- stayed as they were built.
-FIELD_SHARES = {1: 0.42, 2: 0.33, 3: 0.25}
+# How the four columns share the tree's width. Property held 300 pixels
+# whatever the width, and Value, Refers to and Original shared the rest: on a
+# wide screen a value of a few characters had a column of hundreds of
+# pixels, while a field twelve levels down had its name cut to nothing. So
+# Property shares too, and the most, and Value and Original stop at what
+# they have a use for (field_limits) and leave the rest to Property and
+# Refers to.
+FIELD_SHARES = {0: 0.40, 1: 0.20, 2: 0.30, 3: 0.10}
+
+
+def field_limits(metrics, button: int) -> dict:
+    """The floors, caps and spare width of the field columns, in the text's
+    own measure so they follow its size. ``button`` is the width of the
+    "Choose asset…" button.
+
+    Value has room for a value of thirty-two characters: a longer one is a text
+    or a path, rare, and shown whole while it is typed in. Refers to keeps
+    room for an asset's short name or the button, and its hover says the
+    rest. Original is the first to go: past its cap it has nothing more to
+    say, and where the tree is narrow it is hidden, its rows' colour saying
+    which mod they come of.
+    """
+    char = metrics.averageCharWidth()
+    floors = {0: 22 * char, 1: 10 * char, 2: max(18 * char, button + 2 * PICK_MARGIN + 8)}
+    caps = {1: 32 * char, 3: 26 * char}
+    spare = {3: 2 * floors[0] + caps[1] + 2 * floors[2] + caps[3]}
+    return {"floors": floors, "caps": caps, "spare": spare}
 
 
 class EditorPanel(QWidget):
@@ -682,11 +703,13 @@ class EditorPanel(QWidget):
         self.tree.setMouseTracking(True)   # so the "+" can light up under the cursor
         self.tree.setItemDelegate(RowHeightDelegate(self))
         self.tree.viewport().installEventFilter(self)
-        self.tree.setColumnWidth(0, PROPERTY_WIDTH)
-        # Property holds the width it is dragged to, and the other three
-        # share the rest: a column dragged wider takes from its neighbours
-        # rather than scrolling the tree sideways.
-        fit_columns(self.tree, shares=FIELD_SHARES, keep=(0,))
+        # A column dragged wider takes from its neighbours rather than
+        # scrolling the tree sideways.
+        fit_columns(self.tree, shares=FIELD_SHARES, **self._field_limits())
+        theme.notifier().changed.connect(self._refit_fields)
+        # Measured again in the font the style sheet gives the tree, which
+        # it does not have yet.
+        self.tree.installEventFilter(self)
         self.tree.doubleClicked.connect(self._maybe_pick_asset)
         enter_activates(self.tree, self._enter_on_row)
         # The tree's own, so a value being typed keeps its Ctrl+C and Ctrl+V.
@@ -3272,6 +3295,15 @@ class EditorPanel(QWidget):
         return menu
 
     # -- the inline "+" ----------------------------------------------------
+    def _field_limits(self) -> dict:
+        upright = QFontMetricsF(pick_font(self.tree.font()), self.tree)
+        button = pick_rect(QRect(0, 0, 10_000, ROW_HEIGHT), upright).width()
+        return field_limits(self.tree.fontMetrics(), button)
+
+    def _refit_fields(self) -> None:
+        """Another text size: the columns' limits are in its measure."""
+        self.tree.column_fit.set_limits(**self._field_limits())
+
     def is_pick_hovered(self, index) -> bool:
         item = self.tree.itemFromIndex(index)
         return item is not None and item is self._pick_hover
@@ -3328,6 +3360,8 @@ class EditorPanel(QWidget):
 
     def eventFilter(self, watched, event):
         """Turn a click on the "+" glyph into an add, before the tree sees it."""
+        if watched is self.tree and event.type() in (QEvent.Type.Polish, QEvent.Type.FontChange):
+            self._refit_fields()
         if watched is self.tree.viewport():
             kind = event.type()
             if kind == QEvent.Type.MouseButtonPress and event.button() in (

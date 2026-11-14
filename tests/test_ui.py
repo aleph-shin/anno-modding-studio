@@ -3072,6 +3072,41 @@ class TestBrowsingKeepsTheView(WorkflowCase):
         self.assertIn(key, self._open_rows())
 
 
+class TestTheFieldColumnsShareTheWidth(WorkflowCase):
+    """Value and Original stop at what they have a use for; Property and
+    Refers to take the rest, and Original goes first when it is narrow."""
+
+    def _laid_out(self, width):
+        window = self.window
+        window.show()
+        window.tabs.setCurrentWidget(window.editor)
+        window._open_asset("1010340")
+        if window.changes_panel.isVisible():
+            window.toggle_changes.trigger()
+        window.resize(width, 700)
+        _app.processEvents()
+        tree = window.editor.tree
+        return tree, tree.header()
+
+    def test_on_a_wide_tree_property_has_the_room_and_value_its_cap(self):
+        tree, header = self._laid_out(4000)
+        limits = self.window.editor._field_limits()
+        self.assertEqual(header.sectionSize(1), limits["caps"][1])
+        self.assertEqual(header.sectionSize(3), limits["caps"][3])
+        self.assertGreater(header.sectionSize(0), header.sectionSize(2))
+        self.assertGreater(header.sectionSize(2), header.sectionSize(1))
+        self.assertEqual(sum(header.sectionSize(c) for c in range(4)), tree.viewport().width())
+
+    def test_on_a_narrow_one_original_is_hidden(self):
+        _tree, header = self._laid_out(900)
+        self.assertTrue(header.isSectionHidden(3))
+        limits = self.window.editor._field_limits()
+        self.assertGreaterEqual(header.sectionSize(2), limits["floors"][2])
+        self.window.resize(4000, 700)
+        _app.processEvents()
+        self.assertFalse(header.isSectionHidden(3))
+
+
 class TestCopyingAndPastingABlock(WorkflowCase):
     """Copy a row and what is in it, and paste it where its shape fits:
     another entry like one already in a list, without rebuilding it."""
@@ -5081,22 +5116,25 @@ class TestHintsAndGeometry(WorkflowCase):
 
     # -- column layout distributes extra width across several columns -------
     def test_the_field_editor_columns_share_a_wider_window(self):
-        """Only "Refers to" used to grow; Value and Original hold the longer,
-        more-often-truncated text and should grow too."""
+        """Property and Refers to grow with the window. Value and Original
+        stop at what they have a use for: a value of a few characters had a
+        column of hundreds of pixels while deep rows lost their names."""
         self.window.show()
         self.window._open_asset("1010340")
         tree = self.window.editor.tree
+        caps = self.window.editor._field_limits()["caps"]
 
-        self.window.resize(1100, 800)
+        self.window.resize(1400, 800)
         _app.processEvents()
-        narrow = (tree.columnWidth(1), tree.columnWidth(2), tree.columnWidth(3))
-        self.window.resize(2200, 800)
+        narrow = [tree.columnWidth(column) for column in range(4)]
+        self.window.resize(4000, 800)
         _app.processEvents()
-        wide = (tree.columnWidth(1), tree.columnWidth(2), tree.columnWidth(3))
+        wide = [tree.columnWidth(column) for column in range(4)]
 
-        self.assertGreater(wide[0], narrow[0], "Value should grow")
-        self.assertGreater(wide[1], narrow[1], "Refers to should grow")
-        self.assertGreater(wide[2], narrow[2], "Original should grow")
+        self.assertGreater(wide[0], narrow[0], "Property should grow")
+        self.assertGreater(wide[2], narrow[2], "Refers to should grow")
+        self.assertLessEqual(wide[1], caps[1], "Value stops at its cap")
+        self.assertLessEqual(wide[3], caps[3], "Original stops at its cap")
 
     def test_a_field_column_dragged_wider_never_scrolls_the_tree_sideways(self):
         """It pushed the columns after it past the edge, and the tree
@@ -5115,11 +5153,11 @@ class TestHintsAndGeometry(WorkflowCase):
                 sum(tree.columnWidth(each) for each in range(4)), tree.viewport().width()
             )
             self.assertEqual(tree.horizontalScrollBar().maximum(), 0)
-        # Property holds what it was dragged to as the window grows.
+        # Property keeps at least what it was dragged to as the window grows.
         property_width = tree.columnWidth(0)
         self.window.resize(1800, 800)
         _app.processEvents()
-        self.assertEqual(tree.columnWidth(0), property_width)
+        self.assertGreaterEqual(tree.columnWidth(0), property_width)
 
     def test_the_search_result_columns_share_a_wider_window(self):
         """Only Name used to grow; Internal name and Template hold the longer,

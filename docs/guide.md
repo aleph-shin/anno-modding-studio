@@ -1193,6 +1193,10 @@ The asset is a tree of its current values. Double-click a value, or press Enter,
 edit it.
 
 - **Original** shows the value before your change. Changed rows are highlighted.
+  Where the tree is narrow, Original is hidden first.
+- **The columns share the width.** Value and Original take only what they need, and
+  Property and Refers to take the rest, so deep rows keep their names. Drag a column's
+  edge to change it.
 - **Typing the original value back** removes the change.
 - **Refers to** shows the asset a GUID field points at. Double-click it, or
   right-click › *Choose asset…*, to pick another. An empty field that takes a GUID

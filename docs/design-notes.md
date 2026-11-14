@@ -396,6 +396,16 @@ way is a new step and opens fresh, except that Expand all carries over from the 
 before, as a way of reading assets rather than a click to make on each. What was added or
 pasted under it opens too.
 
+**The field columns share the width by what they have a use for.** Property held 300
+pixels and the other three shared the rest, so on a wide screen a value of a few
+characters had a column of hundreds of pixels while a field twelve levels down had its
+name cut to nothing. Widening Property to fit the rows that are open would have moved
+the columns at every click, so the widths go by the tree's width alone: Value stops at
+room for 32 characters and Original at 26, both measured in the text's own size;
+Property and Refers to share what is left, Property the more. Refers to keeps room for
+an asset's short name or the button, and its hover says the rest. Original is hidden
+where the tree is narrow: the row's colour already says which mod it comes of.
+
 **An empty GUID field shows a button.** Its Refers to cell opened the picker, but empty
 it looked like any number field's, and only someone who knew could find it. The button is
 one click, where the cell with an asset in it is a double-click: a button that waited for
