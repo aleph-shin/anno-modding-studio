@@ -586,9 +586,9 @@ class TestReferencesOutAndBack(GraphCase):
         self.assertEqual(
             button.accessibleName(), "Move References to a separate window"
         )
-        self.assertEqual(window.references_out.shortcut().toString(), "Ctrl+Shift+4")
+        self.assertEqual(window.references_out.shortcut().toString(), "Ctrl+Shift+3")
         view = dict(shortcuts_dialog.gather(window))["View"]
-        self.assertIn(("References in a separate window", "Ctrl+Shift+4"), view)
+        self.assertIn(("References in a separate window", "Ctrl+Shift+3"), view)
         button.click()
         _app.processEvents()
         self.assertTrue(window.panels.is_out(REFERENCES))
@@ -977,9 +977,9 @@ class TestModFileOutAndBack(FileCase):
 
     def test_it_has_a_key_a_button_and_a_place_in_the_view_menu(self):
         window = self.window
-        self.assertEqual(window.file_out.shortcut().toString(), "Ctrl+Shift+3")
+        self.assertEqual(window.file_out.shortcut().toString(), "Ctrl+Shift+4")
         view = dict(shortcuts_dialog.gather(window))["View"]
-        self.assertIn(("Mod file in a separate window", "Ctrl+Shift+3"), view)
+        self.assertIn(("Mod file in a separate window", "Ctrl+Shift+4"), view)
         button = next(
             one for one in self.panel.findChildren(QToolButton)
             if one.objectName() == "PanelMove"

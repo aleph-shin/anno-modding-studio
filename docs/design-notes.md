@@ -387,6 +387,30 @@ The loaded asset tree is never mutated — it stays as the pristine base-game st
 matters: paths are generated against original values, so editing (say) a `<Product>` that
 another entry's path keys off can't silently corrupt a different ModOp.
 
+**Expand all stays on, and Back comes back to the asset as it was left.** With no way to
+open two assets side by side, going back and forward between them is how they are
+compared. Each step drew the tree collapsed again, so the rows being compared had to be
+opened again at every step. Now an asset gone back or forward to, from either tab, is put
+back as it was left: the rows open, the row picked, the scroll. An asset come to any other
+way is a new step and opens fresh, except that Expand all carries over from the asset
+before, as a way of reading assets rather than a click to make on each. What was added or
+pasted under it opens too.
+
+**The field columns share the width by what they have a use for.** Property held 300
+pixels and the other three shared the rest, so on a wide screen a value of a few
+characters had a column of hundreds of pixels while a field twelve levels down had its
+name cut to nothing. Widening Property to fit the rows that are open would have moved
+the columns at every click, so the widths go by the tree's width alone: Value stops at
+room for 32 characters and Original at 26, both measured in the text's own size;
+Property and Refers to share what is left, Property the more. Refers to keeps room for
+an asset's short name or the button, and its hover says the rest. Original is hidden
+where the tree is narrow: the row's colour already says which mod it comes of.
+
+**An empty GUID field shows a button.** Its Refers to cell opened the picker, but empty
+it looked like any number field's, and only someone who knew could find it. The button is
+one click, where the cell with an asset in it is a double-click: a button that waited for
+a second click would not be one.
+
 #### Undo and redo
 
 Both panels edit the same mod, and a Ctrl+Z that means
@@ -400,6 +424,10 @@ Leaving an undo step
 behind that half-reverses a folder read would be worse than having none.
 
 ### References
+
+The References tab stands straight after the Asset editor, ahead of Mod file: going from
+an asset to what refers to it and back is done all the time, the mod's file looked over
+now and then.
 
 What makes a graph possible anyway is measuring each *field* across the whole
 shipped file rather than guessing at each value: `Cost/Costs/Item/Ingredient` resolves to

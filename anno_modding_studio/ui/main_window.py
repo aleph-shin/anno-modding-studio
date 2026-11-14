@@ -817,11 +817,11 @@ class MainWindow(QMainWindow):
         # Translators: the names of the main window's tabs, one per step.
         self.tabs.addTab(self.source, tr("Start"))
         self.tabs.addTab(self.editor, tr("Asset editor"))
+        # Translators: the tab that draws which assets refer to which.
+        self.tabs.addTab(self.references, tr("References"))
         # Translators: the tab that holds the file of the mod being written,
         # to type in.
         self.tabs.addTab(self.file_panel, tr("Mod file"))
-        # Translators: the tab that draws which assets refer to which.
-        self.tabs.addTab(self.references, tr("References"))
         # "Export": what the page is for. "Generate mod" named the machinery
         # rather than the act, and the act is the one the user is here for.
         # Translators: the tab that writes the mod out, named for the act.
@@ -869,8 +869,8 @@ class MainWindow(QMainWindow):
         # action that moves it.
         self.tab_out_actions = {}
         self.editor_out = self._movable_tab(TAB_EDIT, self.editor, "Ctrl+Shift+2")
-        self.file_out = self._movable_tab(TAB_FILE, self.file_panel, "Ctrl+Shift+3")
-        self.references_out = self._movable_tab(TAB_REFS, self.references, "Ctrl+Shift+4")
+        self.references_out = self._movable_tab(TAB_REFS, self.references, "Ctrl+Shift+3")
+        self.file_out = self._movable_tab(TAB_FILE, self.file_panel, "Ctrl+Shift+4")
         self.editor_out.toggled.connect(self._editor_moved_window)
         self.references_out.toggled.connect(self._graph_moved_window)
         self.references.pinChanged.connect(self._on_pin_changed)

@@ -1255,7 +1255,7 @@ class TestColumnsKeepToTheirView(unittest.TestCase):
     """A column dragged wider takes its room from the columns after it,
     rather than pushing them past the edge for the view to scroll to."""
 
-    def table(self, modes=None, shares=None, keep=(), floors=None):
+    def table(self, modes=None, shares=None, keep=(), floors=None, caps=None, spare=None):
         from PySide6.QtWidgets import QHeaderView, QTableWidget
 
         table = QTableWidget(3, 4)
@@ -1266,7 +1266,7 @@ class TestColumnsKeepToTheirView(unittest.TestCase):
         for column in range(4):
             if header.sectionResizeMode(column) == QHeaderView.ResizeMode.Interactive:
                 table.setColumnWidth(column, 150)
-        fit = widgets.fit_columns(table, shares, keep, floors)
+        fit = widgets.fit_columns(table, shares, keep, floors, caps, spare)
         table.resize(640, 300)
         table.show()
         _app.processEvents()
@@ -1406,6 +1406,46 @@ class TestColumnsKeepToTheirView(unittest.TestCase):
         _app.processEvents()
         self.assertGreaterEqual(table.columnWidth(0), 140)
         self.assertGreaterEqual(table.columnWidth(3), 90)
+
+    def test_a_capped_column_leaves_the_rest_to_the_others(self):
+        """The field tree's Value: a few characters wide, and it had
+        hundreds of pixels on a wide screen."""
+        table, _ = self.table(caps={1: 80})
+        self.assertEqual(table.columnWidth(1), 80)
+        self.assertFits(table)
+        others = [table.columnWidth(c) for c in (0, 2, 3)]
+        self.assertLessEqual(max(others) - min(others), 1)
+        table.resize(1200, 300)
+        _app.processEvents()
+        self.assertEqual(table.columnWidth(1), 80)
+        self.assertFits(table)
+
+    def test_one_dragged_past_its_cap_keeps_the_width_dragged(self):
+        table, _ = self.table(caps={1: 80})
+        table.horizontalHeader().resizeSection(1, 130)
+        self.assertEqual(table.columnWidth(1), 130)
+        table.resize(900, 300)
+        _app.processEvents()
+        self.assertGreaterEqual(table.columnWidth(1), 130)
+        self.assertFits(table)
+
+    def test_with_every_column_capped_they_still_fill_the_view(self):
+        table, _ = self.table(caps={0: 50, 1: 50, 2: 50, 3: 50})
+        self.assertFits(table)
+
+    def test_a_spare_column_is_hidden_while_the_view_is_narrow(self):
+        table, _ = self.table(spare={3: 700})
+        header = table.horizontalHeader()
+        self.assertTrue(header.isSectionHidden(3))
+        self.assertFits(table)
+        table.resize(900, 300)
+        _app.processEvents()
+        self.assertFalse(header.isSectionHidden(3))
+        self.assertFits(table)
+        table.resize(500, 300)
+        _app.processEvents()
+        self.assertTrue(header.isSectionHidden(3))
+        self.assertFits(table)
 
     def test_the_shares_are_read_and_set_for_remembering(self):
         table, fit = self.table(shares={0: 0.1, 1: 0.2, 2: 0.3, 3: 0.4})

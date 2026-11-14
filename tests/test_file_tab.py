@@ -42,7 +42,6 @@ from anno_modding_studio.ui.main_window import MainWindow  # noqa: E402
 from anno_modding_studio.ui.navigation import (  # noqa: E402
     TAB_EDIT,
     TAB_FILE,
-    TAB_REFS,
     TAB_SOURCE,
 )
 
@@ -151,9 +150,9 @@ class FileTabCase(unittest.TestCase):
 
 
 class TestTheTab(FileTabCase):
-    def test_it_stands_after_the_asset_editor(self):
+    def test_it_stands_after_the_references(self):
         names = [self.window.tabs.tabText(at) for at in range(self.window.tabs.count())]
-        self.assertEqual(names[TAB_EDIT:TAB_REFS + 1], ["Asset editor", "Mod file", "References"])
+        self.assertEqual(names[TAB_EDIT:TAB_FILE + 1], ["Asset editor", "References", "Mod file"])
         self.assertIs(self.window.tabs.widget(TAB_FILE), self.panel)
 
     def test_it_waits_for_the_start_tab_as_the_others_do(self):
