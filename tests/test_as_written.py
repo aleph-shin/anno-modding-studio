@@ -1064,6 +1064,55 @@ class TestTypingOverAPlainOpsValue(ListedCase):
         self.assertEqual([c.new_value for c in exception], ["30"])
 
 
+class TestTypingIntoAnEmptyFieldOfAnOp(ListedCase):
+    """A field written ``<Tag/>`` -- an entry added in Fields and left empty
+    -- typed into keeps the whole op: it was the field and what came after
+    it alone, so the mod's file was no ModOps the game could read."""
+
+    ADDS = (
+        '<ModOp Type="addNextSibling" GUID="1000">'
+        "<Asset><Template>Pool</Template><Values><Standard><GUID>5000</GUID></Standard>"
+        "<Pool><List><Item><Fertility>1</Fertility></Item></List></Pool></Values></Asset>"
+        "<Asset><Template>Pool</Template><Values><Standard><GUID>5001</GUID></Standard>"
+        "<Pool><List><Item><Fertility>2</Fertility></Item><Item><Fertility/></Item></List>"
+        "</Pool></Values></Asset></ModOp>"
+    )
+
+    def test_typed_over_it_keeps_what_comes_before(self):
+        typed = modop.typed_over(
+            '<ModOp GUID="1"><List><Item><F>2</F></Item><Item><F/></Item></List></ModOp>',
+            (0, 1, 0), "", "51212",
+        )
+        self.assertEqual(
+            typed, '<ModOp GUID="1"><List><Item><F>2</F></Item><Item><F>51212</F></Item></List></ModOp>'
+        )
+
+    def test_typed_into_in_fields_the_op_is_the_op_with_the_value_in_it(self):
+        from anno_modding_studio.core import effective
+
+        loadout = self.loadout(Mod=self.ADDS)
+        (op,) = loadout.ops
+        (second,) = [
+            change for change in loadout.changes_by_op(op.uid)
+            if "<GUID>5001</GUID>" in (change.payload or "")
+        ]
+        payload = effective.parse_payload(second)
+        empty = next(node for node in payload.iter("Fertility") if not (node.text or "").strip())
+        steps = []
+        node = empty
+        while node is not payload:
+            steps.insert(0, str(list(node.getparent()).index(node)))
+            node = node.getparent()
+        self.assertTrue(keptops.type_into(loadout, second, ".".join(steps), "51212"))
+        source = loadout.op(op.uid).source
+        self.assertTrue(source.startswith('<ModOp Type="addNextSibling" GUID="1000">'), source)
+        written = etree.fromstring(source.encode("utf-8"))
+        self.assertEqual(
+            [node.text for node in written.iter("Fertility")], ["1", "2", "51212"]
+        )
+        self.assertEqual(len(written.findall("Asset")), 2)
+
+
 class TestAnOpKeyedWhereTheStudioLeavesItBare(ListedCase):
     """An op is one with its change where it keys a list entry the Studio's
     path for the change leaves bare, since the entry has no twin as the op

@@ -557,16 +557,28 @@ def typed_over(source: str, steps: Sequence[int], was: str, value: str) -> Optio
         return None
     held = found[next(at for at, one in enumerate(named) if one is node)]
     if held.group(1):
-        # ``<Tag/>``: opened and closed round what is typed in it.
-        return "%s>%s</%s>%s" % (
-            source[held.start(): held.end() - 2].rstrip(), escape(value), node.tag,
-            source[held.end():],
+        # ``<Tag/>``: opened and closed round what is typed in it.  Everything
+        # before it stays: without it, a value typed into an empty field left
+        # the op as that field and what came after it.
+        typed = "%s%s>%s</%s>%s" % (
+            source[: held.start()], source[held.start(): held.end() - 2].rstrip(),
+            escape(value), node.tag, source[held.end():],
         )
-    ends = source.index("<", held.end())
-    text = source[held.end(): ends]
-    lead = text[: len(text) - len(text.lstrip())] if text.strip() else ""
-    trail = text[len(text.rstrip()):] if text.strip() else ""
-    return source[: held.end()] + lead + escape(value) + trail + source[ends:]
+    else:
+        ends = source.index("<", held.end())
+        text = source[held.end(): ends]
+        lead = text[: len(text) - len(text.lstrip())] if text.strip() else ""
+        trail = text[len(text.rstrip()):] if text.strip() else ""
+        typed = source[: held.end()] + lead + escape(value) + trail + source[ends:]
+    # What it hands back is the op its caller keeps in place of this one: one
+    # that is not the op read with the value typed over is none.
+    try:
+        again = ElementTree.fromstring(typed)
+    except ElementTree.ParseError:
+        return None
+    if again.tag != root.tag or len(list(again.iter())) != len(list(root.iter())):
+        return None
+    return typed
 
 
 def summary_typed_over(summary: str, was: str, value: str) -> str:
