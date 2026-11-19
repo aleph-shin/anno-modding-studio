@@ -3356,6 +3356,77 @@ class TestRemovingAnEntryTheGameMayNotMiss(WorkflowCase):
         self.assertEqual(len(self.window.loadout), 2)
 
 
+class TestAKeyIsNeverAFieldTheModAdds(WorkflowCase):
+    """An entry is keyed by what the op finds in it, and the mod's own adds
+    run after its replacements.  A patch to the Latium Flagship gave a Mast
+    a DefaultModuleCount, the one thing then telling its ship module config
+    from the one struck out beside it, and the change to the config's
+    Archers after it was keyed ``[Mast/DefaultModuleCount='1']``: nothing
+    had that when it ran."""
+
+    CONFIG = (
+        "<Item><Mast><Max>1</Max></Mast><Archers><Default>1</Default></Archers>"
+        "<Hull><Max>%s</Max></Hull></Item>"
+    )
+    LISTS = (
+        "<Asset><Template>Ship</Template><Values>"
+        "<Standard><GUID>1006</GUID><Name>eta</Name></Standard>"
+        "<Ship><List>%s</List></Ship>"
+        "</Values></Asset>"
+    ) % (CONFIG % "1" + CONFIG % "2")
+
+    @classmethod
+    def setUpClass(cls):
+        import support
+
+        cls._tmp = tempfile.TemporaryDirectory()
+        tmp = Path(cls._tmp.name)
+        cls.assets = tmp / "assets.xml"
+        cls.assets.write_text(
+            support.IMPORT_ASSETS.replace("</Assets>", cls.LISTS + "</Assets>"), encoding="utf-8"
+        )
+        cls.db = tmp / "index.sqlite"
+        index_mod.build_index(cls.assets, cls.db)
+
+    def first(self, *tags):
+        """The row at ``tags`` under the list's first entry."""
+        from anno_modding_studio.ui.editor_panel import ELEM_ROLE
+
+        entries = sorted(
+            (item for item in self.window.editor._iter_items()
+             if item.text(0) == "Item" and item.data(0, ELEM_ROLE) is not None),
+            key=lambda item: item.parent().indexOfChild(item),
+        )
+        row = entries[0]
+        for tag in tags:
+            row = next(row.child(i) for i in range(row.childCount()) if row.child(i).text(0) == tag)
+        return row
+
+    def test_an_edit_after_an_added_field_is_not_keyed_by_it(self):
+        from anno_modding_studio.core import generator
+        from anno_modding_studio.core.changes import OP_MERGE, OP_REPLACE
+
+        for reopened in (False, True):
+            with self.subTest(reopened=reopened):
+                self.window.loadout.changes.clear()
+                self.window._open_asset("1006")
+                added = etree.Element("Default")
+                added.text = "1"
+                self.window.editor._record_addition(
+                    self.first("Mast"), added, "set Default in Mast", op=OP_MERGE
+                )
+                if reopened:
+                    self.window._open_asset("1006")
+                self.first("Archers", "Default").setText(1, "0")
+                paths = {change.op: change.path for change in self.window.loadout}
+                self.assertEqual(
+                    paths[OP_REPLACE], "/Values/Ship/List/Item[Hull/Max='1']/Archers/Default"
+                )
+                self.assertEqual(paths[OP_MERGE], "/Values/Ship/List/Item[Hull/Max='1']/Mast")
+                results = generator.verify_changes(self.window.workspace, self.window.loadout)
+                self.assertEqual([(r.ok, r.message) for r in results], [(True, "ok")] * 2)
+
+
 class TestRemovingEntriesThatOnlyAPositionTellsApart(WorkflowCase):
     """Entries nothing in them tells apart are named by a count, and the
     game counts in what is left of the list when the op runs.  Removing the

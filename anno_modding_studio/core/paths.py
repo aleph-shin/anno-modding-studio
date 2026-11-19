@@ -82,12 +82,13 @@ def _children(elem) -> List:
 
 def value_of(elem, tag: str, text=None) -> str:
     """What ``elem``'s field ``tag`` holds, "" where it holds fields instead.
-    ``text`` reads a node's text where the tree's own is not the one to go
-    by (:func:`path_for`)."""
+    ``text(field, elem)`` reads a field's text where the tree's own is not
+    the one to go by, ``None`` for a field the op does not find in ``elem``
+    at all (:func:`path_for`)."""
     child = elem.find(tag)
     if child is None or len(_children(child)):
         return ""
-    return ((text(child) if text is not None else child.text) or "").strip()
+    return ((text(child, elem) if text is not None else child.text) or "").strip()
 
 
 def quote(value: str) -> str:
@@ -189,7 +190,11 @@ def path_for(root, node, keyed: bool = False, gone=None, text=None) -> Generated
     what the op's own changes make of it.  An op replaces an entry's key
     after everything else it does through that entry: with the first of two
     pools of 2001 given a new one, the second is still the second 2001 to
-    the op, not the only one.
+    the op, not the only one.  Nor does the op find a field its own mod
+    adds to an entry that was there before: the adds run after it.  A Mast
+    given a DefaultModuleCount was the one thing telling one ship module
+    config from the one struck out beside it, and keyed by it, the op to
+    the config's Archers found nothing.
 
     The empty path is ``root`` itself (see :func:`resolve`), so a ``node`` that
     is not inside ``root`` at all raises :class:`ValueError` rather than being
