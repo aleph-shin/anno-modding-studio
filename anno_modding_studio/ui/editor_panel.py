@@ -2484,11 +2484,19 @@ class EditorPanel(QWidget):
     def _as_found(self):
         """A field's value as the ModOp written for an edit here finds it:
         before this mod's own replacements, which its op runs after
-        everything it finds an entry through (:func:`.changes.after_their_entry`)."""
+        everything it finds an entry through (:func:`.changes.after_their_entry`).
+        A field this mod adds to an entry it did not add is not there at all:
+        its adds are written after its replacements."""
         if self.effective is None or self.effective.element is not self.asset_root:
             return None
         asset, origin = self.effective, self.editing()
-        return lambda node: asset.handed_text(node, origin)
+
+        def found(node, entry):
+            if asset.added_by(node, origin) and not asset.added_by(entry, origin):
+                return None
+            return asset.handed_text(node, origin)
+
+        return found
 
     def _gone_for(self, elem):
         """What the game no longer has when a ModOp to ``elem`` runs: the

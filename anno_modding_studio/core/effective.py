@@ -473,6 +473,12 @@ class EffectiveAsset:
         first of them that replaced it."""
         return self._handed.get((id(node), origin), node.text or "")
 
+    def added_by(self, node, origin: str) -> bool:
+        """Whether ``node`` is in the asset because ``origin`` added it."""
+        known = self.origin(node)
+        by = known.change_key[0] if known.change_key else None
+        return known.provenance == PROV_ADDED and by == origin
+
     def handed_form(self, node, origin: str) -> str:
         """``node`` and everything in it as it was handed to ``origin``'s
         ops, as one line: what an entry a path finds by a count is known
