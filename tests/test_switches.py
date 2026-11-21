@@ -635,6 +635,26 @@ class TestInWhatOrderTheyRun(unittest.TestCase):
         )
 
 
+class TestWhichModsAReadMoved(unittest.TestCase):
+    """What the status says moved when a read puts a mod elsewhere."""
+
+    def test_one_mod_put_back_among_the_others_is_the_one_that_moved(self):
+        """ReleaseTest_0.1.0 from last to after Powerful Flagship (R4-8)."""
+        self.assertEqual(
+            switches.moved(["a", "b", "c", "d", "R"], ["a", "b", "R", "c", "d"]), ["R"]
+        )
+
+    def test_a_mod_added_or_left_out_moves_nothing(self):
+        self.assertEqual(switches.moved(["a", "b", "c"], ["a", "new", "c"]), [])
+        self.assertEqual(switches.moved([], ["a", "b"]), [])
+
+    def test_the_fewest_that_can_have_moved_in_the_reads_order(self):
+        self.assertEqual(
+            switches.moved(["a", "b", "c", "d", "e", "f"], ["f", "a", "b", "e", "c", "d"]),
+            ["f", "e"],
+        )
+
+
 class TestWhereTheGameLooks(unittest.TestCase):
     """Every folder the game loads from, the mod.io cache among them."""
 

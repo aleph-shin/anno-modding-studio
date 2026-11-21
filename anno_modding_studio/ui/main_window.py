@@ -60,6 +60,7 @@ from ..core import (
     repeats,
     settings,
     stale,
+    switches,
     truth,
     unsubscribe,
 )
@@ -2335,6 +2336,11 @@ class MainWindow(QMainWindow):
                 # And each mod a project of yours keeps, as its project has it:
                 # the folder holds its last build, which can be an older one.
                 projects = readback.over_a_read(self.loadout)
+                # Where each mod stood, to say which the read put elsewhere.
+                stood = [
+                    layer.origin
+                    for layer in sorted(self.loadout.layers, key=lambda layer: layer.order)
+                ]
                 editing = self.loadout.editing
                 for layer in list(self.loadout.layers):
                     # Keeping what you edited into them: those changes exist
@@ -2403,6 +2409,11 @@ class MainWindow(QMainWindow):
                 # Each op of theirs an edit of yours was made to, looked for in
                 # what was just read: one an update changed holds the edit.
                 settled = held_edits.settle(self.loadout, stocks, fresh)
+                now = sorted(self.loadout.layers, key=lambda layer: layer.order)
+                went = [
+                    self.loadout.layer(origin).label
+                    for origin in switches.moved(stood, [layer.origin for layer in now])
+                ]
                 step(4)
                 inside.take_back(self.loadout, {layer.origin for layer in dialog.layers})
                 # With no card chosen and no loadout, the folder read starts one.
@@ -2450,6 +2461,13 @@ class MainWindow(QMainWindow):
                 "replaces them.",
                 len(replaced), status=message,
             )
+        if went:
+            # Translators: %(names)s is the mods' names, as a list.
+            message = trn(
+                "%(status)s  %(n)s mod moved to where the game loads it: %(names)s.",
+                "%(status)s  %(n)s mods moved to where the game loads them: %(names)s.",
+                len(went), status=message, names=join_list(went),
+            )
         if settled.moved:
             message = trn(
                 "%(status)s  %(n)s edit of yours followed its op to where an update moved it.",
@@ -2464,7 +2482,8 @@ class MainWindow(QMainWindow):
             )
         self.status_label.setText(message)
         self.forget_undo()
-        self.refresh_truth()
+        # A mod moved is said over what Play would do, which the card shows.
+        self.refresh_truth(say=not went)
         self.start.refresh_source_panel()
         # The folder read is the loaded mods; the library and mod.io's
         # downloads may hold more.

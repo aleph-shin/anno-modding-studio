@@ -174,6 +174,29 @@ class TestAMissingReadingIsReadOnOpening(_Case):
         self.assertEqual(project.read_bytes(), before)
         self.assertEqual(Loadout.load(main).held(done.origin), "")
 
+    def test_an_anno_117_mod_stands_where_its_category_and_name_sort_it(self):
+        """Anno 117 sorts by "[Category] ModName".  Placed before its
+        project's details were taken in, the mod sorted as one of no
+        category, after every other mod: ReleaseTest_0.1.0 sat last in the
+        run's 117 loadout, and the next read of the folder moved it (R4-8,
+        hands-on run 4)."""
+        mine = Loadout(game="anno117", own=own_record(name="Harbours", category="Gameplay"))
+        mine.set_up_as(AIM_MAKE)
+        mine.make_own_mod()
+        self.edit(mine, radius("12"))
+        self.save(mine, "Harbours")
+        main = Loadout(game="anno117")
+        for name, category in (("Fleet", "Gameplay"), ("Aqueducts", "Graphics"),
+                               ("Eel Grabbers", "Mod")):
+            main.set_layer(ModLayer(origin=name, name=name, category=category, mod_id=name.lower()))
+        path = self.save(main, "Main")
+        mods = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, mods, True)
+        done = self.add(path, mine, "", mods)
+        opened = Loadout.load(path)
+        self.assertEqual([one.origin for one in sorted(opened.layers, key=lambda one: one.order)],
+                         ["Fleet", done.origin, "Aqueducts", "Eel Grabbers"])
+
     def test_adding_it_twice_adds_it_once(self):
         mods = self.mods(a=ALPHA)
         mine = self.written_mod()

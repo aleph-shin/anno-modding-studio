@@ -355,7 +355,9 @@ the folder's other mods and the library's listed by name. Nothing is read until 
 tick a mod to add. The first tick reads all of them in one go, as the game loads them,
 which can take a few minutes for a full folder. Ticks after that read nothing. Each
 mod you tick comes in switched on and in its place in load order. The loadout's own
-mods keep their switches and their options. Closing the list without importing reads
+mods keep their switches and their options. Where the read finds one of them in
+another place in load order than the loadout had it, the mod moves to where the game
+loads it, and the status bar names it. Closing the list without importing reads
 nothing. In a loadout not started from *Play a set of mods* it opens the one-mod
 import, which lists the library's switched-off mods under
 a heading of their own. Your mods folder isn't changed until you press Play.
@@ -1424,7 +1426,8 @@ there.
   is linked into the mods folder.
 - **Each loadout ticked refers to the mod's project.** It reads the mod the next time
   it is opened, where the mod stands in its load order, and the mods after it are read
-  over it. The mod is switched on in its chosen profile.
+  over it. It stands where the game loads it, worked out from its project's details
+  (for Anno 117, its category and name). The mod is switched on in its chosen profile.
 - **A loadout that has the mod from its folder,** from before the mod had a project,
   is listed as such. Ticking it makes it read the mod from its project from then on.
 - **A patch brings the mods it needs** from the library, where the loadout lacks them,

@@ -10833,6 +10833,14 @@ msgid_plural "%(status)s  %(n)s are on and not loaded, because another mod repla
 msgstr[0] "%(status)s  %(n)s davon ist aktiviert, wird aber nicht geladen, weil eine andere Mod sie ersetzt."
 msgstr[1] "%(status)s  %(n)s davon sind aktiviert, werden aber nicht geladen, weil eine andere Mod sie ersetzt."
 
+#. Translators: %(names)s is the mods' names, as a list.
+#: anno_modding_studio/ui/main_window.py
+#, python-format
+msgid "%(status)s  %(n)s mod moved to where the game loads it: %(names)s."
+msgid_plural "%(status)s  %(n)s mods moved to where the game loads them: %(names)s."
+msgstr[0] "%(status)s  %(n)s Mod steht jetzt dort, wo das Spiel sie lädt: %(names)s."
+msgstr[1] "%(status)s  %(n)s Mods stehen jetzt dort, wo das Spiel sie lädt: %(names)s."
+
 #: anno_modding_studio/ui/main_window.py
 #, python-format
 msgid "%(status)s  %(n)s edit of yours followed its op to where an update moved it."

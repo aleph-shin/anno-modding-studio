@@ -296,6 +296,25 @@ class TestAddingModsReadsOnce(test_library._PickerCase):
             sorted((layer.origin, layer.active) for layer in self.window.loadout.layers),
             [("[Gameplay] New", True), ("[Gameplay] On", True), ("[Gameplay] Theirs", True)],
         )
+        # Each of the loadout's mods is where the read puts it already.
+        self.assertNotIn("moved", self.window.status_label.text())
+
+    def test_a_mod_the_read_puts_elsewhere_in_load_order_is_named(self):
+        """It goes where the game loads it, and the status says so: adding
+        one mod moved ReleaseTest_0.1.0 without a word (R4-8)."""
+        self.addCleanup(self.window.files.mark_saved)
+        self.window.loadout.mods_folder = str(self.mods)
+        self.window.settings.setValue(self.window.mods_key("last_mods_folder"), str(self.mods))
+        # The game loads On first, by its folder's name; the loadout says Theirs.
+        self.window.loadout.layer("[Gameplay] On").order = 3
+        shown = mock.Mock(side_effect=AssertionError("the list was shown"))
+        with mock.patch.object(mods_folder_dialog.ModsFolderDialog, "exec", shown):
+            self.assertTrue(self.window.read_installed([self.mods / "[Gameplay] New"]))
+        self.assertEqual(
+            [layer.origin for layer in sorted(self.window.loadout.layers, key=lambda one: one.order)],
+            ["[Gameplay] New", "[Gameplay] On", "[Gameplay] Theirs"],
+        )
+        self.assertIn("1 mod moved to where the game loads it: ", self.window.status_label.text())
 
     def test_a_read_that_wants_an_answer_shows_the_list(self):
         """Stopped by what it read, the list is shown at what it read."""
