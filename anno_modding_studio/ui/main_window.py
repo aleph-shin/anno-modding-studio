@@ -321,11 +321,13 @@ class StatusLine(QLabel):
     def setText(self, text: str) -> None:
         self.say(text)
 
-    def say(self, text: str, folder=None, *, link=None) -> None:
+    def say(self, text: str, folder=None, *, link=None, about: str = "") -> None:
         """Show ``text``, and *Show in folder* for ``folder`` where one is
         named: a folder it opens, or a file it picks out in its folder.
         ``link`` is ``(label, callback)``: a link after the text, which
-        calls ``callback`` when it is clicked."""
+        calls ``callback`` when it is clicked.  ``about`` names a line
+        that is said again as it changes, the game files' at start-up:
+        said straight after itself, it takes its own place in the history."""
         super().setText(text)
         self.setToolTip(text)
         self.action = link[1] if link else None
@@ -334,7 +336,7 @@ class StatusLine(QLabel):
             show_rich(self.action_link, '<a href="action">%s</a>' % html.escape(link[0]))
             self.action_link.setAccessibleName(link[0])
         self.folder = Path(folder) if folder else None
-        self.history.add(text, self.folder, link)
+        self.history.add(text, self.folder, link, about=about)
         self.history_button.show_unseen(self.history.unseen)
         self.folder_link.setVisible(self.folder is not None)
         if self.folder is None:

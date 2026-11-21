@@ -70,6 +70,22 @@ class TestTheHistory(unittest.TestCase):
             self.history.add(text)
         self.assertEqual(self.texts(), ["Exported.", "Read.", "Exported."])
 
+    def test_a_line_said_again_as_it_changes_takes_its_own_place(self):
+        # The game files' line at start-up, as each part comes in: the
+        # templates go in the middle, and the count of names changes.
+        base = "assets.xml   ·   33,040 assets loaded from cache   ·   Anno 117"
+        for text in (base + "   ·   34,983 localised names",
+                     base + "   ·   1,028 templates   ·   34,983 localised names",
+                     base + "   ·   1,028 templates   ·   35,101 localised names"):
+            self.history.add(text, about="game files")
+        self.assertEqual(self.texts(), [base + "   ·   1,028 templates   ·   35,101 localised names"])
+        self.assertEqual(self.history.unseen, 1)
+        # Not after something else, and not without saying what it is about.
+        self.history.add("Read.")
+        self.history.add(base, about="game files")
+        self.history.add(base + "   ·   1 more")
+        self.assertEqual(len(self.texts()), 4)
+
     def test_an_empty_line_is_not_a_message(self):
         self.history.add("Exported.")
         self.history.add("")
@@ -182,6 +198,15 @@ class TestTheStatusLine(unittest.TestCase):
         self.assertEqual([entry.text for entry in said],
                          ["Every ModOp comes to what it did.", "Exported.", "Ready."])
         self.assertEqual(said[1].folder, Path("C:/exports"))
+
+    def test_a_line_about_the_game_files_said_again_is_kept_once(self):
+        from anno_modding_studio.ui.game_files_controller import GAME_FILES
+
+        self.line.say("assets.xml   ·   33,040 assets", about=GAME_FILES)
+        self.line.say("assets.xml   ·   33,040 assets   ·   1,028 templates", about=GAME_FILES)
+        self.assertEqual([entry.text for entry in self.line.history.entries()],
+                         ["assets.xml   ·   33,040 assets   ·   1,028 templates", "Ready."])
+        self.assertEqual(self.line.text(), "assets.xml   ·   33,040 assets   ·   1,028 templates")
 
     def test_the_button_counts_what_came_since_the_list_was_opened(self):
         self.line.say("Exported.")

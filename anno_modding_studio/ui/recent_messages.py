@@ -68,6 +68,8 @@ class Said:
     # The message's own link, ``(label, callback)``: *Show them* after the
     # ModOps a reading moved, say.
     link: Optional[Tuple[str, Callable[[], None]]] = None
+    # What a line said again as it changes is about, "" for any other.
+    about: str = ""
 
     def links(self) -> List[Link]:
         """What the message had beside it in the status bar."""
@@ -87,8 +89,12 @@ class MessageHistory:
 
     The same words said again, with nothing between, are one message, shown
     at the later time: a reading that says "Every ModOp comes to what it
-    did." after each edit filled the list with it.  An empty line, the
-    message taken away, is not a message."""
+    did." after each edit filled the list with it.  So is a line said again
+    as it changes, ``about`` the same thing as the one before: the game
+    files' line at start-up is said again as the templates, the names and
+    the check of the game come in, and was four messages that each said
+    most of the last one again.  An empty line, the message taken away, is
+    not a message."""
 
     def __init__(self, kept: int = KEPT, clock: Callable[[], float] = time.time) -> None:
         self._kept = kept
@@ -96,17 +102,18 @@ class MessageHistory:
         self._said: List[Said] = []
         self.unseen = 0
 
-    def add(self, text: str, folder=None, link=None) -> None:
+    def add(self, text: str, folder=None, link=None, about: str = "") -> None:
         if not text:
             return
         folder = Path(folder) if folder else None
         newest = self._said[0] if self._said else None
-        if newest is not None and newest.text == text:
+        if newest is not None and (newest.text == text or (about and newest.about == about)):
+            newest.text = text
             newest.folder = folder
             newest.link = link
             newest.when = self._clock()
             return
-        self._said.insert(0, Said(text, folder, self._clock(), link))
+        self._said.insert(0, Said(text, folder, self._clock(), link, about))
         del self._said[self._kept:]
         self.unseen = min(self.unseen + 1, len(self._said))
 

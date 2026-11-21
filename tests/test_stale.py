@@ -1058,6 +1058,73 @@ class TestAnEditIsReadAgain(EditedCase):
         ))
 
 
+class TestAnEntryFoundByItsOwnKey(EditedCase):
+    """A reading writes a list entry's key only where the entry has twins,
+    so the same removal of the same entry was ``Item[Ingredient='1010']``
+    beside an entry another op added and plain ``Item`` without it: "a
+    ModOp comes to something else" after switching the add off and on,
+    where nothing had (hands-on run 4)."""
+
+    # A building whose cost list holds the one entry.
+    ALONE = (
+        "<Asset><Template>Building</Template><Values>"
+        "<Standard><GUID>1003</GUID><Name>delta</Name></Standard>"
+        "<Cost><Costs><Item><Ingredient>1010</Ingredient><Amount>5</Amount></Item></Costs></Cost>"
+        "</Values></Asset>"
+    )
+    ADD = (
+        '<ModOp Type="add" GUID="1003" Path="/Values/Cost/Costs">'
+        "<Item><Ingredient>1012</Ingredient></Item></ModOp>"
+    )
+    BY_KEY = "<ModOp Type=\"remove\" GUID=\"1003\" Path=\"/Values/Cost/Costs/Item[Ingredient='1010']\"/>"
+    # Found by its place, and the key is the reading's.
+    BY_PLACE = '<ModOp Type="remove" GUID="1003" Path="/Values/Cost/Costs/Item[last()]"/>'
+
+    @classmethod
+    def setUpClass(cls):
+        import support
+
+        cls._tmp = tempfile.TemporaryDirectory()
+        tmp = Path(cls._tmp.name)
+        cls.assets = tmp / "assets.xml"
+        cls.assets.write_text(
+            support.IMPORT_ASSETS.replace("</Assets>", cls.ALONE + "</Assets>"), encoding="utf-8"
+        )
+        cls.db = tmp / "index.sqlite"
+        support.index_mod.build_index(cls.assets, cls.db)
+        cls.index = support.index_mod.AssetIndex(cls.db, cls.assets)
+
+    def switch(self, loadout, op, on):
+        op.active = on
+        for change in loadout.changes_by_op(op.uid):
+            change.active = on
+        stale.edited(loadout, self.history.commit().reach)
+        return {found.origin: found for found in self.again(loadout)}["a"]
+
+    def paths(self, loadout, op):
+        return [change.path for change in loadout.changes_by_op(op.uid) if change.active]
+
+    def test_the_same_entry_removed_is_not_a_move(self):
+        loadout = self.start(a=self.ADD + self.BY_KEY)
+        add, removal = self.ops(loadout, "a")
+        self.assertEqual(self.paths(loadout, removal), ["/Values/Cost/Costs/Item[Ingredient='1010']"])
+        moved = self.switch(loadout, add, False)
+        # The reading wrote it without its key, and it is the same entry.
+        self.assertEqual(self.paths(loadout, removal), ["/Values/Cost/Costs/Item"])
+        self.assertEqual(moved.ops, set())
+        self.assertEqual(self.switch(loadout, add, True).ops, set())
+
+    def test_an_entry_found_by_its_place_is_one_when_another_is_found(self):
+        loadout = self.start(a=self.ADD + self.BY_PLACE)
+        add, removal = self.ops(loadout, "a")
+        # With the add, the last entry is the one it adds, and the removal
+        # takes it back; without, it is the game's own.
+        self.assertEqual(self.paths(loadout, removal), [])
+        self.assertIn(removal.uid, self.switch(loadout, add, False).ops)
+        self.assertEqual(self.paths(loadout, removal), ["/Values/Cost/Costs/Item"])
+        self.assertIn(removal.uid, self.switch(loadout, add, True).ops)
+
+
 class TestAModReadAtOtherSettings(EditedCase):
     """Reading a mod's folder again at other settings reads the mods before
     it as well, and those are what the loadout holds of them."""

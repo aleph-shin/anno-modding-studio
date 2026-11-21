@@ -25,6 +25,11 @@ from .import_dialog import ImportDialog
 from .widgets import listing, wrappable_path
 from .workers import IndexWorker, TextsWorker
 
+# What the game files' status line is about: said again as the templates,
+# the names and the check of the game come in, it takes its own place in
+# the status bar's recent messages (``ui.recent_messages``).
+GAME_FILES = "game files"  # i18n: keep - a key, never shown
+
 
 def _base_fingerprint(source) -> str:
     """The assets.xml's fingerprint, or "" if it cannot be read just now.
@@ -708,10 +713,10 @@ class GameFilesController:
             return
         if self.restore_last_read(stamp.get("game", "")):
             # After the whole line, names counted and all, not the base alone.
-            self.window.status_label.setText(tr(
+            self.window.status_label.say(tr(
                 "%s   ·   the game has not changed since you last read it.",
                 self._status_line(self.window.index.text_count),
-            ))
+            ), about=GAME_FILES)
 
     def open_texts(self, path=None, automatic: bool = False) -> None:
         if self.window.index is None:
@@ -822,7 +827,7 @@ class GameFilesController:
         QMessageBox.critical(self.window, tr("Could not load texts"), message)
 
     def _set_status(self, text_count: int = 0) -> None:
-        self.window.status_label.setText(self._status_line(text_count))
+        self.window.status_label.say(self._status_line(text_count), about=GAME_FILES)
 
     def _status_line(self, text_count: int = 0) -> str:
         if not text_count:

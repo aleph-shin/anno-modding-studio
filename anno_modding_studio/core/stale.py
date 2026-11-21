@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set
@@ -963,6 +964,37 @@ def _comes_to(loadout, origins: Set[str]) -> Dict[str, Dict[str, frozenset]]:
     }
 
 
+# A list entry found by one of its fields, ``[FunctionalEffect='99057']``:
+# the field, and its value in either quotes.
+_KEY = re.compile(r"\[([\w./-]+)=(?:'([^']*)'|\"([^\"]*)\")\]")
+
+
+def _as_named(found: frozenset, expression: str) -> tuple:
+    """What an op comes to, without the keys it names entries by itself.
+
+    A reading writes a list entry's key into a path only where the entry
+    has twins: ``Item[FunctionalEffect='99057']`` beside another entry, and
+    plain ``Item`` once it is the list's only one.  An op of the mod that
+    added an entry before it, switched off and on again, made the same
+    removal of the same entry look like a ModOp that came to something else
+    (hands-on run 4).  A key the op's own path gives names the same entry
+    whether the reading wrote it or not, so it is left out of the
+    comparison; one the reading chose, for an entry the op found by its
+    place, still counts.  Counted, not a set: two entries that differ only
+    by a key left out are two."""
+    named = {(key, one or other) for key, one, other in _KEY.findall(expression or "")}
+    if not named:
+        return tuple(sorted(found))
+
+    def bare(path: str) -> str:
+        return _KEY.sub(
+            lambda key: "" if (key.group(1), key.group(2) or key.group(3)) in named else key.group(0),
+            path,
+        )
+
+    return tuple(sorted((guid, bare(path), *rest) for guid, path, *rest in found))
+
+
 def take(loadout, reports: dict) -> List[Moved]:
     """Put each mod's reading in place of the one the loadout holds, and say
     what moved in each; a mod no longer here is passed over.
@@ -1017,10 +1049,14 @@ def take(loadout, reports: dict) -> List[Moved]:
             modfile.take_reading(loadout, origin, reports[origin])
         _marks(loadout, origin).clear()
     after = _comes_to(loadout, set(origins))
+    paths = {op.uid: op.expression for op in loadout.ops if op.origin in after}
     out = []
     for origin in origins:
         was, now = before[origin], after[origin]
-        ops = {uid for uid, found in now.items() if was.get(uid) != found}
+        ops = {
+            uid for uid, found in now.items()
+            if uid not in was or _as_named(was[uid], paths.get(uid, "")) != _as_named(found, paths.get(uid, ""))
+        }
         lost = [
             _lost(loadout, ops_were[uid], was[uid])
             for uid in was if uid not in now and uid in ops_were
