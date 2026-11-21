@@ -28,7 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional
 
-from PySide6.QtCore import QRect, QSize, Qt, Signal
+from PySide6.QtCore import QMargins, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QGuiApplication, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -60,6 +60,32 @@ def on_a_screen(rect: QRect, screens: List[QRect]) -> bool:
     middle is on one of ``screens``.  A window remembered on a monitor that
     has since been unplugged is not."""
     return any(screen.contains(rect.center()) for screen in screens)
+
+
+def onto_a_screen(rect: QRect, screens: List[QRect]) -> QRect:
+    """``rect`` moved, and made smaller where it has to be, so that the
+    whole of it is on one of ``screens``: the one its middle is on, or
+    else the one it overlaps most, or else the first.
+
+    A window on a screen by its middle could still be partly off it, and
+    one put over the panel was as far right as the main window reached:
+    either opened with its side, and its title bar's buttons, past the
+    edge of the screen (R4-12).
+    """
+    if not screens:
+        return QRect(rect)
+    screen = next((each for each in screens if each.contains(rect.center())), None)
+    if screen is None:
+        def overlap(each: QRect) -> int:
+            common = each.intersected(rect)
+            return max(common.width(), 0) * max(common.height(), 0)
+
+        screen = max(screens, key=overlap)
+    width = min(rect.width(), screen.width())
+    height = min(rect.height(), screen.height())
+    x = min(max(rect.x(), screen.x()), screen.x() + screen.width() - width)
+    y = min(max(rect.y(), screen.y()), screen.y() + screen.height() - height)
+    return QRect(x, y, width, height)
 
 
 def _as_text(rect: QRect) -> str:
@@ -289,18 +315,37 @@ class PanelWindows:
 
     def _place(self, seat: _Seat) -> QRect:
         """Where the window opens: where it was last, while that is on a
-        screen that is there, and over where the panel is otherwise."""
+        screen that is there, and over where the panel is otherwise.
+        Either way all of it, frame and all, on that screen."""
         least = seat.panel.minimumSizeHint().expandedTo(LEAST)
         if self._found(seat):
-            kept = self._remembered(seat)
-            kept.setSize(kept.size().expandedTo(least))
-            return kept
-        main = self.window
-        size = seat.panel.size() if seat.panel.isVisible() else QSize(0, 0)
-        size = size.expandedTo(least)
-        inside = main.centralWidget() or main
-        corner = inside.mapToGlobal(inside.rect().topRight())
-        return QRect(corner.x() - size.width(), corner.y(), size.width(), size.height())
+            where = self._remembered(seat)
+            where.setSize(where.size().expandedTo(least))
+        else:
+            main = self.window
+            size = seat.panel.size() if seat.panel.isVisible() else QSize(0, 0)
+            size = size.expandedTo(least)
+            inside = main.centralWidget() or main
+            corner = inside.mapToGlobal(inside.rect().topRight())
+            where = QRect(
+                corner.x() - size.width(), corner.y(), size.width(), size.height()
+            )
+        # The window's frame is not known before it is shown: the main
+        # window's stands in for it, as a window of the same kind.
+        frame = self._frame()
+        whole = onto_a_screen(where.marginsAdded(frame), self._screens())
+        return whole.marginsRemoved(frame)
+
+    def _frame(self) -> QMargins:
+        """The main window's frame: its title bar and borders."""
+        outer = self.window.frameGeometry()
+        inner = self.window.geometry()
+        return QMargins(
+            max(inner.left() - outer.left(), 0),
+            max(inner.top() - outer.top(), 0),
+            max(outer.right() - inner.right(), 0),
+            max(outer.bottom() - inner.bottom(), 0),
+        )
 
     def _remember_place(self, seat: _Seat) -> None:
         window = seat.window

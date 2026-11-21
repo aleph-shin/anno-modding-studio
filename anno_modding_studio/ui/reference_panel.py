@@ -452,6 +452,26 @@ class ReferenceView(QGraphicsView):
         self._zoom = self.transform().m11() or 1.0
         self._sync_drag_mode()
 
+    def place(self):
+        """The zoom and the point at the view's corner, for :meth:`go_to`
+        to put back after the graph is drawn again."""
+        return self.transform(), self.mapToScene(0, 0)
+
+    def go_to(self, place) -> None:
+        """Back to a :meth:`place`: the same zoom, scrolled to the same
+        point, as near as the graph now drawn lets it be.
+
+        By the scroll bars, a whole pixel at a time: ``centerOn`` put the
+        graph back a pixel out of where it was.
+        """
+        transform, corner = place
+        self.setTransform(transform)
+        off = transform.map(corner) - transform.map(self.mapToScene(0, 0))
+        for bar, by in ((self.horizontalScrollBar(), off.x()),
+                        (self.verticalScrollBar(), off.y())):
+            bar.setValue(bar.value() + round(by))
+        self.sync_zoom()
+
 
 @dataclass(frozen=True)
 class ListedAsset:
@@ -658,6 +678,9 @@ class ReferencePanel(QWidget):
         self._edges = []
         # The mod has moved since the graph was drawn: see mark_stale().
         self._waiting = False
+        # The asset the view was framed for, which a redraw of the same
+        # asset leaves as it was: see refresh().
+        self._framed = None
         self._build_ui()
         self.clear()
 
@@ -873,6 +896,7 @@ class ReferencePanel(QWidget):
 
     def clear(self) -> None:
         self.guid = None
+        self._framed = None
         self.trail.clear()
         # The editor's too, where the graph is walking one of its own: no
         # asset is open in either, and there is no way back to one.
@@ -927,6 +951,9 @@ class ReferencePanel(QWidget):
         if record:
             self.trail.visit(guid)
         self.guid = guid
+        # Framed afresh, even on the asset it is on: a click on the box in
+        # the middle centres the graph on it, as a click on any other does.
+        self._framed = None
         self._waiting = False
         self._show_heading()
         self.refresh()
@@ -1129,7 +1156,17 @@ class ReferencePanel(QWidget):
         return steady() if steady is not None else nullcontext()
 
     def refresh(self) -> None:
+        """Draw the graph around the asset it is on.
+
+        Drawn again for the same asset -- after an edit anywhere, an undo, a
+        reading, a filter -- it keeps the zoom and where it is scrolled to.
+        Every redraw framed the graph afresh, so one zoomed into was thrown
+        back to the whole of it at each edit, even pinned in a window of
+        its own (hands-on, R4-10).  The first drawing of an asset frames
+        it.
+        """
         scene = self.view.scene()
+        kept = self.view.place() if self._framed == self.guid else None
         scene.clear()
         if self.index is None or self.guid is None:
             return
@@ -1145,7 +1182,11 @@ class ReferencePanel(QWidget):
             nodes = self._draw(columns, edges, capped)
             self._draw_edges(scene, nodes, edges)
             self._report(columns, edges, capped, confident_only, with_nominal)
-        self._centre_on_focus()
+        if kept is not None and self._bound_scene() is not None:
+            self.view.go_to(kept)
+        else:
+            self._centre_on_focus()
+        self._framed = self.guid
 
     def _walk(self, root: str, depth: int, confident_only: bool, with_nominal: bool):
         """Breadth-first out from ``root``, in both directions at once.
@@ -1393,6 +1434,16 @@ class ReferencePanel(QWidget):
             self.index.references_from(self.guid, confident_only, with_nominal)
         ) + len(self.index.references_to(self.guid, confident_only, with_nominal))
 
+    def _bound_scene(self):
+        """Make the scene as large as what is drawn, with a margin, and
+        give back what is drawn; None where nothing is."""
+        scene = self.view.scene()
+        rect = scene.itemsBoundingRect()
+        if rect.isNull():
+            return None
+        scene.setSceneRect(rect.adjusted(-60, -60, 60, 60))
+        return rect
+
     def _centre_on_focus(self) -> None:
         """Frame the whole graph, or centre on the focus if it already fits.
 
@@ -1400,11 +1451,10 @@ class ReferencePanel(QWidget):
         fill the window with three boxes is not, so a small graph is left at
         its natural size with the focus asset in the middle.
         """
-        scene = self.view.scene()
-        rect = scene.itemsBoundingRect()
-        if rect.isNull():
+        rect = self._bound_scene()
+        if rect is None:
             return
-        scene.setSceneRect(rect.adjusted(-60, -60, 60, 60))
+        scene = self.view.scene()
         self.view.reset_zoom()
         viewport = self.view.viewport().rect()
         if rect.width() > viewport.width() or rect.height() > viewport.height():

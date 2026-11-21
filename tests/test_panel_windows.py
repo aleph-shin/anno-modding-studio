@@ -30,7 +30,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
 import make_sample_assets  # noqa: E402
-from PySide6.QtCore import QCoreApplication, QEvent, QRect, Qt  # noqa: E402
+from PySide6.QtCore import QCoreApplication, QEvent, QPointF, QRect, Qt  # noqa: E402
 from PySide6.QtGui import QGuiApplication, QTextCursor  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QApplication, QLabel, QMenuBar, QToolButton  # noqa: E402
@@ -54,6 +54,7 @@ from anno_modding_studio.ui.panel_windows import (  # noqa: E402
     AwayPage,
     PanelWindows,
     on_a_screen,
+    onto_a_screen,
 )
 
 _app = QApplication.instance() or QApplication([])
@@ -106,6 +107,36 @@ class TestOnAScreen(unittest.TestCase):
             on_a_screen(QRect(2400, 200, 500, 700), [SCREEN, QRect(1920, 0, 1920, 1080)])
         )
         self.assertFalse(on_a_screen(QRect(100, 100, 500, 700), []))
+
+
+class TestOntoAScreen(unittest.TestCase):
+    """A window is put wholly on a screen (R4-12)."""
+
+    def test_one_on_a_screen_already_stays_where_it_is(self):
+        self.assertEqual(onto_a_screen(QRect(100, 100, 500, 700), [SCREEN]),
+                         QRect(100, 100, 500, 700))
+
+    def test_one_past_an_edge_is_moved_back_inside_it(self):
+        self.assertEqual(onto_a_screen(QRect(1500, 100, 800, 700), [SCREEN]),
+                         QRect(1120, 100, 800, 700))
+        self.assertEqual(onto_a_screen(QRect(-50, -20, 800, 700), [SCREEN]),
+                         QRect(0, 0, 800, 700))
+
+    def test_one_larger_than_the_screen_is_made_its_size(self):
+        self.assertEqual(onto_a_screen(QRect(100, 100, 2500, 1500), [SCREEN]), SCREEN)
+
+    def test_it_goes_on_the_screen_its_middle_is_on(self):
+        right = QRect(1920, 0, 1920, 1080)
+        self.assertEqual(onto_a_screen(QRect(1800, 100, 500, 700), [SCREEN, right]),
+                         QRect(1920, 100, 500, 700))
+
+    def test_off_every_screen_it_goes_on_the_one_it_overlaps_most(self):
+        right = QRect(1920, 0, 1920, 1080)
+        self.assertEqual(onto_a_screen(QRect(3600, 900, 500, 700), [SCREEN, right]),
+                         QRect(3340, 380, 500, 700))
+        # And on the first, where it overlaps none.
+        self.assertEqual(onto_a_screen(QRect(5000, 100, 500, 700), [SCREEN, right]),
+                         QRect(1420, 100, 500, 700))
 
 
 class TestModChangesOutAndBack(PanelCase):
@@ -209,6 +240,36 @@ class TestModChangesOutAndBack(PanelCase):
         view = dict(shortcuts_dialog.gather(window))["View"]
         self.assertIn(("Mod changes in a separate window", "Shift+F9"), view)
         self.assertIn(("Mod changes panel", "F9"), view)
+
+
+class TestTheSeparateWindowMenu(PanelCase):
+    """The tabs in it are in the order of the strip, as their keys are.
+    Mod file was above References (R4-11)."""
+
+    def test_the_menu_lists_the_tabs_in_the_order_of_the_strip(self):
+        window = self.window
+        menu = next(
+            action.menu() for top in window.menuBar().actions()
+            if top.menu() is not None
+            for action in top.menu().actions()
+            if action.menu() is not None and action.text() == "Separate window"
+        )
+        self.assertEqual(menu.actions(), [
+            window.changes_out, window.editor_out, window.references_out,
+            window.file_out,
+        ])
+        self.assertLess(TAB_EDIT, TAB_REFS)
+        self.assertLess(TAB_REFS, TAB_FILE)
+
+    def test_so_does_the_list_of_shortcuts(self):
+        view = dict(shortcuts_dialog.gather(self.window))["View"]
+        rows = [row for row in view if row[0].endswith(" in a separate window")]
+        self.assertEqual(rows, [
+            ("Mod changes in a separate window", "Shift+F9"),
+            ("Asset editor in a separate window", "Ctrl+Shift+2"),
+            ("References in a separate window", "Ctrl+Shift+3"),
+            ("Mod file in a separate window", "Ctrl+Shift+4"),
+        ])
 
 
 class TestTheMainWindowsKeysInAPanelsWindow(PanelCase):
@@ -405,6 +466,27 @@ class TestWhatIsRemembered(PanelCase):
         _app.processEvents()
         place = window.panels.window_of(CHANGES).geometry()
         self.assertTrue(on_a_screen(place, [window.frameGeometry()]), place)
+
+    def test_a_window_remembered_partly_off_its_screen_opens_wholly_on_it(self):
+        # On the screen by its middle, so put out again, and opened with its
+        # side past the edge (R4-12).
+        self.close(self.window)
+        self.window.settings.setValue("changesOut", "yes")
+        self.window.settings.setValue("changesWindow", "1500,100,800,700")
+        again = self.make()
+        own = again.panels.window_of(CHANGES)
+        self.assertIsNotNone(own)
+        self.assertTrue(SCREEN.contains(own.frameGeometry()), own.frameGeometry())
+        self.assertEqual(own.geometry().size(), QRect(0, 0, 800, 700).size())
+
+    def test_a_window_put_over_a_main_window_past_the_edge_opens_on_the_screen(self):
+        window = self.window
+        window.move(1000, 50)
+        _app.processEvents()
+        window.changes_out.setChecked(True)
+        _app.processEvents()
+        own = window.panels.window_of(CHANGES)
+        self.assertTrue(SCREEN.contains(own.frameGeometry()), own.frameGeometry())
 
     def test_moved_by_hand_it_is_no_longer_waiting_for_its_screen(self):
         self.close(self.window)
@@ -1378,6 +1460,56 @@ class TestTheGraphOutKeepsUpWithEdits(GraphCase):
         ))
         window.on_changes_updated()
         self.assertEqual(pointed_at(), {"7303"})
+
+    def zoomed_in(self):
+        """The graph out on 7300, zoomed in and moved off its middle; gives
+        back the zoom and the point in the middle of the view."""
+        window = self.window
+        window._open_asset("7300")
+        window.tabs.setCurrentIndex(TAB_REFS)
+        self.take_out()
+        view = self.graph.view
+        view.scale(1.15 ** 3, 1.15 ** 3)
+        view.sync_zoom()
+        view.centerOn(self.middle() + QPointF(40, 30))
+        _app.processEvents()
+        return view.transform(), self.middle()
+
+    def middle(self) -> QPointF:
+        view = self.graph.view
+        return view.mapToScene(view.viewport().rect().center())
+
+    def assert_same_point(self, one: QPointF, other: QPointF) -> None:
+        self.assertAlmostEqual(one.x(), other.x(), places=6)
+        self.assertAlmostEqual(one.y(), other.y(), places=6)
+
+    def test_an_edit_elsewhere_keeps_the_zoom_and_the_pan(self):
+        # Every redraw framed the graph afresh, so the zoom went at each
+        # edit, even with the graph pinned in a window of its own (R4-10).
+        from anno_modding_studio.core.changes import Change
+
+        window = self.window
+        zoom, middle = self.zoomed_in()
+        self.graph.pin_box.setChecked(True)
+        window.loadout.set_change(Change(
+            guid="7302", asset_label="link_2", path="/Values/Bits/Item/Product",
+            tag="Product", old_value="7303", new_value="7305",
+        ))
+        window.on_changes_updated()
+        _app.processEvents()
+        self.assertEqual(self.graph.view.transform(), zoom)
+        self.assert_same_point(self.middle(), middle)
+        # Drawn again and again, it does not creep.
+        for _ in range(5):
+            self.graph.refresh()
+        self.assert_same_point(self.middle(), middle)
+
+    def test_moved_to_another_asset_it_is_framed_afresh(self):
+        zoom, _middle = self.zoomed_in()
+        self.graph.show_asset("7303")
+        self.assertNotEqual(self.graph.view.transform(), zoom)
+        # A graph this small is shown at its own size.
+        self.assertEqual(self.graph.view.transform().m11(), 1.0)
 
 
 class TestTheGraphInAndTheEditorOut(GraphCase):
