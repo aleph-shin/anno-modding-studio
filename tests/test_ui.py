@@ -3426,6 +3426,74 @@ class TestAKeyIsNeverAFieldTheModAdds(WorkflowCase):
                 results = generator.verify_changes(self.window.workspace, self.window.loadout)
                 self.assertEqual([(r.ok, r.message) for r in results], [(True, "ok")] * 2)
 
+    ENTRY = "/Values/Ship/List/Item[Hull/Max='1']"
+
+    def played(self):
+        """The list once the game has run this mod's changes in the order
+        they are written, each path asked of what the ones before it left."""
+        import copy
+
+        from anno_modding_studio.core.changes import OP_REMOVE, OP_REPLACE, emit_order
+
+        asset = copy.deepcopy(self.window.index.asset_element("1006"))
+        written = emit_order([c for c in self.window.loadout if c.guid == "1006"])
+        for change in written:
+            found = [n for n in asset.xpath("." + change.path) if isinstance(n.tag, str)]
+            self.assertEqual(len(found), 1, change.path)
+            if change.op == OP_REMOVE:
+                found[0].getparent().remove(found[0])
+            elif change.op == OP_REPLACE:
+                found[0].text = change.new_value
+        return [change.path for change in written], etree.tostring(
+            asset.find("Values/Ship/List/Item"), encoding="unicode", with_tail=False
+        )
+
+    def test_an_edit_of_a_key_one_level_down_waits_for_the_edits_keyed_by_it(self):
+        """``Item[Hull/Max='1']/Hull/Max`` replaces the key its entry is
+        found by, as ``Item[Hull='1']/Hull`` does.  It was not taken for one,
+        and written first, as its path sorts, the edit to the entry's Mast
+        found nothing."""
+        from anno_modding_studio.core import generator
+
+        for reopened in (False, True):
+            with self.subTest(reopened=reopened):
+                self.window.loadout.changes.clear()
+                self.window._open_asset("1006")
+                self.first("Hull", "Max").setText(1, "3")
+                if reopened:
+                    self.window._open_asset("1006")
+                self.first("Mast", "Max").setText(1, "0")
+                self.assertEqual(self.played(), (
+                    [self.ENTRY + "/Mast/Max", self.ENTRY + "/Hull/Max"],
+                    "<Item><Mast><Max>0</Max></Mast><Archers><Default>1</Default></Archers>"
+                    "<Hull><Max>3</Max></Hull></Item>",
+                ))
+                results = generator.verify_changes(self.window.workspace, self.window.loadout)
+                self.assertEqual([(r.ok, r.message) for r in results], [(True, "ok")] * 2)
+
+    def test_a_removal_of_a_key_one_level_down_waits_for_the_edits_keyed_by_it(self):
+        """Removals are written first, and a removal of the field an entry
+        is found by left nothing for the edits keyed by it to find.  Made
+        before the edit or after it, it goes behind it."""
+        from anno_modding_studio.core import generator
+
+        for edited_first in (False, True):
+            with self.subTest(edited_first=edited_first):
+                self.window.loadout.changes.clear()
+                self.window._open_asset("1006")
+                if edited_first:
+                    self.first("Mast", "Max").setText(1, "0")
+                self.window.editor._remove_node(self.first("Hull", "Max"))
+                if not edited_first:
+                    self.first("Mast", "Max").setText(1, "0")
+                self.assertEqual(self.played(), (
+                    [self.ENTRY + "/Mast/Max", self.ENTRY + "/Hull/Max"],
+                    "<Item><Mast><Max>0</Max></Mast><Archers><Default>1</Default></Archers>"
+                    "<Hull/></Item>",
+                ))
+                results = generator.verify_changes(self.window.workspace, self.window.loadout)
+                self.assertEqual([(r.ok, r.message) for r in results], [(True, "ok")] * 2)
+
 
 class TestRemovingEntriesThatOnlyAPositionTellsApart(WorkflowCase):
     """Entries nothing in them tells apart are named by a count, and the
@@ -3692,6 +3760,28 @@ class TestRemovingEntriesThatOnlyAPositionTellsApart(WorkflowCase):
             ["<Item><Pool>5</Pool><Amount>1</Amount></Item>",
              "<Item><Pool>5</Pool><Amount>9</Amount></Item>"],
         )
+
+    def test_an_edit_of_the_key_it_is_counted_by_follows_a_removal_above_it(self):
+        """The edit replaces the field its entry is counted by, and the tree
+        holds the value it sets.  Looked for again by that value, the entry
+        was not among the 2001s at all, and the edit kept its ``[2]``: with
+        the first 2001 removed before it, that found nothing."""
+        from anno_modding_studio.core import generator
+
+        editor = self.window.editor
+        self.window._open_asset("1003")
+        self.entries()[5].child(0).setText(1, "9002")
+        (edit,) = self.window.loadout
+        self.assertEqual(edit.path, self.POOL + "[2]/Fertility")
+        editor._remove_node(self.entries()[4])
+        self.assertEqual(edit.path, self.POOL + "[1]/Fertility")
+        self.assertEqual(
+            self.played("1003"),
+            ["<Item><Fertility>%s</Fertility></Item>" % f
+             for f in ("1010", "1011", "1012", "1013", "9002")],
+        )
+        results = generator.verify_changes(self.window.workspace, self.window.loadout)
+        self.assertEqual([(r.ok, r.warn) for r in results], [(True, False)] * 2)
 
 
 class TestTheAddFieldDialog(WorkflowCase):
