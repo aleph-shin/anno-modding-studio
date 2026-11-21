@@ -22,7 +22,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from test_edits import NAME, PATCH, THEIRS, _Edited  # noqa: E402
 
-from anno_modding_studio.core import edits, held, library, reader, stale  # noqa: E402
+from anno_modding_studio.core import (  # noqa: E402
+    edits,
+    held,
+    library,
+    projects,
+    reader,
+    stale,
+)
 from anno_modding_studio.core.changes import Loadout  # noqa: E402
 
 RADIUS = "<ModOp Type=\"replace\" GUID=\"1010030\" Path=\"/Values/Standard/Name\">"
@@ -134,6 +141,25 @@ class TestAnUpdateChangesTheOp(_Updated):
 
     def test_a_mod_a_project_keeps_holds_nothing(self):
         self.taken_out_of_yours_and_read_again(kept=True)
+
+    # The mod a loadout carries on with -- a "make" loadout's own mod read
+    # in -- is kept in a project with its layer not marked kept: the loadout
+    # names it as its home, and its project under its origin.  Its ops typed
+    # over were held, and yours that stood in their place switched off.
+    def test_the_mod_a_loadout_carries_on_with_holds_nothing(self):
+        self.loadout.home = NAME
+        self.taken_out_of_yours_and_read_again()
+
+    def test_a_mod_a_project_of_the_loadout_keeps_holds_nothing(self):
+        self.loadout.projects[NAME] = projects.Ref("projects/theirs.annoproj")
+        self.taken_out_of_yours_and_read_again()
+
+    def test_what_stands_in_place_in_the_mod_carried_on_with_stays_on(self):
+        self.loadout.home = NAME
+        mine = self.type_over("<Name>Theirs</Name>", "<Name>Mine</Name>")
+        self.update(THEIRS.split("  <ModOp Type=\"replace\"")[0] + "</ModOps>\n")
+        self.assertEqual(self.loadout.held_edits, [])
+        self.assertTrue(self.loadout.op(mine.uid).active)
 
     def test_an_op_switched_off_and_then_changed_is_held(self):
         self.op("<Name>Theirs</Name>").active = False
