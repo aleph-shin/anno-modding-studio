@@ -28,7 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional
 
-from PySide6.QtCore import QMargins, QRect, QSize, Qt, Signal
+from PySide6.QtCore import QMargins, QRect, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QGuiApplication, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -266,6 +266,9 @@ class PanelWindows:
             seat.window.showMaximized()
         else:
             seat.window.show()
+            # After what showing it set going: the panel's rows laid out
+            # in a window of their own make it wider than it was asked to be.
+            QTimer.singleShot(0, seat.window, lambda window=seat.window: self._keep_on_screen(window))
         seat.window.activateWindow()
         # Last, so that whoever hears of it finds the panel where it is.
         seat.action.setChecked(True)
@@ -335,6 +338,27 @@ class PanelWindows:
         frame = self._frame()
         whole = onto_a_screen(where.marginsAdded(frame), self._screens())
         return whole.marginsRemoved(frame)
+
+    def _keep_on_screen(self, window: QWidget) -> None:
+        """Once shown, ``window`` moved wholly onto its screen again.
+
+        Its place was worked out from the size its panel asks for in the
+        main window, and in a window of its own, shown, the panel asks for
+        more: the References window, put flush against the right edge of a
+        screen at 601 pixels wide, grew to 755 rightwards, past the edge
+        (R4-12).  Its layout is settled first, so that it has grown."""
+        layout = window.layout()
+        if layout is not None:
+            layout.activate()
+        outer = window.frameGeometry()
+        whole = onto_a_screen(outer, self._screens())
+        if whole == outer:
+            return
+        window.resize(
+            window.width() - (outer.width() - whole.width()),
+            window.height() - (outer.height() - whole.height()),
+        )
+        window.move(whole.topLeft())
 
     def _frame(self) -> QMargins:
         """The main window's frame: its title bar and borders."""

@@ -488,6 +488,20 @@ class TestWhatIsRemembered(PanelCase):
         own = window.panels.window_of(CHANGES)
         self.assertTrue(SCREEN.contains(own.frameGeometry()), own.frameGeometry())
 
+    def test_a_window_that_grows_once_shown_is_kept_on_the_screen(self):
+        # The References window, put flush against the edge at the width its
+        # panel asked for in the main window, grew rightwards once shown,
+        # with the panel's rows laid out in a window of its own.
+        window = self.window
+        window.move(1000, 50)
+        _app.processEvents()
+        window.changes_out.setChecked(True)
+        own = window.panels.window_of(CHANGES)
+        self.assertTrue(SCREEN.contains(own.frameGeometry()), own.frameGeometry())
+        own.resize(own.width() + 300, own.height())
+        _app.processEvents()
+        self.assertTrue(SCREEN.contains(own.frameGeometry()), own.frameGeometry())
+
     def test_moved_by_hand_it_is_no_longer_waiting_for_its_screen(self):
         self.close(self.window)
         self.window.settings.setValue("changesOut", "yes")
