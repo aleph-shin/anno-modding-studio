@@ -1065,6 +1065,24 @@ on showing what they came to before, whichever view the edit was made in.
   It is the marking only: the reading is of the whole mod either way, and
   an op that moves unmarked still says *changed when read again*. Not
   saved: marks read back from a project file reach every op.
+- **What a reading moved is shown where it is, and named.** The status
+  bar said "1 ModOp comes to something else. Its row says so.", and
+  mostly no row did. Most ops are drawn as the one change they come to
+  (`keptops.stands_alone`), and that row never looked. The op was most
+  often in a later mod, whose row starts shut with its rows not made, or
+  in the fold of ops that change nothing. An op the reading took away was
+  counted and has no row. And every reading put its own marks in place of
+  the last, so one that followed an edit and moved nothing took them away
+  and left the sentence. Now `stale.take` keeps what each op came to
+  before and comes to after (`Moved.was`, `Moved.now`), and each op it
+  took away (`Moved.lost`, with its place among the ops not read where it
+  is carried unread). The status bar names up to three, with the mod each
+  is in, and *Show it* opens their rows and selects them
+  (`ChangesPanel.show_moved`). A change row of an op that stands alone
+  says it too. A mod's row, the fold and an asset's row count what is
+  under them, and the tooltip says what each field was and is. The marks
+  last until the next edit, or another loadout, and the filter box has an
+  entry for them while there are any.
 - **The reading starts half a second after the last edit**
   (`readings_controller.EDIT_MS`). Each edit used to start one at once,
   which writes out the text of every edited mod on the window's thread, for

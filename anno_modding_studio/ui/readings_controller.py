@@ -30,7 +30,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 from ..core import loaderlog, stale
-from ..core.i18n import tr, trn
+from ..core.i18n import join_list, tr, trn
 from .background import is_waiting
 from .widgets import busy_cursor
 from .workers import RereadWorker
@@ -38,6 +38,8 @@ from .workers import RereadWorker
 # How long to wait before trying again to take a reading that came while a
 # dialog was open.
 HELD_MS = 400
+# How many ModOps a reading moved the status bar names; more are counted.
+NAMED_OPS = 3
 # How long after an edit the reading for it starts.  Edits come in runs --
 # one value after another in Fields -- and each would otherwise write out
 # every edited mod's file for a reading the next edit stops.
@@ -62,6 +64,9 @@ class ReadingsController:
         # Whether it has been said that a reading was done in the window's
         # own process: once is enough.
         self._said_fell_back = False
+        # The last sentence that named what a reading moved, while its
+        # rows are still marked: see _forget_moved.
+        self._said = ""
         # Runs out EDIT_MS after the last edit, and starts the reading.
         self._soon = QTimer(window)
         self._soon.setSingleShot(True)
@@ -143,9 +148,16 @@ class ReadingsController:
         """
         # A mod arriving or going is a change in what loads, which check()
         # sees; what such a step moved in the mod is the mod itself.
-        if self.off() or not step.reach or step.layers is not None:
+        if self.off() or step.layers is not None:
             return
-        self._marked(step.reach, step.assets, redraw)
+        # What the last reading moved is marked until the next edit, and
+        # what the reading after it moves is marked in its place.  Not at a
+        # mod arriving or going: the reading that follows it may already
+        # be in, and marks what it moved itself.
+        unmarked = self._forget_moved()
+        drawn = bool(step.reach) and self._marked(step.reach, step.assets, redraw)
+        if unmarked and redraw and not drawn:
+            self.window.changes_panel.refresh()
 
     def options_declared(self, origin: str) -> None:
         """What a mod declares as its options was just changed: each of its
@@ -154,12 +166,14 @@ class ReadingsController:
         if not self.off():
             self._marked({origin: 0}, None, True)
 
-    def _marked(self, reach, assets, redraw: bool) -> None:
+    def _marked(self, reach, assets, redraw: bool) -> bool:
+        """Mark what an edit leaves in doubt, and read it soon; whether the
+        rows were drawn again for it."""
         loadout = self.window.loadout
         before = stale.waiting(loadout)
         stale.edited(loadout, reach, assets)
         if not stale.waiting(loadout):
-            return
+            return False
         if self.worker is not None:
             # It reads the mods as they were: stopped now, which costs
             # nothing, and whatever follows starts the one that is wanted.
@@ -168,6 +182,8 @@ class ReadingsController:
         if redraw and stale.waiting(loadout) != before:
             self.window.changes_panel.refresh()
             self.window.file_panel.mark_stale()
+            return True
+        return False
 
     def _start_soon(self) -> None:
         """Start the reading once the edits have stopped coming.  Said to be
@@ -204,8 +220,22 @@ class ReadingsController:
         self._refused = None
         self.failed = ""
         self._tell()
-        self.window.changes_panel.moved = set()
+        self._said = ""
+        self.window.changes_panel.set_moved({})
         self.follow()
+
+    def _forget_moved(self) -> bool:
+        """The rows marked *changed when read again* are marked no more,
+        once they are next drawn, and the sentence that named them goes
+        where the status bar still has it; whether there were any."""
+        panel = self.window.changes_panel
+        if not panel.moved:
+            return False
+        panel.set_moved({})
+        said, self._said = self._said, ""
+        if said and self.window.status_label.text() == said:
+            self.window.rest_status()
+        return True
 
     # -- reading -------------------------------------------------------------
     def start(self) -> None:
@@ -323,7 +353,20 @@ class ReadingsController:
                 loadout, {origin: reports[origin] for origin in taken.asked if origin in reports}
             )
             stale.give_up(loadout, [origin for origin in taken.asked if origin not in reports])
-            window.changes_panel.moved = {uid for found in moved for uid in found.ops}
+            marks = {
+                uid: (found.was[uid], found.now[uid]) for found in moved for uid in found.ops
+            }
+            panel = window.changes_panel
+            if marks:
+                panel.set_moved(marks)
+            elif panel.moved:
+                # A reading that moved nothing leaves the marks of the one
+                # before: they went as it came in, while the sentence that
+                # named them stayed.  Less any op no longer there.
+                panel.set_moved({
+                    uid: found for uid, found in panel.moved.items()
+                    if loadout.op(uid) is not None
+                })
             self._show(False)
             from_text = [origin for origin in taken.asked if origin in taken.texts]
             window.files.took_reading(
@@ -351,11 +394,7 @@ class ReadingsController:
             # moved something, since it follows every edit.
             window.undo.absorb()
             if ops:
-                window.status_label.setText(trn(
-                    "After that edit, %(n)s ModOp comes to something else. Its row says so.",
-                    "After that edit, %(n)s ModOps come to something else. Their rows say so.",
-                    ops,
-                ))
+                self._say_moved(moved, for_edits=True)
             return
         # A reading of their folders, not an edit: see core.undo.
         window.forget_undo()
@@ -407,12 +446,98 @@ class ReadingsController:
                 "%(n)s mods were read again, because what loads before them changed.",
                 rest,
             ))
-        if ops:
-            said.append(trn(
-                "%(n)s ModOp comes to something else now. Its row says so.",
-                "%(n)s ModOps come to something else now. Their rows say so.",
-                ops,
-            ))
-        else:
+        if not ops:
             said.append(tr("Every ModOp comes to what it did."))
-        window.status_label.setText(" ".join(said))
+            window.status_label.setText(" ".join(said))
+            return
+        self._say_moved(moved, for_edits=False, before=said)
+
+    def _say_moved(self, moved, for_edits: bool, before=()) -> None:
+        """Say what a reading moved, after the sentences ``before``: the
+        ModOps that come to something else, each named while they are few,
+        then those no longer read, with *Show it* for their rows.  "1 ModOp
+        comes to something else. Its row says so." named none, and its row
+        was mostly one nobody could see: shut in a later mod, or one drawn
+        as the one change it comes to, which said nothing."""
+        window = self.window
+        panel = window.changes_panel
+        loadout = window.loadout
+        order = {op.uid: at for at, op in enumerate(loadout.ops)}
+        uids = sorted(
+            (uid for found in moved for uid in found.ops if uid in order), key=order.get
+        )
+        # Where each lands, as it does now or did before: one that comes to
+        # nothing now is named by where it came to something.
+        came_to = {uid: found.now[uid] | found.was[uid] for found in moved for uid in found.ops}
+        lost = [lost for found in moved for lost in found.lost]
+        said = list(before)
+        names = [panel.op_called(loadout.op(uid), came_to[uid]) for uid in uids]
+        named = join_list(names) if len(names) <= NAMED_OPS else ""
+        if uids:
+            said.append(self._moved_sentence(len(uids), named, for_edits))
+        if lost:
+            # No row of its own any more: named, since nothing else can say
+            # which it was.
+            gone = [panel.op_called(found.op, found.was) for found in lost]
+            if len(gone) <= NAMED_OPS:
+                said.append(trn(
+                    "A ModOp is no longer read: %(ops)s.",
+                    "%(n)s ModOps are no longer read: %(ops)s.",
+                    len(gone), ops=join_list(gone),
+                ))
+            else:
+                said.append(trn(
+                    "%(n)s ModOp is no longer read.",
+                    "%(n)s ModOps are no longer read.",
+                    len(gone),
+                ))
+        # Carried unread, an op still has a row: the one that says so.
+        unread = [
+            (found.op.origin, found.unread_at) for found in lost if found.unread_at is not None
+        ]
+        rows = len(uids) + len(unread)
+        link = None
+        if rows:
+            link = (
+                tr("Show it") if rows == 1 else tr("Show them"),
+                lambda: self.show_moved(uids, unread),
+            )
+        text = " ".join(said)
+        window.status_label.say(text, link=link)
+        self._said = text
+
+    @staticmethod
+    def _moved_sentence(count: int, named: str, for_edits: bool) -> str:
+        """How many ModOps come to something else, and which where
+        ``named`` says: after an edit, or after a reading of folders."""
+        if for_edits and named:
+            return trn(
+                "After that edit, a ModOp comes to something else: %(ops)s.",
+                "After that edit, %(n)s ModOps come to something else: %(ops)s.",
+                count, ops=named,
+            )
+        if for_edits:
+            return trn(
+                "After that edit, %(n)s ModOp comes to something else.",
+                "After that edit, %(n)s ModOps come to something else.",
+                count,
+            )
+        if named:
+            return trn(
+                "A ModOp comes to something else now: %(ops)s.",
+                "%(n)s ModOps come to something else now: %(ops)s.",
+                count, ops=named,
+            )
+        return trn(
+            "%(n)s ModOp comes to something else now.",
+            "%(n)s ModOps come to something else now.",
+            count,
+        )
+
+    def show_moved(self, uids, unread=()) -> None:
+        """The rows of the ops a reading moved, in view and selected: in the
+        Mod changes panel, opened where it is folded to its strip."""
+        window = self.window
+        if window.toggle_changes.isEnabled():
+            window.toggle_changes.setChecked(True)
+        window.changes_panel.show_moved(uids, unread)

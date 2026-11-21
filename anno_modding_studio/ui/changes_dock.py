@@ -61,6 +61,7 @@ from .change_rows import (  # noqa: F401 - the names half the window imports fro
     GUID_ROLE,
     KEY_ROLE,
     KIND_ROLE,
+    MOVED_ROLE,
     OP_ROLE,
     OPEN_ROLE,
     ORIGIN_ROLE,
@@ -96,9 +97,11 @@ XML_KINDS = ("mod", "op", "part", "group", "asset", "change", "unread")
 FILTER_SLICE = 0.2
 
 # What the filter looks in, as the box beside it has it: every row, the mods'
-# own rows alone, or one mod's rows (``_scope_origin``).
+# own rows alone, the rows of the ops the last reading moved (while there
+# are any), or one mod's rows (``_scope_origin``).
 SCOPE_ALL = "all"
 SCOPE_NAMES = "names"
+SCOPE_MOVED = "moved"
 SCOPE_MOD = "mod"
 
 # How many of a list a mod row's tooltip names before saying how many more:
@@ -365,9 +368,7 @@ class ChangesPanel(QWidget, ChangeRows):
         self.scope_box.setSizeAdjustPolicy(
             QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
         )
-        self.scope_box.setMinimumContentsLength(max(
-            len(self.scope_box.itemText(i)) for i in range(self.scope_box.count())
-        ))
+        self._fit_scope()
         self.scope_box.currentIndexChanged.connect(self._on_scope)
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
@@ -492,8 +493,40 @@ class ChangesPanel(QWidget, ChangeRows):
 
     def _filtering(self) -> bool:
         """Whether a filter is on: something typed, or the list narrowed to
-        one mod, which hides the others with nothing typed."""
-        return bool(self._needle()) or self.scope_box.currentData() == SCOPE_MOD
+        one mod or to the rows changed when read again, which hide the
+        others with nothing typed."""
+        return bool(self._needle()) or self.scope_box.currentData() in (SCOPE_MOD, SCOPE_MOVED)
+
+    def _fit_scope(self) -> None:
+        """The box beside the filter as wide as its own entries need, and
+        no wider for a mod's name."""
+        box = self.scope_box
+        box.setMinimumContentsLength(max(
+            len(box.itemText(i)) for i in range(box.count()) if box.itemData(i) != SCOPE_MOD
+        ))
+
+    def _sync_moved_scope(self) -> None:
+        """The box's entry for the rows changed when read again, there
+        while there are any; chosen as it goes, the filter is back on
+        every row."""
+        box = self.scope_box
+        at = box.findData(SCOPE_MOVED)
+        if bool(self.moved) == (at >= 0):
+            return
+        chosen = box.currentData() == SCOPE_MOVED
+        was = box.blockSignals(True)
+        try:
+            if self.moved:
+                box.insertItem(2, tr("Changed when read again", context="filter in"), SCOPE_MOVED)
+            else:
+                box.removeItem(at)
+                if chosen:
+                    box.setCurrentIndex(0)
+        finally:
+            box.blockSignals(was)
+        self._fit_scope()
+        if chosen:
+            self._say_scope()
 
     def _filter_key(self) -> tuple:
         """The filter on, as folds made under it are kept by; () for none."""
@@ -507,15 +540,17 @@ class ChangesPanel(QWidget, ChangeRows):
         its own at the end of the box beside the filter, and chosen."""
         label = self._mod_name(origin)
         self._scope_origin = origin
-        was = self.scope_box.blockSignals(True)
+        box = self.scope_box
+        was = box.blockSignals(True)
         try:
-            if self.scope_box.count() > 2:
-                self.scope_box.removeItem(2)
-            self.scope_box.addItem(tr("In %s", label, context="filter in"), SCOPE_MOD)
-            self.scope_box.setItemData(2, label, Qt.ItemDataRole.ToolTipRole)
-            self.scope_box.setCurrentIndex(2)
+            if box.findData(SCOPE_MOD) >= 0:
+                box.removeItem(box.findData(SCOPE_MOD))
+            box.addItem(tr("In %s", label, context="filter in"), SCOPE_MOD)
+            at = box.count() - 1
+            box.setItemData(at, label, Qt.ItemDataRole.ToolTipRole)
+            box.setCurrentIndex(at)
         finally:
-            self.scope_box.blockSignals(was)
+            box.blockSignals(was)
         self._on_scope()
         self.filter_box.setFocus()
 
@@ -533,8 +568,8 @@ class ChangesPanel(QWidget, ChangeRows):
         back to every row."""
         was = self.scope_box.blockSignals(True)
         try:
-            if self.scope_box.count() > 2:
-                self.scope_box.removeItem(2)
+            if self.scope_box.findData(SCOPE_MOD) >= 0:
+                self.scope_box.removeItem(self.scope_box.findData(SCOPE_MOD))
             self.scope_box.setCurrentIndex(0)
         finally:
             self.scope_box.blockSignals(was)
@@ -551,6 +586,8 @@ class ChangesPanel(QWidget, ChangeRows):
         kind = self.scope_box.currentData()
         if kind == SCOPE_NAMES:
             self.filter_box.setPlaceholderText(tr("Filter mods by name or folder…"))
+        elif kind == SCOPE_MOVED:
+            self.filter_box.setPlaceholderText(tr("Filter the ModOps changed when read again…"))
         elif kind == SCOPE_MOD:
             self.filter_box.setPlaceholderText(
                 tr("Filter the changes of %s…", self._mod_name(self._scope_origin or ""))
@@ -596,6 +633,9 @@ class ChangesPanel(QWidget, ChangeRows):
             kind = SCOPE_ALL
         if kind == SCOPE_MOD:
             self._filter_one(needle, self._mod_items[self._scope_origin])
+            return
+        if kind == SCOPE_MOVED:
+            self._filter_moved(needle)
             return
         if kind == SCOPE_NAMES and needle:
             self._filter_names(needle)
@@ -693,6 +733,54 @@ class ChangesPanel(QWidget, ChangeRows):
         self._shown = found
         self._refresh_summary()
         self._sync_fold_button()
+
+    def _filter_moved(self, needle: str) -> None:
+        """Show the rows marked *changed when read again* alone, with those
+        of them that hold ``needle``, and the rows over them, open."""
+        self._unsearched = []
+        self._matched = set()
+        self._loading = True
+        shown = 0
+        try:
+            # The mods inside a mod before it, as in _start_filter.
+            for node in reversed(list(self._mod_items.values())):
+                found = None
+                if node.data(0, MOVED_ROLE):
+                    self._build_rows(node)
+                    found = self._keep_moved(node, needle)
+                else:
+                    for child in self._own_rows(node):
+                        child.setHidden(True)
+                visible = found is not None or self._holds_shown(node)
+                node.setHidden(not visible)
+                if visible:
+                    node.setExpanded(True)
+                    self._matched.add(node.data(0, ORIGIN_ROLE) or "")
+                shown += found or 0
+        finally:
+            self._loading = False
+        self._shown = shown
+        self._refresh_summary()
+        self._sync_fold_button()
+
+    def _keep_moved(self, item, needle: str) -> Optional[int]:
+        """Under ``item``, hide every row that is not marked *changed when
+        read again* and holds none that is; how many marked rows that leaves
+        showing, or None for none at all."""
+        found = None
+        for child in self._own_rows(item):
+            if child.data(0, MOVED_ROLE) is True:
+                # Its own rows as a filter has them: what is under an op.
+                self._filter_item(child, needle)
+                if not child.isHidden():
+                    found = (found or 0) + 1
+                continue
+            below = self._keep_moved(child, needle)
+            child.setHidden(below is None)
+            if below is not None:
+                child.setExpanded(True)
+                found = (found or 0) + below
+        return found
 
     def _search_some(self) -> None:
         """Look in the next mods the filter has not seen, for one slice."""
@@ -908,6 +996,13 @@ class ChangesPanel(QWidget, ChangeRows):
         sections, _ops, _groups = self._grouping()
         self._clashes = conflicts.by_change(self.loadout)
         self._stale = stale.reached(self.loadout)
+        # How many of the ops the last reading moved each mod has, counted
+        # once and not once a mod.
+        self._moved_by: dict = {}
+        for uid in self.moved:
+            op = self.loadout.op(uid)
+            if op is not None:
+                self._moved_by[op.origin] = self._moved_by.get(op.origin, 0) + 1
         mono = theme.mono_font()
 
         # One mod alone starts open -- its changes are what you came to see --
@@ -995,6 +1090,8 @@ class ChangesPanel(QWidget, ChangeRows):
                 node.setText(1, tr(", ", context="between items of a list").join([
                     self._stale_words(), node.text(1),
                 ]))
+            # Painted below, with the rest of the row.
+            self._count_moved(node, self._moved_by.get(section.origin, 0))
             node.setToolTip(0, self._mod_tip(section))
             self._mod_sections[section.origin] = section
             layer = self.loadout.layer(section.origin)
@@ -1065,6 +1162,7 @@ class ChangesPanel(QWidget, ChangeRows):
                 "sets is already so, or its condition does not hold, with the mods "
                 "loaded now."
             ))
+            self._count_moved(fold, sum(1 for op in idle if op.uid in self.moved))
             self._remember_text(fold, "")
         for op in section.ops:
             self._add_op(fold if fold is not None and op in idle else node, op, mono)
@@ -1254,6 +1352,34 @@ class ChangesPanel(QWidget, ChangeRows):
         self.tree.setCurrentItem(found[0], 0, QItemSelectionModel.SelectionFlag.NoUpdate)
         self.tree.scrollToItem(found[0], QAbstractItemView.ScrollHint.PositionAtCenter)
         return len(found)
+
+    def set_moved(self, found, redraw: bool = False) -> None:
+        """The ops the last reading moved: by uid, what each came to before
+        it and comes to now.  Their rows say *changed when read again*
+        until this is told otherwise; drawn again now where ``redraw``,
+        and else whenever the rows are next drawn."""
+        self.moved = dict(found)
+        self._sync_moved_scope()
+        if redraw:
+            self.refresh()
+
+    def show_moved(self, uids=(), unread=()) -> int:
+        """Bring the rows of ops a reading moved into view, and select
+        them: :meth:`show_rows` for each op's own row, or the row of the
+        one change it is drawn as, and for the ops now carried unread, as
+        ``(mod, place)``.  A filter that hides them all is taken off."""
+        uids = set(uids)
+        keys = [
+            change.key for change in self.loadout.changes.values()
+            if change.op_uid in uids and change.op_uid not in self._op_rows
+        ]
+        found = self.show_rows(keys=keys, uids=uids, unread=unread)
+        if not found and self._filtering():
+            self.clear_filter()
+            found = self.show_rows(keys=keys, uids=uids, unread=unread)
+        if found:
+            self.tree.setFocus()
+        return found
 
     def _add_unread(self, parent, entry, mono) -> None:
         """One ModOp the Studio could not read, greyed, below the mod's changes.
@@ -1528,6 +1654,7 @@ class ChangesPanel(QWidget, ChangeRows):
         colour = QColor(theme.ACCENT_TEXT if on else theme.TEXT_DIM)
         item.setForeground(0, colour)
         item.setForeground(1, QColor(theme.TEXT_DIM))
+        self._paint_moved(item)
         font = item.font(0)
         font.setStrikeOut(not on)
         target = self._is_target(item.data(0, ORIGIN_ROLE) or "")
@@ -1837,6 +1964,17 @@ class ChangesPanel(QWidget, ChangeRows):
                 if self._shown or not self._needle()
                 else tr("No rows of %(mod)s match “%(typed)s”.",
                         mod=self._mod_name(origin), typed=self.filter_box.text().strip())
+            )
+            return
+        if self.scope_box.currentData() == SCOPE_MOVED:
+            typed = self.filter_box.text().strip()
+            self.summary.setText(
+                trn("Filtered: %(n)s ModOp changed when read again shown",
+                    "Filtered: %(n)s ModOps changed when read again shown",
+                    self._shown or 0)
+                if self._shown
+                else tr("No ModOp changed when read again matches “%s”.", typed) if typed
+                else tr("No ModOp is marked changed when read again.")
             )
             return
         if self._unsearched:

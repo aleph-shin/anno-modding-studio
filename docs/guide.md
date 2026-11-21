@@ -1882,7 +1882,15 @@ reads the mods after it again, in the background:
 - **Until a mod is read again its row says *being read again*,** and so do the
   ModOps the change could reach. Its tooltip says which mod changed.
 - **Once it is read, a ModOp that comes to something else says *changed when read
-  again*,** and the status bar counts them.
+  again*,** with a warning glyph, until your next edit. So does the row of the one
+  change a ModOp comes to, where that row is the ModOp's. A mod's row, and a fold of
+  ModOps that change nothing, say how many under them do. The tooltip says what each
+  field was before and is now.
+- **The status bar names them,** up to three, each with the mod it is in, and a
+  ModOp that is no longer read. *Show it* (or *Show them*) opens their rows in the
+  Mod changes panel and selects them. While any row says *changed when read again*,
+  the box beside the filter has *Changed when read again*, which shows those rows
+  alone.
 - **What you did to the mod is kept:** your edits to it, the ModOps and changes you
   switched off, and your notes.
 - **The export was never affected.** It writes each ModOp as its author wrote it.

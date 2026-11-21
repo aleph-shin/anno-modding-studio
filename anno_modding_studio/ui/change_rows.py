@@ -48,6 +48,9 @@ STATUS_ROLE = Qt.ItemDataRole.UserRole + 12   # a row's warning, drawn left of i
 # On a row that starts with a name: the same row with the asset's internal
 # name left off, or "" when it has none to leave off. See NameFirstDelegate.
 SHORT_ROLE = Qt.ItemDataRole.UserRole + 13
+# Marked *changed when read again*: on a row of an op the last reading
+# moved, True; on a row over some, how many of them are under it.
+MOVED_ROLE = Qt.ItemDataRole.UserRole + 14
 
 
 # How the tree's two columns split the width when nobody has said otherwise,
@@ -332,10 +335,12 @@ class ChangeRows:
     def _init_rows(self) -> None:
         # Readings a change in what loads has left in doubt (core.stale):
         # the ops of each such mod it could reach, whether the window is
-        # reading them again, and the ops the last such reading moved.
+        # reading them again, and the ops the last such reading moved: by
+        # uid, what each came to before it and comes to now, as
+        # core.stale.Moved has them.
         self._stale = {}
         self.reading_again = False
-        self.moved = set()
+        self.moved = {}
         self._collapsed = set()
         # Groups inside an op start shut, so the op reads as a list of
         # them -- one per iModYourAnno switch -- and open one at a time.
@@ -423,6 +428,7 @@ class ChangeRows:
             bits.insert(0, self._stale_words())
         elif op.uid in self.moved:
             bits.insert(0, tr("changed when read again"))
+            node.setData(0, MOVED_ROLE, True)
         if not any(mark.counts for mark in found):
             # Beside a mark, only the count: the mark has said what it is.
             bits.append(
@@ -707,10 +713,7 @@ class ChangeRows:
                 "mod has changed since it was read. The export is not affected."
             ))
         elif op.uid in self.moved:
-            said.append(tr(
-                "Its mod was read again because what loads before it "
-                "changed, and this ModOp comes to something else than it did."
-            ))
+            said.append(self._moved_tip(op.uid))
         marks = [mark.tip for mark in keptops.marks(view, self.loadout.game)]
         if op.expression and not op.scope:
             # Where it lands, as written: the row has it by its names, and a
@@ -750,6 +753,101 @@ class ChangeRows:
             said.append(tr("Double-click or press Enter to edit it."))
         return "\n\n".join(said)
 
+    def _moved_under(self, changes) -> int:
+        """How many of the ops the last reading moved are drawn as one of
+        ``changes``' rows: those that are the one change they come to."""
+        if not self.moved:
+            return 0
+        return len({
+            change.op_uid for change in changes
+            if change.op_uid in self.moved and change.op_uid not in self._op_rows
+        })
+
+    @classmethod
+    def _count_moved(cls, node, count: int) -> None:
+        """Say on a row over others how many of the rows under it are
+        marked *changed when read again*: one that starts shut, or is shut
+        by hand, hid them all."""
+        if not count:
+            return
+        node.setData(0, MOVED_ROLE, count)
+        node.setText(1, tr(", ", context="between items of a list").join(filter(None, [
+            trn("%(n)s changed when read again", "%(n)s changed when read again", count),
+            node.text(1),
+        ])))
+        cls._paint_moved(node)
+
+    def _moved_tip(self, uid: str) -> str:
+        """Of an op the last reading moved, for its row's tooltip: that it
+        did, and what it came to before and comes to now, a line a field."""
+        said = [tr(
+            "Its mod was read again because what loads before it "
+            "changed, and this ModOp comes to something else than it did."
+        )]
+        was, now = self.moved.get(uid) or ((), ())
+        before, after = self._by_field(was), self._by_field(now)
+        lines = []
+        for where in sorted(set(before) | set(after)):
+            shown = self._field_called(*where)
+            if where in before and where in after:
+                lines.append(tr("%(where)s: was %(was)s, now %(now)s",
+                                where=shown, was=before[where], now=after[where]))
+            elif where in after:
+                lines.append(tr("%(where)s: now %(now)s, unchanged before",
+                                where=shown, now=after[where]))
+            else:
+                lines.append(tr("%(where)s: was %(was)s, unchanged now",
+                                where=shown, was=before[where]))
+        more = len(lines) - TIP_NAMES
+        if more > 0:
+            lines = [*lines[:TIP_NAMES], trn("and %(n)s more", "and %(n)s more", more)]
+        return "\n".join(said + lines)
+
+    @staticmethod
+    def _by_field(found) -> dict:
+        """What an op comes to, as :func:`core.stale.take` keeps it, by the
+        asset and the field: what is put there, in words."""
+        out: dict = {}
+        for guid, path, kind, value, payload in sorted(found, key=str):
+            if kind == "remove":
+                # Translators: what a ModOp came to at a field.
+                said = tr("removed", context="came to")
+            elif payload:
+                said = keptops.clipped(payload, 40)
+            elif value:
+                said = value
+            else:
+                # Translators: what a ModOp came to at a field: an empty value.
+                said = tr("empty", context="came to")
+            out[(guid, path)] = ", ".join(filter(None, (out.get((guid, path)), said)))
+        return out
+
+    def _field_called(self, guid: str, path: str) -> str:
+        """An asset and a field in it, by the names the rows give them."""
+        return " \u203a ".join((
+            self._short_name(guid) or guid, field_label(path, self._short_name),
+        ))
+
+    def op_called(self, op, came_to=()) -> str:
+        """A ModOp named in a sentence: the asset and the field it is
+        about, and the mod it is in.  ``came_to`` is what it comes to, or
+        came to, as :func:`core.stale.take` keeps it: where that is one
+        field, the field it sets is the one named, and not the node its
+        path ends at."""
+        targets = sorted({(entry[0], entry[1]) for entry in came_to})
+        if not op.searches and len(targets) == 1:
+            where = self._field_called(*targets[0])
+        elif op.matched and op.expression and not (op.searches or op.scope or op.includes):
+            if len(op.matched) == 1:
+                asset = self._short_name(op.matched[0]) or op.matched[0]
+            else:
+                asset = trn("%(n)s asset", "%(n)s assets", len(op.matched))
+            where = " \u203a ".join((asset, field_label(op.expression, self._short_name)))
+        else:
+            where = keptops.clipped(op.expression, 60) or tr("a ModOp")
+        # Translators: a ModOp named in a sentence, and the mod it is in.
+        return tr("%(op)s (in %(mod)s)", op=where, mod=self._mod_name(op.origin))
+
     @staticmethod
     def _can_edit(op) -> bool:
         """Whether an op's row opens it in the pattern editor to be changed:
@@ -773,6 +871,7 @@ class ChangeRows:
         node.setText(0, group.label)
         node.setText(1, group.caption())
         node.setForeground(1, QColor(theme.TEXT_DIM))
+        self._count_moved(node, self._moved_under(group.changes))
         node.setToolTip(0, self._group_tip(group))
         self._remember_text(node, " ".join(asset.guid for asset in group.assets))
         if self.live:
@@ -925,6 +1024,13 @@ class ChangeRows:
             item.setCheckState(
                 0, Qt.CheckState.Checked if change.active else Qt.CheckState.Unchecked
             )
+        if alone is not None and alone.uid in self.moved:
+            # The whole of an op the last reading moved, so the op's row:
+            # it says so, as an op's own row does.  Most ops are drawn this
+            # way, and none of them said it.
+            item.setData(0, MOVED_ROLE, True)
+            item.setText(1, " \u00b7 ".join((tr("changed when read again"), item.text(1))))
+            item.setToolTip(0, item.toolTip(0) + "\n\n" + self._moved_tip(alone.uid))
         self._paint(item, change)
 
     def _op_of(self, change):
@@ -983,7 +1089,20 @@ class ChangeRows:
         return label[: at + len(short)]
 
     def _paint(self, item, change) -> None:
-        """A switched-off change is greyed, so the list reads at a glance."""
+        """A switched-off change is greyed, so the list reads at a glance;
+        and one marked *changed when read again* wears the mark's glyph."""
+        self._paint_change(item, change)
+        self._paint_moved(item)
+
+    @staticmethod
+    def _paint_moved(item) -> None:
+        """The words *changed when read again* in the warning colour, with
+        its glyph before them, on a row that has them: the glyph is still
+        there where a narrow column has cut the words short."""
+        if item.data(0, MOVED_ROLE):
+            theme.mark(item, "warn", 1)
+
+    def _paint_change(self, item, change) -> None:
         clash = self._clashes.get(change.key)
         if not change.active:
             # Marked, so a glyph it wore while it was on comes off with it.
@@ -1035,6 +1154,7 @@ class ChangeRows:
             0, QColor((theme.RULE if marked else theme.TEXT) if on else theme.TEXT_DIM)
         )
         item.setForeground(1, QColor(theme.TEXT_DIM))
+        self._paint_moved(item)
 
     def _clash_tip(self, change) -> str:
         clash = self._clashes.get(change.key)

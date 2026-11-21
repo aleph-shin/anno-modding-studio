@@ -910,14 +910,33 @@ def read_again(taken: Snapshot, index, logged=None, progress=None, translating=N
 
 
 @dataclass
+class Lost:
+    """An op a mod had before it was read again, and has no longer."""
+
+    # The op as it was, and what it came to then, as :func:`_comes_to` has it.
+    op: object
+    was: frozenset = frozenset()
+    # Its place among the mod's ops not read, where it is carried unread
+    # now (``not_read``'s ``order``), so it still has a row: or None, where
+    # it is gone from the mod.
+    unread_at: Optional[int] = None
+
+
+@dataclass
 class Moved:
     """What reading a mod again changed in what its ops come to."""
 
     origin: str
     # The ops that come to something else than they did, new ones included.
     ops: Set[str] = field(default_factory=set)
-    # And how many ops the mod no longer has, which have no row to mark.
+    # What each of those came to before the reading, empty for one that
+    # came to nothing or is new, and what it comes to now: by uid, as
+    # :func:`_comes_to` has it, so the rows can say what moved.
+    was: Dict[str, frozenset] = field(default_factory=dict)
+    now: Dict[str, frozenset] = field(default_factory=dict)
+    # And how many ops the mod no longer has, and which: each as a Lost.
     gone: int = 0
+    lost: List[Lost] = field(default_factory=list)
     # Read from its project, which another loadout had changed
     # (:mod:`.readback`); and how many edits made here, never saved into
     # that project, were given up for it.
@@ -971,7 +990,9 @@ def take(loadout, reports: dict) -> List[Moved]:
     if not origins:
         return []
     before = _comes_to(loadout, set(origins))
-    from_text = [origin for origin in origins if isinstance(reports[origin], modfile.Reread)]
+    # The ops as they are, for whatever of them the reading takes away.
+    ops_were = {op.uid: op for op in loadout.ops if op.origin in before}
+    from_text =[origin for origin in origins if isinstance(reports[origin], modfile.Reread)]
     # Read from its library build: nothing of what was read of its project
     # stays, what was made here included, since none of it is in that build
     # or could be saved into the project.
@@ -996,17 +1017,38 @@ def take(loadout, reports: dict) -> List[Moved]:
             modfile.take_reading(loadout, origin, reports[origin])
         _marks(loadout, origin).clear()
     after = _comes_to(loadout, set(origins))
-    return [
-        Moved(
+    out = []
+    for origin in origins:
+        was, now = before[origin], after[origin]
+        ops = {uid for uid, found in now.items() if was.get(uid) != found}
+        lost = [
+            _lost(loadout, ops_were[uid], was[uid])
+            for uid in was if uid not in now and uid in ops_were
+        ]
+        out.append(Moved(
             origin=origin,
-            ops={uid for uid, found in after[origin].items() if before[origin].get(uid) != found},
-            gone=len(set(before[origin]) - set(after[origin])),
+            ops=ops,
+            was={uid: was.get(uid, frozenset()) for uid in ops},
+            now={uid: now[uid] for uid in ops},
+            gone=len(set(was) - set(now)),
+            lost=lost,
             project=origin in given_up,
             given_up=given_up.get(origin, 0),
             first=origin in first,
-        )
-        for origin in origins
+        ))
+    return out
+
+
+def _lost(loadout, op, was: frozenset) -> Lost:
+    """An op a reading took away, and where it is carried unread now: the
+    entry of its mod's not read that holds its text, at its place."""
+    found = [
+        entry for entry in loadout.not_read(op.origin)
+        if entry.source == op.source
     ]
+    # Where two hold the same text, the one at its own place.
+    found.sort(key=lambda entry: entry.order != op.order)
+    return Lost(op=op, was=was, unread_at=found[0].order if found else None)
 
 
 def _take_read(loadout, reports: dict) -> None:
