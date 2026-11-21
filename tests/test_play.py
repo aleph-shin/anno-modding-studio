@@ -531,12 +531,30 @@ class TestCheckingTheLogAgainstTheLoadout(_Folder):
         self.assertEqual([mod.name for mod in found.grid()["on", "loads"]], ["Mine", "Flagship (my patch)"])
         found.log_check = loaderlog.check(loaderlog.read(ANNO_117, self._log(refused)), found,
                                           Loadout(game=ANNO_117))
-        self.assertEqual(found.log_check.refused, ["117-flagship-aj-my-patch"])
+        self.assertEqual(found.log_check.not_loaded, ["117-flagship-aj-my-patch"])
         grid = found.grid()
         self.assertEqual([mod.name for mod in grid["on", "loads"]], ["Mine"])
         self.assertEqual([mod.name for mod in grid["on", "off"]], ["Flagship (my patch)"])
         # What Play would switch is not moved by it: switching it changes nothing.
         self.assertTrue(found.matches)
+
+    def test_117_a_mod_on_that_the_log_never_loaded_is_counted_so_too(self):
+        """Not only one refused for its Mod ID: the card said two mods did
+        not load, and its grid counted one of them as loading."""
+        from anno_modding_studio.core import loaderlog
+        from anno_modding_studio.core.changes import Loadout
+
+        found = self.found(
+            ANNO_117,
+            self.mod("Mine", "mine-serp", "Mine", True),
+            self.mod("Silos", "silos-extended", "Silos", True),
+        )
+        found.log_check = loaderlog.check(loaderlog.read(ANNO_117, self._log(LOG_117)), found,
+                                          Loadout(game=ANNO_117))
+        self.assertEqual([name for name, _why in found.log_check.missing], ["Silos"])
+        grid = found.grid()
+        self.assertEqual([mod.name for mod in grid["on", "loads"]], ["Mine"])
+        self.assertEqual([mod.name for mod in grid["on", "off"]], ["Silos"])
 
     def test_117_options_the_game_ran_differently_are_named(self):
         from anno_modding_studio.core import loaderlog, settings

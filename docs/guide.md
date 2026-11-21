@@ -499,8 +499,9 @@ For the live loadout, the card reads it and shows the result under the *Live:* l
 
 Otherwise it names what differs: a mod that didn't load, with what the loader wrote
 about it, or a mod that loaded and isn't on in the loadout. For Anno 117 it also names
-options the game ran at other values. A mod Anno 117 refused for its Mod ID is counted
-under *Game does not load* in the grid, though the switches have it on. After Play, the Studio watches for the log for
+options the game ran at other values. A mod it says did not load, one Anno 117 refused
+for its Mod ID among them, is counted under *Game does not load* in the grid, though the
+switches have it on. After Play, the Studio watches for the log for
 up to half an hour and shows the result in the status bar.
 
 The card also counts ModOps that matched nothing when the game last started
