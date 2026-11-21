@@ -425,7 +425,9 @@ starts the game. One confirmation lists everything it will do. Then, in order:
    that will load declare about each other. Findings are listed under *Worth knowing
    first*. They don't stop Play.
 3. **It builds** your own mod and your patches into the library and links them into
-   the mods folder.
+   the mods folder. A mod whose Mod ID Anno 117 would refuse isn't built or switched
+   on: *Worth knowing first* says so, and the rest of the loadout is played without
+   it. Change the Mod ID on the Export tab.
 4. **It sets every switch.** Mods the loadout has on are switched on. Mods it has off,
    and installed mods it doesn't mention, are switched off.
 5. **It writes the mods' options** where the game reads them. See

@@ -195,6 +195,16 @@ class LiveController:
             said = trn("%(status)s  Wrote your edits to %(n)s mod into a generated copy.",
                        "%(status)s  Wrote your edits to %(n)s mods into generated copies.",
                        len(plan.edited), status=said)
+        if plan.refused:
+            # Said again after the question: the game gets the rest without
+            # it, and nothing else would say why.
+            said = trn("%(status)s  %(mods)s was not built, since the game would refuse "
+                       "its Mod ID.",
+                       "%(status)s  %(n)s mods were not built, since the game would "
+                       "refuse their Mod IDs: %(mods)s.",
+                       len(plan.refused), status=said, mods=listing([
+                           self.window.loadout.label_of(origin) or tr("your mod")
+                           for origin, _why in plan.refused]))
         self.window.status_label.say(said, folder)
         if launch:
             return self._launch()

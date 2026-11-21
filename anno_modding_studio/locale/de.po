@@ -2805,6 +2805,10 @@ msgstr "die gepatchte Mod ist deaktiviert"
 msgid "Built by another project"
 msgstr "Von einem anderen Projekt gebaut"
 
+#: anno_modding_studio/core/play.py
+msgid "Mod IDs the game would refuse"
+msgstr "ModIDs, die das Spiel ablehnen würde"
+
 #. Translators: headings over what Play's question says is worth knowing first, each a kind of finding.
 #: anno_modding_studio/core/play.py
 msgid "Your changes"
@@ -2851,6 +2855,11 @@ msgid "%(mod)s: %(n)s change would not apply. The Export tab lists it."
 msgid_plural "%(mod)s: %(n)s changes would not apply. The Export tab lists them."
 msgstr[0] "%(mod)s: %(n)s Änderung ließe sich nicht anwenden. Der Tab „Export“ listet sie auf."
 msgstr[1] "%(mod)s: %(n)s Änderungen ließen sich nicht anwenden. Der Tab „Export“ listet sie auf."
+
+#: anno_modding_studio/core/play.py
+#, python-format
+msgid "%(mod)s was not built: the game would refuse its Mod ID, “%(id)s”. %(why)s Change the Mod ID on the Export tab, to “%(instead)s” for instance."
+msgstr "%(mod)s wurde nicht gebaut: Das Spiel würde ihre ModID „%(id)s“ ablehnen. %(why)s Ändere die ModID im Tab „Export“, zum Beispiel in „%(instead)s“."
 
 #: anno_modding_studio/core/play.py
 #, python-format
@@ -9842,6 +9851,13 @@ msgid "%(status)s  Wrote your edits to %(n)s mod into a generated copy."
 msgid_plural "%(status)s  Wrote your edits to %(n)s mods into generated copies."
 msgstr[0] "%(status)s  Deine Änderungen an %(n)s Mod in eine generierte Kopie geschrieben."
 msgstr[1] "%(status)s  Deine Änderungen an %(n)s Mods in generierte Kopien geschrieben."
+
+#: anno_modding_studio/ui/live_controller.py
+#, python-format
+msgid "%(status)s  %(mods)s was not built, since the game would refuse its Mod ID."
+msgid_plural "%(status)s  %(n)s mods were not built, since the game would refuse their Mod IDs: %(mods)s."
+msgstr[0] "%(status)s  %(mods)s wurde nicht gebaut, da das Spiel ihre ModID ablehnen würde."
+msgstr[1] "%(status)s  %(n)s Mods wurden nicht gebaut, da das Spiel ihre ModIDs ablehnen würde: %(mods)s."
 
 #. Translators: %(status)s is what the status bar said already.
 #: anno_modding_studio/ui/live_controller.py
