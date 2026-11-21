@@ -70,6 +70,9 @@ class Plan:
     own_name: str = ""
     pointer_folder: Any = None
     options: dict = field(default_factory=dict)      # 117: ModID -> answers
+    # And those mods by name, as the question names every other mod: it
+    # named these alone by their ModID. See options_named.
+    options_of: list = field(default_factory=list)
     # What goes into generated copies: iModYourAnno settings (1800) and your
     # edits to other people's mods.  See generated_copies.
     copies: Any = None
@@ -235,6 +238,7 @@ def plan(
             found.own = True
             found.own_name = switches.STUDIO_PROFILE
         found.options = options_to_write(loadout)
+        found.options_of = options_named(loadout, found.options)
     found.copies = copies
     found.worth_knowing(tr("Your edits to other people's mods"), copies.edits_held)
     # Whoever's mod it is: an edit to an op of a mod's folder is held when
@@ -381,6 +385,18 @@ def options_to_write(loadout) -> dict:
         if answers != held.get(mod_id.strip().lower(), {}):
             wanted[mod_id] = answers
     return wanted
+
+
+def options_named(loadout, written: dict) -> list:
+    """The mods whose options :func:`options_to_write` writes, ``written``,
+    by the names the loadout gives them: the ModID only of one it has no
+    mod for."""
+    names: dict = {}
+    for layer in loadout.layers:
+        mod_id = switch_id(loadout, layer) if layer.offered else ""
+        if mod_id in written:
+            names.setdefault(mod_id, layer.label)
+    return sorted(names.get(mod_id, mod_id) for mod_id in written)
 
 
 @dataclass

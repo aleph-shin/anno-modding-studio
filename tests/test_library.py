@@ -764,6 +764,38 @@ class TestDroppingAZipOnTheWindow(_Folders):
         self.assertIn("You dropped 2 mods for Anno 1800:", text)
         self.assertNotIn("&Open as loadout", buttons)
 
+    def test_a_zip_picked_and_not_dropped_is_said_to_be_picked(self):
+        """R4-20: *From a zip…* in *Add mods…* asked "Install the dropped
+        mod? You dropped 1 mod…" of a zip nobody had dragged anywhere."""
+        with mock.patch.object(self.window.prompts, "pick_mod_zips", return_value=[str(self.zip)]), \
+                mock.patch.object(self.window.prompts, "ask_dropped_zips", return_value="") as asked:
+            self.window.library_controller.add_zips()
+        self.assertTrue(asked.call_args.kwargs["picked"])
+        shown = []
+
+        def answer(box_):
+            shown.append((box_.windowTitle(), box_.text(), [b.toolTip() for b in box_.buttons()]))
+            return None
+
+        arriving = library.arriving(self.zip, self.library)
+        celtic = library.arriving(self.other_games(), self.library)
+        with mock.patch.object(self.window.prompts, "answer", side_effect=answer):
+            for picked in (True, False):
+                self.window.prompts.ask_dropped_zips(arriving, ANNO_1800, str(self.mods), False,
+                                                     picked=picked)
+                self.window.prompts.ask_dropped_other_game(celtic, ANNO_1800, 1, picked=picked)
+        (title, text, _tips), (_title, other, tips) = shown[:2]
+        self.assertEqual(title, "Install the mod?")
+        self.assertIn("You picked 1 mod for Anno 1800:", text)
+        self.assertIn("1 mod you picked has the folder layout of another game", other)
+        self.assertIn("add the zip again", other)
+        self.assertIn("Installs the rest of what you picked.", tips)
+        (title, text, _tips), (_title, other, tips) = shown[2:]
+        self.assertEqual(title, "Install the dropped mod?")
+        self.assertIn("You dropped 1 mod for Anno 1800:", text)
+        self.assertIn("drop the zip again", other)
+        self.assertIn("Installs the rest of what you dropped.", tips)
+
     def test_a_zip_dragged_over_the_window_is_taken_and_any_other_file_is_not(self):
         from PySide6.QtCore import QMimeData, QPoint, QPointF, QUrl
         from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent

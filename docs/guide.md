@@ -499,7 +499,8 @@ For the live loadout, the card reads it and shows the result under the *Live:* l
 
 Otherwise it names what differs: a mod that didn't load, with what the loader wrote
 about it, or a mod that loaded and isn't on in the loadout. For Anno 117 it also names
-options the game ran at other values. After Play, the Studio watches for the log for
+options the game ran at other values. A mod Anno 117 refused for its Mod ID is counted
+under *Game does not load* in the grid, though the switches have it on. After Play, the Studio watches for the log for
 up to half an hour and shows the result in the status bar.
 
 The card also counts ModOps that matched nothing when the game last started
@@ -1712,8 +1713,11 @@ A loadout is a `.annoload` file under `Documents\AnnoModdingStudio\loadouts`. It
 holds your mod's details, the mods you have open, your changes, and a history.
 Opening one with the Studio from Explorer opens it as a loadout.
 
-- **Unsaved work** means your own changes and your mod's details. Mods you read in
-  don't count. They can be read again.
+- **Unsaved work** means your own changes and your mod's details, which mods are on,
+  and the options set in *Mod options…*. Mods you read in don't count. They can be
+  read again. A mod switched off and on again is as it was, and isn't counted. Before
+  the loadout is left, the question counts each kind, and names the projects saving
+  writes, and those it makes for the first time.
 - **Renaming a loadout moves its file.** Where the loadout is your mod, it renames
   the mod too.
 - **Each mod of yours is kept in a project,** a `.annoproj` file under

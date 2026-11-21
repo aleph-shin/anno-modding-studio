@@ -1155,15 +1155,7 @@ class SourcePanel(QWidget):
         self.truth_step.setVisible(found is not None)
         if found is None:
             return
-        cells = {
-            ("on", "loads"): found.in_loadout,
-            ("on", "off"): found.wanted_but_off,
-            ("off", "loads"): found.off_loads,
-            ("off", "off"): found.off_off,
-            ("none", "loads"): found.none_loads,
-            ("none", "off"): found.none_off,
-        }
-        for key, mods in cells.items():
+        for key, mods in found.grid().items():
             cell = self.truth_cells[key]
             extra = {
                 ("on", "off"): found.unbuilt_on, ("off", "off"): found.unbuilt_off,

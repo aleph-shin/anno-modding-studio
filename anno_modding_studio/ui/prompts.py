@@ -187,8 +187,12 @@ class Prompts:
                           QMessageBox.StandardButton.Cancel, self.parent)
         show_box_text(box, after, table=rows)
         go = box.addButton(action, QMessageBox.ButtonRole.AcceptRole)
-        tip(go, tr("No mod is deleted or rewritten: only switches and the Studio's "
-                   "own builds change."))
+        # What the click does, and then what it does not: the two shared one
+        # sentence of what it does not do, and said nothing of what it did.
+        tip(go, tr("Makes the changes listed above, then starts the game. No mod "
+                   "is deleted.") if launch
+            else tr("Makes the changes listed above, without starting the game. No "
+                    "mod is deleted."))
         box.setDefaultButton(go)
         if counted:
             box.setDetailedText(widgets.plain_text(self._live_text(plan, launch, loadout)))
@@ -224,7 +228,7 @@ class Prompts:
                                             "%(n)s mods from the game's mod browser",
                                             len(held))))
             counted = True
-        add(tr("Mod options"), sorted(plan.options))
+        add(tr("Mod options"), plan.options_of or sorted(plan.options))
         add(tr("iModYourAnno settings"), [layer.label for layer in plan.tweaks])
         add(tr("Your edits"), [layer.label for layer in plan.edited])
         add(tr("Back to library copy"), plan.reverting)
@@ -264,7 +268,8 @@ class Prompts:
             lines.append(plan.found.describe_cache())
         if plan.options:
             lines.append(tr("Mod options written into %(file)s for: %(mods)s.",
-                            file=switches.OPTIONS_FILE, mods=", ".join(sorted(plan.options))))
+                            file=switches.OPTIONS_FILE,
+                            mods=", ".join(plan.options_of or sorted(plan.options))))
         if plan.tweaks:
             lines.append(tr_kw(
                 "iModYourAnno settings written into [[generated copy|generated copies]] "
@@ -622,7 +627,7 @@ class Prompts:
         return (START_NOTHING, START_PROFILE, START_COPY)[picked] if picked >= 0 else ""
 
     def ask_dropped_zips(self, arriving, game: str, folder: str, loaded: bool,
-                         working: bool = True) -> str:
+                         working: bool = True, picked: bool = False) -> str:
         """What to do with the mods dropped on the window, having listed them
         and said where they go: ZIP_ADD, ZIP_OPEN, ZIP_INSTALL or "".
 
@@ -633,6 +638,8 @@ class Prompts:
         chosen, one mod can only be opened as a loadout of its own, and
         several only installed (A10-15). Read into a window with no way of
         working, they left the Start tab saying "None yet" over their changes.
+        ``picked`` is that they were picked as zips and not dropped, which
+        the box then says (R4-20).
         """
         names = []
         for mod in arriving:
@@ -645,6 +652,8 @@ class Prompts:
         count = len(arriving)
         replaced = sum(1 for mod in arriving if mod.replaces is not None)
         lines = [
+            trn("You picked %(n)s mod for %(game)s:", "You picked %(n)s mods for %(game)s:",
+                count, game=games.get(game).label) if picked else
             trn("You dropped %(n)s mod for %(game)s:", "You dropped %(n)s mods for %(game)s:",
                 count, game=games.get(game).label),
             bullets(names, 12),
@@ -665,7 +674,8 @@ class Prompts:
             lines.append(tr("To read them in, choose a way of working on the Start tab first."))
         box = QMessageBox(self.parent)
         box.setIcon(QMessageBox.Icon.Question)
-        box.setWindowTitle(trn("Install the dropped mod?", "Install the dropped mods?", count))
+        box.setWindowTitle(trn("Install the mod?", "Install the mods?", count) if picked
+                           else trn("Install the dropped mod?", "Install the dropped mods?", count))
         box.setText("\n\n".join(lines))
         add = (box.addButton(tr("&Add to loadout"), QMessageBox.ButtonRole.AcceptRole)
                if adding else None)
@@ -692,7 +702,8 @@ class Prompts:
             return ZIP_INSTALL
         return ZIP_OPEN if alone is not None and clicked is alone else ""
 
-    def ask_dropped_other_game(self, mismatched, game: str, others: int) -> str:
+    def ask_dropped_other_game(self, mismatched, game: str, others: int,
+                               picked: bool = False) -> str:
         """What to do with dropped mods whose own layout says they are for
         another game than the one loaded: OTHER_GAME_ANYWAY, OTHER_GAME_SKIP
         or "" to install nothing.
@@ -702,21 +713,40 @@ class Prompts:
         one the game then loads.  ``mismatched`` is the
         :class:`core.library.Arriving` of each; ``others`` is how many mods
         were dropped with them that are not, which leaving these out still
-        installs.
+        installs.  ``picked`` is that they were picked as zips and not
+        dropped, as :meth:`ask_dropped_zips` has it.
         """
         count = len(mismatched)
         names = [
             tr("%(mod)s (%(game)s)", mod=mod.label, game=games.get(mod.game).label)
             for mod in mismatched
         ]
-        lines = [
-            trn("%(n)s mod you dropped has the folder layout of another game, and "
+        if picked:
+            lead = trn(
+                "%(n)s mod you picked has the folder layout of another game, and "
+                "%(game)s is loaded:",
+                "%(n)s mods you picked have the folder layout of another game, and "
+                "%(game)s is loaded:",
+                count, game=games.get(game).label)
+            again = trn(
+                "Installed, it goes into this game's library, and this game loads "
+                "it where its paths do not match. To install it for its own "
+                "game, load that game's files on the Start tab and add the zip "
+                "again.",
+                "Installed, they go into this game's library, and this game loads "
+                "them where their paths do not match. To install them for their "
+                "own game, load that game's files on the Start tab and add the "
+                "zips again.",
+                count)
+        else:
+            lead = trn(
+                "%(n)s mod you dropped has the folder layout of another game, and "
                 "%(game)s is loaded:",
                 "%(n)s mods you dropped have the folder layout of another game, and "
                 "%(game)s is loaded:",
-                count, game=games.get(game).label),
-            bullets(names, 12),
-            trn("Installed, it goes into this game's library, and this game loads "
+                count, game=games.get(game).label)
+            again = trn(
+                "Installed, it goes into this game's library, and this game loads "
                 "it where its paths do not match. To install it for its own "
                 "game, load that game's files on the Start tab and drop the zip "
                 "again.",
@@ -724,8 +754,8 @@ class Prompts:
                 "them where their paths do not match. To install them for their "
                 "own game, load that game's files on the Start tab and drop the "
                 "zips again.",
-                count),
-        ]
+                count)
+        lines = [lead, bullets(names, 12), again]
         box = QMessageBox(self.parent)
         box.setIcon(QMessageBox.Icon.Warning)
         box.setWindowTitle(trn("A mod for another game", "Mods for another game", count))
@@ -736,7 +766,8 @@ class Prompts:
             if others else None
         )
         if skip is not None:
-            tip(skip, tr("Installs the rest of what you dropped."))
+            tip(skip, tr("Installs the rest of what you picked.") if picked
+                else tr("Installs the rest of what you dropped."))
         anyway = box.addButton(tr("&Install anyway"), QMessageBox.ButtonRole.DestructiveRole)
         stay = box.addButton(QMessageBox.StandardButton.Cancel)
         box.setDefaultButton(skip or stay)
@@ -1139,7 +1170,7 @@ class Prompts:
 
     def ask_save_first(
         self, changes: int, taken: int = 0, details: bool = False, mod: bool = False,
-        notes: int = 0, projects=(),
+        notes: int = 0, projects=(), switched: int = 0, options: int = 0, made=(),
     ) -> str:
         """Save, discard or cancel, for a loadout with unsaved work: "save",
         "discard" or "".  ``changes`` is how many of your own edits are not
@@ -1150,8 +1181,13 @@ class Prompts:
         a mod's details have moved, said beside whatever is counted.
         ``details`` is whether which mods are on has, said where nothing is
         counted.  None of them still means something marked it unsaved.
+        ``switched`` is how many mods have another switch than when it was
+        saved, and ``options`` how many are read at other options, each said
+        beside any other count: five mods switched, an option set and an
+        edit made said "1 change you have made" and nothing else (R4-20).
         ``projects`` names the projects of your mods that saving writes as
-        well (section 4.4 of the projects and loadouts proposal)."""
+        well (section 4.4 of the projects and loadouts proposal), and
+        ``made`` those it makes, which no file holds yet."""
         # One sentence for each that is so, each whole: with both so, the
         # question used to name the changes made here and leave the rest out.
         said = []
@@ -1182,6 +1218,19 @@ class Prompts:
                 "loadout was saved.",
                 notes,
             ))
+        if switched:
+            # Counted by the mod, switched off and on again is none at all.
+            said.append(trn(
+                "%(n)s mod has been switched on or off since this loadout was saved.",
+                "%(n)s mods have been switched on or off since this loadout was saved.",
+                switched,
+            ))
+        if options:
+            said.append(trn(
+                "The options of %(n)s mod have changed since this loadout was saved.",
+                "The options of %(n)s mods have changed since this loadout was saved.",
+                options,
+            ))
         if details and not said:
             # Neither, and still something to lose: a switch or a profile.
             # It speaks for a mod's details as well, where both have moved.
@@ -1206,6 +1255,14 @@ class Prompts:
                 "Saving also saves the [[project]] of %(names)s.",
                 "Saving also saves the [[project|projects]] of %(names)s.",
                 len(projects), names=", ".join(named(project) for project in projects),
+            ))
+        if made:
+            # One no file holds yet: it was said to be saved, of a project
+            # nobody could find (R4-20).
+            said.append(trn_kw(
+                "Saving also makes a [[project]] for %(names)s.",
+                "Saving also makes [[project|projects]] for %(names)s.",
+                len(made), names=", ".join(named(project) for project in made),
             ))
         answer = self._keep_or_discard(
             tr("Unsaved loadout"),

@@ -191,6 +191,34 @@ class Truth:
         return found
 
     @property
+    def refused(self) -> List[Mod]:
+        """Of the mods it has on that the switches have the game load, those
+        the game refused for their Mod ID the last time it started (see
+        :attr:`log_check`): switched on, and turned away each time."""
+        keys = set(getattr(self.log_check, "refused", None) or ())
+        return [mod for mod in self.in_loadout if mod.key in keys]
+
+    def grid(self) -> Dict[tuple, List[Mod]]:
+        """The grid's six cells, keyed ``(row, column)``: the rows "on",
+        "off" and "none" for what the loadout says, the columns "loads" and
+        "off" for what the game does.
+
+        A mod the game refused for its Mod ID is counted as not loading.
+        The switches have it on, and the sentence over the grid says the
+        game did not load it: counted under "Game loads", the card said
+        both.  Only the cells move; what Play would switch does not, since
+        switching it again would change nothing."""
+        refused = {mod.key for mod in self.refused}
+        return {
+            ("on", "loads"): [mod for mod in self.in_loadout if mod.key not in refused],
+            ("on", "off"): self.wanted_but_off + self.refused,
+            ("off", "loads"): self.off_loads,
+            ("off", "off"): self.off_off,
+            ("none", "loads"): self.none_loads,
+            ("none", "off"): self.none_off,
+        }
+
+    @property
     def differ(self) -> int:
         """How many mods the two sides disagree about: the off-diagonal."""
         return len(self.others) + len(self.wanted_but_off)

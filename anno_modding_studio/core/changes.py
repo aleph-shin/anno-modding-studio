@@ -2253,9 +2253,22 @@ class Loadout:
     def projects_to_save(self) -> List[str]:
         """The names of the projects a save would write: those whose part
         has moved since it was read or written, and those not made yet."""
+        return [name for name, _new in self._projects_written()]
+
+    def projects_to_make(self) -> List[str]:
+        """Of :meth:`projects_to_save`, the names of those not made yet,
+        which no file holds: the save makes them.  Said apart, since "saves
+        the project of" a mod whose project nobody could find sent you
+        looking for it."""
+        return [name for name, new in self._projects_written() if new]
+
+    def _projects_written(self) -> List[Tuple[str, bool]]:
+        """``(name, whether it is made now)`` for each project a save would
+        write."""
         parts = project_files.split(self.to_dict(), self.project_origins(), self.kept_aside)
         return [
-            project_files.name_of(part, origin) for origin, part in parts.items()
+            (project_files.name_of(part, origin), origin not in self.projects)
+            for origin, part in parts.items()
             if origin not in self.projects
             or self.projects[origin].digest != project_files.digest(part)
         ]
@@ -3101,7 +3114,8 @@ class Loadout:
                 self.difficulty,
                 json.dumps(self.game_setup, sort_keys=True),
             ),
-            # Each loaded mod: its details, and then its switches.
+            # Each loaded mod: its details, its switches, and the options it
+            # was read at.
             {
                 layer.origin: (
                     (
@@ -3123,6 +3137,9 @@ class Loadout:
                            layer.description) if self.yours(layer) else ()),
                     ),
                     tuple(on[layer.origin] for on in switches),
+                    # Set in Mod options…, and written to the loadout: set and
+                    # then left, it went with the window without a word.
+                    json.dumps(layer.options or {}, sort_keys=True, default=str),
                 )
                 for layer in self.layers
             },
@@ -3149,9 +3166,29 @@ class Loadout:
         both = set(layers) & set(was_layers)
         return (
             mod != was_mod or any(layers[o][0] != was_layers[o][0] for o in both),
-            profiles != was_profiles or any(layers[o][1] != was_layers[o][1] for o in both),
+            profiles != was_profiles or any(layers[o][1:] != was_layers[o][1:] for o in both),
             rest != was_rest,
         )
+
+    def _moved_in(self, before, at: int) -> int:
+        """How many of the mods loaded both now and in ``before`` -- a
+        :meth:`typed_details` -- have part ``at`` of their entry there
+        changed: 1 their switches, 2 their options."""
+        if before is None:
+            return 0
+        layers, was_layers = self.typed_details()[1], before[1]
+        return sum(1 for o in set(layers) & set(was_layers) if layers[o][at] != was_layers[o][at])
+
+    def switched_since(self, before) -> int:
+        """How many mods have another switch, in any profile, than in
+        ``before``, a :meth:`typed_details`.  A mod switched off and on
+        again is not counted: it is as it was."""
+        return self._moved_in(before, 1)
+
+    def options_since(self, before) -> int:
+        """How many mods are read at other options than in ``before``, a
+        :meth:`typed_details`: set in *Mod options…*."""
+        return self._moved_in(before, 2)
 
     def details_moved(self, before) -> bool:
         """Whether :meth:`typed_details` has changed since ``before``, in
@@ -3167,7 +3204,8 @@ class Loadout:
 
     def switches_moved(self, before) -> bool:
         """Whether which mods are on, in any profile, or the profiles
-        themselves have changed since ``before``, a :meth:`typed_details`."""
+        themselves, or the options a mod is read at, have changed since
+        ``before``, a :meth:`typed_details`."""
         return self._details_moved(before)[1]
 
     @staticmethod
@@ -3182,8 +3220,8 @@ class Loadout:
             return ((name, *mod[1:]), layers, profiles, rest)
         if origin in layers:
             layers = dict(layers)
-            details, switches = layers[origin]
-            layers[origin] = ((name, *details[1:]), switches)
+            details, *others = layers[origin]
+            layers[origin] = ((name, *details[1:]), *others)
         return (mod, layers, profiles, rest)
 
     def standing(self) -> dict:

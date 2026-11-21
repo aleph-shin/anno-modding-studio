@@ -1440,10 +1440,13 @@ class TestSwitchingToMatchOnAnno117(TruthWindow):
             settings.Option(name="walls", label="Walls", kind=settings.TOGGLE, default="false"),
         ]).to_dict()
         self.window.loadout.layers = [ModLayer(
-            origin="Mine", mod_id="mine", offered=offered, options={"speed": "1", "walls": "true"},
+            origin="Mine", name="Speedy Walls", mod_id="mine", offered=offered,
+            options={"speed": "1", "walls": "true"},
         )]
         asked = self.sync()
-        self.assertIn("\nMod options: mine\n", asked[0])
+        # By the mod's name, as every other row names a mod (R4-20): it
+        # was the ModID the options are written under.
+        self.assertIn("\nMod options: Speedy Walls\n", asked[0])
         written = json.loads((self.documents / "active-options.jsonc").read_text(encoding="utf-8"))
         # Only what differs from the defaults, and nobody else's entry touched.
         self.assertEqual(written, {"someone-else": {"x": "1"}, "mine": {"walls": "true"}})

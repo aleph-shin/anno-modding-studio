@@ -385,6 +385,9 @@ class Check:
     loaded: int = 0
     # (name, what the loader said about it, or "") -- on here, not loaded.
     missing: List[tuple] = field(default_factory=list)
+    # Of those, the keys of the mods the game refused for their Mod ID: on
+    # in the switches and turned away all the same, each time it starts.
+    refused: List[str] = field(default_factory=list)
     # Loaded, and not on here.
     extra: List[str] = field(default_factory=list)
     # Loaded, and put there by the game's own browser, which Play cannot switch.
@@ -624,6 +627,7 @@ def check(log: LoaderLog, found, loadout) -> Check:
     for key, mod in wanted.items():
         if key not in seen and key not in replaced:
             if log.refused_id(mod.installed.mod_id):
+                result.refused.append(key)
                 why = tr("the game refused its Mod ID, %(id)s. %(rule)s",
                          id=mod.installed.mod_id.strip(),
                          rule=games.get(ANNO_117).mod_id_problem(""))
