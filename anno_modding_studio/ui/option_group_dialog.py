@@ -1,7 +1,7 @@
 """Which option some ModOps are put under: one the mod declares, or a new
 toggle, named here.
 
-What the ModOps go into is ``<Group Condition="$name">``, which runs only
+What the ModOps go into is ``<Group Condition="$mod-id.name">``, which runs only
 while the option is on (:mod:`core.option_groups`).  A toggle is what that
 asks of: on or off.  So the options offered are the mod's toggles, and the
 new one is a toggle, on unless the player turns it off -- what the mod did
@@ -10,7 +10,9 @@ before it had the option.
 An option whose group is in the file already has them put in it: a change
 made later goes in with the ones put under it before, and not into a group
 of its own beside them.  Unticked, they get a group of their own where they
-stand, as for a new toggle.
+stand, as for a new toggle.  What is under the option already stays where
+it is either way: a group of the option inside one of the option asks
+nothing.  So where all of them are, the box is greyed and OK is too.
 """
 
 from __future__ import annotations
@@ -49,12 +51,13 @@ class OptionGroupDialog(QDialog):
     """Pick or make the toggle some ModOps are to be put under.
 
     ``planned``, where given, says for one of the mod's options what putting
-    the ModOps under it in its own groups comes to
+    the ModOps under it comes to: into its own groups, or with the second
+    argument off each in a group of its own where it stands
     (:func:`core.option_groups.planned`)."""
 
     def __init__(
         self, loadout, origin: str, picked: int, groups: int, parent=None,
-        planned: Optional[Callable[[str], option_groups.Plan]] = None,
+        planned: Optional[Callable[[str, bool], option_groups.Plan]] = None,
     ):
         super().__init__(parent)
         self.offered = settings.read(settings.block_of(loadout, origin))
@@ -130,23 +133,27 @@ class OptionGroupDialog(QDialog):
         )
 
     def plan(self) -> Optional[option_groups.Plan]:
-        """What putting them into the chosen option's groups comes to, or
-        None where that is not what OK does: a new toggle, an option with no
-        group they can go into, or the box unticked."""
-        found = self._plan_of(str(self.which.currentData() or ""))
-        if found is None or not self.join_box.isChecked():
+        """What OK does for the chosen option, where any of them can go into
+        its group or is in one already: into that group, ticked, and else a
+        group of their own where they stand -- what is under it already left
+        where it is, either way.  None for a new toggle and for an option
+        with no such group."""
+        name = str(self.which.currentData() or "")
+        if self._plan_of(name) is None:
             return None
-        return found
+        return self._plan_of(name, self.join_box.isChecked())
 
-    def _plan_of(self, name: str) -> Optional[option_groups.Plan]:
+    def _plan_of(self, name: str, join: bool = True) -> Optional[option_groups.Plan]:
         """The plan for ``name``, where any of them goes into its group or
-        is in one already."""
+        is in one already: with them put into it, or with ``join`` off,
+        each in a group of its own where it stands."""
         if not name or self._planned is None:
             return None
-        if name not in self._plans:
-            self._plans[name] = self._planned(name)
-        found = self._plans[name]
-        return found if found.joined or found.already else None
+        for one in {True, join}:
+            if (name, one) not in self._plans:
+                self._plans[(name, one)] = self._planned(name, one)
+        found = self._plans[(name, True)]
+        return self._plans[(name, join)] if found.joined or found.already else None
 
     def problem_text(self) -> str:
         new = self.new_option()
@@ -161,17 +168,24 @@ class OptionGroupDialog(QDialog):
 
     def _said_text(self) -> str:
         plan = self.plan()
-        if plan is None:
-            return trn(
-                "%(n)s ModOp goes into a group that runs only while the option is on.",
-                "%(n)s ModOps go into a group that runs only while the option is on.",
-                self._picked,
-            ) + (" " + trn(
-                "They do not stand together in the file, so they go into %(n)s group.",
-                "They do not stand together in the file, so they go into %(n)s groups.",
-                self._groups,
-            ) if self._groups > 1 else "")
         said = []
+        if plan is None or not self.join_box.isChecked():
+            # Each in a group of its own where it stands.
+            count = self._picked if plan is None else plan.alone
+            groups = self._groups if plan is None else len(plan.left)
+            if count:
+                said.append(trn(
+                    "%(n)s ModOp goes into a group that runs only while the option is on.",
+                    "%(n)s ModOps go into a group that runs only while the option is on.",
+                    count,
+                ) + (" " + trn(
+                    "They do not stand together in the file, so they go into %(n)s group.",
+                    "They do not stand together in the file, so they go into %(n)s groups.",
+                    groups,
+                ) if groups > 1 else ""))
+            if plan is not None and plan.already:
+                said.append(self._already_text(plan.already))
+            return " ".join(said)
         if plan.joined:
             said.append(trn(
                 "%(n)s ModOp goes into the group the option has in the file, which runs only while it is on.",
@@ -191,20 +205,26 @@ class OptionGroupDialog(QDialog):
                 len(plan.left),
             ))
         if plan.already:
-            said.append(trn(
-                "%(n)s of them is under it already, and stays where it is.",
-                "%(n)s of them are under it already, and stay where they are.",
-                plan.already,
-            ))
+            said.append(self._already_text(plan.already))
         return " ".join(said)
+
+    @staticmethod
+    def _already_text(count: int) -> str:
+        return trn(
+            "%(n)s of them is under it already, and stays where it is.",
+            "%(n)s of them are under it already, and stay where they are.",
+            count,
+        )
 
     def _refresh(self, *_args) -> None:
         new = not self.which.currentData()
         for widget in (self.label_edit, self.name_edit, self.on_box):
             widget.setEnabled(new)
-        self._form.setRowVisible(
-            self.join_box, self._plan_of(str(self.which.currentData() or "")) is not None
-        )
+        into = self._plan_of(str(self.which.currentData() or ""))
+        self._form.setRowVisible(self.join_box, into is not None)
+        # Everything under it already: unticked, it would be put in a group
+        # of the option inside the group it is in.  Nothing is offered.
+        self.join_box.setEnabled(into is not None and not into.nothing_to_do)
         self.said.setText(self._said_text())
         # Nothing typed yet is nothing wrong yet: OK waits, and says nothing.
         blank = new and not self.name_edit.text().strip()

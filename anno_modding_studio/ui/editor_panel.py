@@ -72,6 +72,7 @@ from ..core import (
 from ..core import paths as pathmod
 from ..core.changes import OP_ADD, OP_MERGE, OP_REMOVE, Change, is_own_mod
 from ..core.i18n import STORED, join_list, tr, tr_kw, tr_noop, tr_stored, trn
+from ..core.undo import change_named
 from . import asset_xml, theme
 from .add_field_dialog import AddFieldDialog
 from .asset_picker import AssetPickerDialog
@@ -473,6 +474,10 @@ class EditorPanel(QWidget):
         # has made a step of undo of it: ``(which pane, the asset, the mod,
         # the text)``.
         self.typed_applied = None
+        # What the next step of undo is called, for an edit whose changes do
+        # not say it -- until the window has made the step.  Empty: named by
+        # the changes it holds (:func:`core.undo.describe`).
+        self.step_label = ""
         # Set by load_asset when it opened nothing because the user chose to
         # stay with what they had typed -- not because the asset is missing.
         self.stayed = False
@@ -3484,6 +3489,15 @@ class EditorPanel(QWidget):
 
             self._keep_pointing(moved)
             self.loadout.remove_key(removal.key)
+        # Named: the step holds as well each change after it pointed one
+        # entry further down, and counted, they said "Undid 3 changes" of
+        # one entry kept (R4-17).
+        # Translators: finishes "Undo …" in the Edit menu. %s is a field or
+        # list entry on an asset, as in "Item on Farmer Residence".
+        self.step_label = tr(
+            "keeping %s after all",
+            change_named(removal) if removal is not None else item.text(0),
+        )
         self.changesUpdated.emit()
         self._reload_keeping_view(focus_key=key)
 

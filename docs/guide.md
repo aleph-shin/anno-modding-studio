@@ -1627,9 +1627,11 @@ the module list, and a field for each hook (`Init`, `Load`, `Unload`, `Tick`).
 
 ### Options (Anno 117)
 
-Your ModOps read each option as `$name`, in a `Condition` or in
-`<ModValue Insert="$name"/>`. A good way to use them: wrap a part of the mod in
-`<Group Condition="$name">` with a toggle, and players can switch that part off.
+Your ModOps read each option as `$mod-id.name`, with your mod's ModID, in a
+`Condition` or in `<ModValue Insert="$mod-id.name"/>`. The bare `$name` works too:
+the game reads it as your mod's own option. A good way to use them: wrap a part of
+the mod in `<Group Condition="$mod-id.name">` with a toggle, and players can switch
+that part off.
 
 The editor for the modinfo's Options block opens from wherever an option is:
 
@@ -1647,7 +1649,7 @@ To make a part of the mod something players can switch off, pick its rows in the
 Mod changes panel (ModOps, groups, assets or changes of your mod) and right-click
 **Put under an option…**. Pick one of the mod's toggles, or name a new one: its name
 is made from the label as you type, and it is on unless the player turns it off. The
-ModOps go into `<Group Condition="$name">`, one group where they stand together in
+ModOps go into `<Group Condition="$mod-id.name">`, one group where they stand together in
 the file and one for each run where they don't. It's one step to undo.
 
 To add to an option later, make the change, pick its row and put it under the same
@@ -1655,9 +1657,11 @@ option. **Into its existing group** appears, ticked, when the option already
 has a group in the same file and at the same level as the change, so the change joins the ModOps you put there before
 instead of getting a group of its own. A new change goes at the end of the file, so
 it lands straight after the option's group when that group is last. If other ModOps
-stand in between, the dialog says how many it moves past: those then run on the
-other side of it. Untick the box to give the change a group of its own where it
-stands.
+stand in between, the dialog says how many it moves past, counting each ModOp inside
+a group it passes: those then run on the other side of it. Untick the box to give the
+change a group of its own where it stands. What is under the option already stays
+where it is either way, so when everything you picked is, there is nothing to do:
+the box and OK are greyed.
 
 In the editor:
 

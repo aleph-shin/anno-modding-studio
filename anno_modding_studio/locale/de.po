@@ -6877,8 +6877,8 @@ msgid "Put under an option…"
 msgstr "Unter eine Option stellen…"
 
 #: anno_modding_studio/ui/changes_dock.py
-msgid "Wraps the rows picked in a group that runs only while a toggle is on."
-msgstr "Fasst die gewählten Zeilen in eine Gruppe, die nur läuft, solange ein Schalter an ist."
+msgid "Puts the picked rows in a toggle's group: its existing one, or a new one."
+msgstr "Stellt die gewählten Zeilen in die Gruppe eines Schalters: seine vorhandene oder eine neue."
 
 #: anno_modding_studio/ui/changes_dock.py
 msgid "The ModOps the Studio writes for this, as they go into the mod's file."
@@ -8037,6 +8037,12 @@ msgstr "Nicht mehr setzen"
 #: anno_modding_studio/ui/editor_panel.py
 msgid "Remove from asset"
 msgstr "Aus dem Asset entfernen"
+
+#. Translators: finishes "Undo …" in the Edit menu. %s is a field or list entry on an asset, as in "Item on Farmer Residence".
+#: anno_modding_studio/ui/editor_panel.py
+#, python-format
+msgid "keeping %s after all"
+msgstr "Behalten von %s"
 
 #: anno_modding_studio/ui/file_panel.py
 msgid "A warning marks a ModOp that was not read. A bar marks one switched off."
@@ -11019,6 +11025,14 @@ msgstr "Das Studio konnte die Datei mit der Gruppe darin nicht lesen: %s"
 #: anno_modding_studio/ui/main_window.py
 msgid "it is not ModOps"
 msgstr "es sind keine ModOps"
+
+#. Translators: finishes "Undo …" in the Edit menu.
+#: anno_modding_studio/ui/main_window.py
+#, python-format
+msgid "putting %(n)s ModOp under option “%(option)s”"
+msgid_plural "putting %(n)s ModOps under option “%(option)s”"
+msgstr[0] "Stellen von %(n)s ModOp unter Option „%(option)s“"
+msgstr[1] "Stellen von %(n)s ModOps unter Option „%(option)s“"
 
 #: anno_modding_studio/ui/main_window.py
 #, python-format

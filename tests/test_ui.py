@@ -3779,6 +3779,25 @@ class TestRemovingEntriesThatOnlyAPositionTellsApart(WorkflowCase):
             [False] * 5 + [True],
         )
 
+    def test_keeping_one_after_all_is_one_step_named_so(self):
+        """R4-17: undone, it said "Undid 3 changes.": the removal taken
+        back, and the second's path as it was and as it is now."""
+        editor = self.window.editor
+        self.window._open_asset("1003")
+        editor._remove_node(self.entries()[4])
+        editor._remove_node(self.entries()[5])
+        first = self.entries()[4]
+        editor._undo_remove(first, editor._path_for(first)[0])
+        label = self.window.undo.undo_label
+        self.assertTrue(label.startswith("keeping "), label)
+        self.assertTrue(label.endswith(" after all"), label)
+        self.assertNotIn("changes", label)
+        self.window.undo_last()
+        self.assertEqual(self.window.status_label.text(), "Undid %s." % label)
+        self.assertEqual(len(self.window.loadout.changes), 2)
+        self.window.redo_last()
+        self.assertEqual(self.window.status_label.text(), "Redid %s." % label)
+
     def test_the_third_and_then_the_first(self):
         """One op writes its removals in the order of their paths: made
         third first, the third's ``[3]`` ran after the first's ``[1]``, on a

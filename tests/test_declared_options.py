@@ -370,6 +370,69 @@ class WhatIsPutUnderAnOption(unittest.TestCase):
         self.assertEqual(plan.already, 1)
         self.assertTrue(plan.nothing_to_do)
 
+    PAST = "\n".join([
+        "<ModOps>",                          # 1
+        "  <Group Condition=\"$on\">",       # 2  group g, the option's
+        "    <ModOp Inner/>",                # 3  op i
+        "  </Group>",                        # 4
+        "  <Group Condition=\"#x\">",        # 5  group h
+        "    <ModOp C/>",                    # 6  op c
+        "    <Group Condition=\"#y\">",      # 7  group k, in h
+        "      <ModOp D/>",                  # 8  op d
+        "    </Group>",                      # 9
+        "  </Group>",                        # 10
+        "  <ModOp A/>",                      # 11 op a
+        "  <ModOp B/>",                      # 12 op b
+        "</ModOps>",                         # 13
+    ])
+
+    def past(self):
+        from anno_modding_studio.core import generator, modfile
+
+        def op(uid):
+            return Op(origin="", uid=uid)
+
+        g, h, k = op("g"), op("h"), op("k")
+        items = [
+            modfile.Item(generator.SPAN_GROUP, 2, 2, op=g),
+            modfile.Item(generator.SPAN_OP, 3, 3, op=op("i"), depth=1),
+            modfile.Item(generator.SPAN_GROUP_END, 4, 4, op=g),
+            modfile.Item(generator.SPAN_GROUP, 5, 5, op=h),
+            modfile.Item(generator.SPAN_OP, 6, 6, op=op("c"), depth=1),
+            modfile.Item(generator.SPAN_GROUP, 7, 7, op=k, depth=1),
+            modfile.Item(generator.SPAN_OP, 8, 8, op=op("d"), depth=2),
+            modfile.Item(generator.SPAN_GROUP_END, 9, 9, op=k, depth=1),
+            modfile.Item(generator.SPAN_GROUP_END, 10, 10, op=h),
+            modfile.Item(generator.SPAN_OP, 11, 11, op=op("a")),
+            modfile.Item(generator.SPAN_OP, 12, 12, op=op("b")),
+        ]
+        return modfile.Shown(origin="", text=self.PAST, items=items)
+
+    def test_a_group_gone_past_counts_the_modops_in_it(self):
+        """R4-16: "go past N other ModOps" counted a group as one, so a
+        mod's 29 ModOps gone past were said as 9."""
+        from anno_modding_studio.core import option_groups
+
+        plan = option_groups.planned(self.past(), [("op", "b")], {"$on"})
+        # c, and d in the group inside h, and a: not h or k themselves.
+        self.assertEqual((plan.joined, plan.passed), (1, 3))
+        self.assertEqual(plan.shown.text.split("\n")[1:5], [
+            '  <Group Condition="$on">', "    <ModOp Inner/>", "    <ModOp B/>", "  </Group>",
+        ])
+
+    def test_unticked_what_is_under_it_already_is_not_wrapped_again(self):
+        """R4-16: unticked, what was in the option's group already went into
+        a second group of the option inside it."""
+        from anno_modding_studio.core import option_groups
+
+        shown = self.under()
+        plan = option_groups.planned(shown, [("op", "i"), ("op", "a")], {"$on"}, join=False)
+        self.assertEqual((plan.joined, plan.already, plan.alone), (0, 1, 1))
+        self.assertEqual(plan.left, [option_groups.Run(5, 5)])
+        self.assertEqual(plan.put, 1)
+        plan = option_groups.planned(shown, [("op", "i")], {"$on"}, join=False)
+        self.assertTrue(plan.nothing_to_do)
+
     def test_without_the_option_every_run_is_left_to_wrap(self):
         from anno_modding_studio.core import option_groups
 
