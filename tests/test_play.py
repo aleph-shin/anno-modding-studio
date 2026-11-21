@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from support import install_mod  # noqa: E402
+from support import ImportCase, install_mod  # noqa: E402
 
 from anno_modding_studio.core import disk, launch, library, switches  # noqa: E402
 from anno_modding_studio.core.games import ANNO_117, ANNO_1800  # noqa: E402
@@ -714,6 +714,53 @@ class TestWhereALogCameFrom(unittest.TestCase):
             )
             (mod,) = loaderlog.read(ANNO_1800, path).mods
         self.assertEqual((mod.name, mod.mod_id, mod.folder), ("[Test] Loose (Studio)",) * 3)
+
+
+class TestPlaysCheckOfYourChanges(ImportCase):
+    """Play says what Export's check says about the mods it builds."""
+
+    def test_a_patch_to_a_field_its_mod_added_is_checked_on_what_that_mod_leaves(self):
+        """R4-6: a patch for Powerful Flagship replacing a field Powerful
+        Flagship added. Checked against the bare index, Play said the change
+        would not apply, where the Export tab said it was verified."""
+        from anno_modding_studio.core import generator, play
+        from anno_modding_studio.core.changes import OP_MERGE, Change, Loadout, ModLayer
+        from anno_modding_studio.core.workspace import Workspace
+
+        loadout = Loadout()
+        loadout.set_layer(ModLayer(origin="Their Mod", name="Their Mod", mod_id="theirs", order=1))
+        loadout.set_layer(ModLayer(origin="Their Mod patch", name="Their Mod (my patch)",
+                                   patches="Their Mod", order=2))
+        loadout.set_change(Change(
+            guid="1001", asset_label="beta", path="/Values/Building", tag="SocketCount",
+            op=OP_MERGE, origin="Their Mod", payload="<SocketCount>1</SocketCount>",
+        ))
+        loadout.set_change(Change(
+            guid="1001", asset_label="beta", path="/Values/Building/SocketCount",
+            tag="SocketCount", old_value="1", new_value="2", origin="Their Mod patch",
+            authored=True,
+        ))
+        exported = generator.for_mod(loadout, "Their Mod patch")
+        self.assertTrue(all(result.ok for result in generator.verify_changes(
+            Workspace(self.index, loadout), exported)))
+        self.assertEqual(play.validate(loadout, ["Their Mod patch"], self.index), [])
+
+    def test_a_change_that_matches_nothing_on_the_stack_is_still_said(self):
+        from anno_modding_studio.core import play
+        from anno_modding_studio.core.changes import Change, Loadout, ModLayer
+
+        loadout = Loadout()
+        loadout.set_layer(ModLayer(origin="Their Mod", name="Their Mod", mod_id="theirs", order=1))
+        loadout.set_layer(ModLayer(origin="Their Mod patch", name="Their Mod (my patch)",
+                                   patches="Their Mod", order=2))
+        loadout.set_change(Change(
+            guid="1001", asset_label="beta", path="/Values/Building/SocketCount",
+            tag="SocketCount", old_value="1", new_value="2", origin="Their Mod patch",
+            authored=True,
+        ))
+        self.assertEqual(play.validate(loadout, ["Their Mod patch"], self.index), [
+            "Their Mod (my patch): 1 change would not apply. The Export tab lists it.",
+        ])
 
 
 if __name__ == "__main__":

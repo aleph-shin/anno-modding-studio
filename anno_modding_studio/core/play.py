@@ -273,7 +273,17 @@ def strays(found: Plan) -> list:
 def validate(loadout, origins, index) -> list:
     """What Export's check would say about the mods Play builds: changes that
     would not apply, and a Mod ID the game would refuse.  Said, not refused --
-    the game is about to show whether it matters."""
+    the game is about to show whether it matters.
+
+    Checked as the Export tab checks them, through a workspace of the
+    loadout: a change to a field a mod under it added is checked against
+    what that mod leaves.  Against the bare index such a change matched
+    nothing in the shipped asset, and Play said it would not apply while
+    the Export tab said it was verified (R4-6, hands-on run 4)."""
+    if index is not None and not hasattr(index, "asset_before"):
+        from .workspace import Workspace
+
+        index = Workspace(index, loadout)
     found = []
     for origin in origins:
         view = generator.for_mod(loadout, origin)
