@@ -1075,7 +1075,7 @@ class MainWindow(QMainWindow):
         self.output.loadoutEdited.connect(self.files.on_loadout_edited)
         # A change pointed back at its entry from the check: an edit like one
         # in the asset editor.
-        self.output.changesEdited.connect(self._on_edited)
+        self.output.changesEdited.connect(self._on_output_edited)
         # Which mods run scripts, and what they share, is on the mod rows.
         self.output.scriptsEdited.connect(self.changes_panel.refresh)
         # What a mod declares is what its ops that read a setting find.
@@ -2772,6 +2772,14 @@ class MainWindow(QMainWindow):
             # where an op that is not this asset's own has gone.
             step.typed = typed
             self.changes_panel.show_rows(*touched(step))
+
+    def _on_output_edited(self) -> None:
+        """A change pointed back at its entry on the Export tab: one step,
+        as an edit in the asset editor is.  The editor made none of it, so
+        it is drawn again: it went on striking the entry the path had found
+        before, until the asset was opened again (R4-5)."""
+        self._on_edited()
+        self.editor.refresh_from_loadout()
 
     def _put_your_name_on_it(self) -> None:
         """An edit has gone into the loadout's own mod: with no author name

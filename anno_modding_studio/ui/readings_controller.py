@@ -337,8 +337,14 @@ class ReadingsController:
             # unsaved mark once the reading it was saved waiting for came in.
             window.on_changes_updated(work=False)
             window.start.refresh_source_panel()
+            ops = sum(len(found.ops) + found.gone for found in moved)
+            if ops:
+                # The asset open may be one of what moved. Taken after an
+                # undo, it went on being drawn as it was before the reading,
+                # a removal in it not struck out, until it was opened again
+                # (R4-5).
+                window.editor.refresh_from_loadout()
         self._tell()
-        ops = sum(len(found.ops) + found.gone for found in moved)
         if for_edits:
             # Asked for by what was done here: the steps stay, and what the
             # reading moved is no step of its own.  Said only where it
