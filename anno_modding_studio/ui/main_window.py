@@ -80,7 +80,7 @@ from ..core.i18n import (
     trn,
 )
 from ..core.undo import UndoHistory, held_in, touched
-from . import help_tip, settings_dialog
+from . import help_tip, recent_messages, settings_dialog
 from .about_dialog import AboutDialog
 from .background import BackgroundIndicator, BackgroundTasks
 from .changes_dock import ChangesPanel
@@ -124,6 +124,11 @@ from .prompts import (
     Prompts,
 )
 from .readings_controller import ReadingsController
+from .recent_messages import (
+    HistoryButton,
+    MessageHistory,
+    RecentMessagesDialog,
+)
 from .reference_panel import ReferencePanel
 from .shortcuts_dialog import ShortcutsDialog
 from .source_panel import SourcePanel
@@ -263,7 +268,14 @@ class StatusLine(QLabel):
     tooltip.  A message about something to look at elsewhere in the window
     may carry a link of its own the same way: ``link``, a label and what
     clicking it does.  :attr:`row` is what goes in the status bar, the
-    message with the links beside it."""
+    message with the links beside it.
+
+    The last message wins, whatever said it, so a sentence about what you
+    did was often gone within seconds, replaced by one from the background.
+    Each message is kept in :attr:`history`, with its time and its links, and
+    :attr:`history_button` lists them (``ui.recent_messages``).  The button
+    goes in the bar on its own, before the row: the row asks for no width
+    at all."""
 
     def __init__(self, text: str = "") -> None:
         super().__init__(text)
@@ -271,6 +283,12 @@ class StatusLine(QLabel):
         # not: the link stays beside the text, and the text gives way first.
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self.setToolTip(text)
+        self.history = MessageHistory()
+        self.history.add(text)
+        # Made before the link, so Tab reaches it first, as it is laid out.
+        self.history_button = HistoryButton()
+        self.history_button.show_unseen(self.history.unseen)
+        self.history_button.clicked.connect(self.show_history)
         self.folder: Optional[Path] = None
         self.folder_link = self._link_label()
         self.folder_link.linkActivated.connect(lambda _key: self.show_folder())
@@ -316,6 +334,8 @@ class StatusLine(QLabel):
             show_rich(self.action_link, '<a href="action">%s</a>' % html.escape(link[0]))
             self.action_link.setAccessibleName(link[0])
         self.folder = Path(folder) if folder else None
+        self.history.add(text, self.folder, link)
+        self.history_button.show_unseen(self.history.unseen)
         self.folder_link.setVisible(self.folder is not None)
         if self.folder is None:
             return
@@ -332,6 +352,14 @@ class StatusLine(QLabel):
         """What the message's own link does, where it has one."""
         if self.action is not None:
             self.action()
+
+    def show_history(self) -> None:
+        """The messages shown so far, the newest first.  Those that come
+        while the list is open are new the next time."""
+        said = self.history.entries()
+        self.history.seen()
+        self.history_button.show_unseen(0)
+        RecentMessagesDialog(said, self.window()).exec()
 
 
 # How many changed settings a mod read again at other settings names in the
@@ -1124,6 +1152,9 @@ class MainWindow(QMainWindow):
         # Cut short at the window's width: a long line pushed what is running
         # behind the window, at the bar's other end, out of sight.
         self.status_label = StatusLine(tr("No assets.xml loaded."))
+        # The messages before this one, at the bar's left end, where it
+        # stays put while the message beside it changes length.
+        self.statusBar().addWidget(self.status_label.history_button)
         self.statusBar().addWidget(self.status_label.row, 1)
         # A newer Studio, or the one just updated to, with its links: beside
         # the status line, which goes on saying everything else.
@@ -1309,6 +1340,12 @@ class MainWindow(QMainWindow):
         focus_search.setShortcut(QKeySequence("Ctrl+P"))
         focus_search.triggered.connect(self._focus_search)
         view_menu.addAction(focus_search)
+        # What the status bar said before its message now: the button at
+        # its left end, here with its shortcut.
+        self.messages_action = QAction(tr("Recent messages…"), self)
+        self.messages_action.setShortcut(recent_messages.SHORTCUT)
+        self.messages_action.triggered.connect(lambda: self.status_label.show_history())
+        view_menu.addAction(self.messages_action)
 
         # The main tabs, in the order they are shown. In the menu so the
         # shortcuts can be found, and so a shut tab's entry is greyed with it.

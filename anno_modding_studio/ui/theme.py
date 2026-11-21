@@ -676,6 +676,18 @@ QPushButton:focus {{ border: 2px solid {t['focus']}; padding: {pad_v - 1}px {pad
 QToolButton#PlayWhere:focus, QToolButton#PanelMove:focus {{
     border: 2px solid {t['focus']}; padding: {pad_v - 1}px 6px;
 }}
+/* The status bar's recent messages: flat on the bar, in the bar's colour,
+   and no taller than its text, so the bar does not grow. Edged on hover
+   and with the focus, as the buttons above are. */
+QToolButton#StatusHistory {{
+    background: transparent;
+    color: {t['text-dim']};
+    border: 1px solid transparent;
+    border-radius: {radius}px;
+    padding: 0px 5px;
+}}
+QToolButton#StatusHistory:hover {{ border-color: {t['accent']}; color: {t['text']}; }}
+QToolButton#StatusHistory:focus {{ border: 2px solid {t['focus']}; padding: 0px 4px; }}
 QPushButton#Primary:focus {{ border: 2px solid {t['text']}; }}
 /* Two buttons joined into one control, the pressed-in half being what is on
    show. Filled, edged in the accent and semi-bold: three things say which. */
@@ -995,6 +1007,8 @@ QToolButton#PlayWhere[pointed="true"]:focus, QToolButton#PanelMove[pointed="true
     border: 1px solid {t['border']}; padding: {pad_v}px 7px;
 }}
 QToolButton#PlayWhere[pointed="true"]:focus:hover, QToolButton#PanelMove[pointed="true"]:focus:hover {{ border-color: {t['accent']}; }}
+QToolButton#StatusHistory[pointed="true"]:focus {{ border: 1px solid transparent; padding: 0px 5px; }}
+QToolButton#StatusHistory[pointed="true"]:focus:hover {{ border-color: {t['accent']}; }}
 QPushButton#Segment[pointed="true"]:focus {{ border: 1px solid {t['border']}; }}
 QPushButton#Segment[pointed="true"]:focus:checked {{ border-color: {t['accent']}; }}
 QCheckBox[pointed="true"]:focus, QRadioButton[pointed="true"]:focus {{ border: none; }}
