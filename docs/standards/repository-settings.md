@@ -27,8 +27,10 @@ Under **Settings > Rules > Rulesets**, one ruleset for `main` and `release/**`, 
 branches the [branch rules](../development.md#branches) name:
 
 - [ ] **Require status checks to pass**, naming both jobs of
-      `.github/workflows/check.yml`: `check.py on Python 3.10` and
-      `check.py on Python 3.13`. A check that is not required can be merged over.
+      `.github/workflows/check.yml`, `check.py on Python 3.10` and
+      `check.py on Python 3.13`, and the job of
+      `.github/workflows/pr-description.yml`, `The description has what the template
+      asks for`. A check that is not required can be merged over.
 - [ ] Leave **Require branches to be up to date before merging** off. It runs every
       open PR again after each merge, and the merge into `main` runs the check anyway.
 - [ ] **Block force pushes.** A release is a tag on its branch, and a branch whose

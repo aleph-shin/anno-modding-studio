@@ -97,6 +97,7 @@ from pathlib import Path
 
 import design_check
 import duplicate_check
+import ledger
 import standards_check
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -524,6 +525,11 @@ def main() -> int:
           % (sum(duplicates.values()), sum(recorded.get("duplicates", dict(duplicates)).values())))
     print("design: %d findings (none allowed)" % len(design))
     print("standards: %d findings (none allowed)" % len(standards))
+    # Not a check: the count, said on every run so that it is seen
+    # (docs/ledger.md, "How it is kept").
+    open_rows = (ledger.summary(ledger.LEDGER.read_text(encoding="utf-8"))
+                 if ledger.LEDGER.is_file() else "no ledger")
+    print("ledger: " + open_rows)
 
     if args.ratchet:
         lowered = {
@@ -607,6 +613,7 @@ def main() -> int:
              not duplicates_worse),
             ("design rules", "%d findings (none allowed)" % len(design), not design),
             ("standards rules", "%d findings (none allowed)" % len(standards), not standards),
+            ("ledger (docs/ledger.md)", open_rows + "; triaged once per release", True),
             ("architecture map", "%d not named" % len(unmapped), not unmapped),
             ("counts against main", "not compared: no main branch" if before is None
              else "%d raised" % len(lifted), before is not None and not lifted),

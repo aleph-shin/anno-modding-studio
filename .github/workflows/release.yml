@@ -46,6 +46,11 @@ jobs:
       - name: The tag names the version
         run: python tools/build_release.py check-tag --tag "$env:TAG"
 
+      # Every row of docs/ledger.md was looked at for this release
+      # (docs/standards/release-checklist.md, "What was left open").
+      - name: The ledger was triaged for this release
+        run: python tools/ledger.py --release
+
       - name: Install the locked build inputs
         timeout-minutes: 10
         run: |

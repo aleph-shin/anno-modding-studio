@@ -26,6 +26,7 @@ file and the line. ``tools/check.py`` runs them all.
 | ``bare-text`` | English handed to Qt without ``tr()`` | translation.md |
 | ``untranslated`` | a catalog entry with no translation, or one to look at again | translation.md |
 | ``user-path`` | a path into a real user's folder, ``C:\\Users\\<name>``, in any tracked text file | development.md |
+| ``ledger`` | a row of ``docs/ledger.md`` that is not well formed, or kept at too many releases (``tools/ledger.py``) | docs/ledger.md |
 
 The tests may reach a module's privates to pin them, so ``private-name``
 covers the package and ``tools/`` only. A tool importing another tool's
@@ -44,7 +45,7 @@ PACKAGE = ROOT / "anno_modding_studio"
 
 RULES = (
     "qt-in-core", "leaf", "private-name", "isolation", "waiver",
-    "requirements", "link", "catalog", "bare-text", "untranslated", "user-path",
+    "requirements", "link", "catalog", "bare-text", "untranslated", "user-path", "ledger",
 )
 
 QT = {"PySide6", "PySide2", "PyQt5", "PyQt6", "shiboken6"}
@@ -294,6 +295,17 @@ def catalogs() -> list:
     return found
 
 
+# -- the ledger --------------------------------------------------------------------
+def ledger_rows() -> list:
+    """What ``tools/ledger.py`` finds wrong with ``docs/ledger.md``."""
+    import ledger
+
+    if not ledger.LEDGER.is_file():
+        return [("ledger", "docs/ledger.md", 1, "is not there")]
+    return [("ledger", "docs/ledger.md", line, said)
+            for line, said in ledger.problems(ledger.LEDGER.read_text(encoding="utf-8"))]
+
+
 # -- the repository ----------------------------------------------------------------
 def _documents() -> list:
     return [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
@@ -323,7 +335,7 @@ def findings() -> list:
             found += links(_relative(path), path.read_text(encoding="utf-8"), path.parent)
     for path in _tracked():
         found += user_paths(_relative(path), path.read_text(encoding="utf-8", errors="replace"))
-    return found + catalogs()
+    return found + catalogs() + ledger_rows()
 
 
 def failures() -> list:

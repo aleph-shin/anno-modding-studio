@@ -104,6 +104,8 @@ rules:
   every entry is translated ([translation.md](standards/translation.md)).
 - No tracked file names a real user's folder. A path into `C:\Users` uses `Public`,
   or a placeholder such as `me` or `someone`.
+- Every row of the [ledger](ledger.md) is well formed, and none is kept at more than
+  two releases (`tools/ledger.py`).
 
 [code-standards.md](standards/code-standards.md) has every rule, with the ones only a
 reviewer can check, and [pr-checklist.md](standards/pr-checklist.md) is the list to go
@@ -133,9 +135,11 @@ git config --global studio.privateTerms <path to your list>
 A match refuses the push, and every image the push adds is listed for you to look
 at. With no list it looks for nothing.
 
-A change to the UI also follows the checklist at the end of
-[design-standards.md](standards/design-standards.md). The renders are looked at once
-per release, but rendering a screen sooner helps whenever seeing it would:
+Before a PR is opened, the change is tried in the running Studio, and the PR says what
+was seen ([pr-checklist.md](standards/pr-checklist.md), "Verified in the Studio").
+What only the game can show goes in a test pack (`tools/ingame_pack.py`), which the
+maintainer runs before the release. The renders are looked at once per release, but
+rendering a screen sooner helps whenever seeing it would:
 
 ```bash
 python tools/render_themes.py <folder>
@@ -182,6 +186,12 @@ What CI cannot check, so it stays with the contributor or the release:
 - **The renders and the look**, which need a person, once per release.
 - **The Studio against the games themselves**: loading an export in the game, and a
   run by hand. Once per release.
+
+[`.github/workflows/pr-description.yml`](../.github/workflows/pr-description.yml)
+runs `tools/pr_description.py` on every PR and on every edit of its description. It
+fails while the description is missing what the
+[PR template](../.github/pull_request_template.md) asks for, and passes again once
+the description is edited, without a new push.
 
 The release has a workflow of its own,
 [`.github/workflows/release.yml`](../.github/workflows/release.yml), run by a pushed

@@ -51,5 +51,8 @@ cov.json
 api_key.txt
 *.key
 
+# An agent's notes for one machine, beside CLAUDE.md
+CLAUDE.local.md
+
 # Personal development scripts
 git-sync.bat
