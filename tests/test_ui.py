@@ -3722,6 +3722,48 @@ class TestRemovingEntriesThatOnlyAPositionTellsApart(WorkflowCase):
             next(iter(self.window.loadout)).path, "/Values/Pairs/List/Item[A='2'][1]"
         )
 
+    def test_the_editor_strikes_the_entry_it_was_pointed_at(self):
+        """Pointed back from the Export tab, the asset open in the editor
+        went on striking the entry the path had found before, until it was
+        opened again (R4-5, hands-on run 4)."""
+        editor = self.window.editor
+        self.window._open_asset("1004")
+        editor._remove_node(self.entries()[3])
+        (removal,) = self.window.loadout
+        removal.path = "/Values/Pairs/List/Item[A='2'][1]"
+        self.window.loadout.reindex()
+        self.window.record()
+        editor.refresh_from_loadout()
+        struck = [editor._origin(item).is_removed for item in self.entries()]
+        self.assertEqual(struck, [False, False, True, False])
+
+        out = self.window.output
+        self.window.tabs.setCurrentIndex(TAB_GENERATE)
+        menu = out.menu_for(out.check_list.item(0))
+        next(
+            a for a in menu.actions() if a.text() == "Point it at the entry it was made against"
+        ).trigger()
+        self.window.tabs.setCurrentIndex(TAB_EDIT)
+        struck = [editor._origin(item).is_removed for item in self.entries()]
+        self.assertEqual(struck, [False, False, False, True])
+
+    def test_a_row_of_a_tree_drawn_before_has_no_path(self):
+        """A row whose node is not in the asset open, as one of a tree
+        drawn before is: it says no path, where it raised (R4-5)."""
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from anno_modding_studio.ui.editor_panel import ELEM_ROLE
+
+        editor = self.window.editor
+        self.window._open_asset("1004")
+        elsewhere = etree.fromstring("<Values><Standard><GUID>1</GUID></Standard></Values>")
+        row = QTreeWidgetItem(["Standard"])
+        row.setData(0, ELEM_ROLE, elsewhere[0])
+        self.assertEqual(editor._path_for(row), (None, False))
+        editor.path_box.setText("/Values/Pairs")
+        editor._on_current_changed(row, None)
+        self.assertEqual(editor.path_box.text(), "")
+
     def test_a_count_among_the_alike_is_not_moved_by_others(self):
         """Taking an entry of another value back moves nothing."""
         editor = self.window.editor
@@ -18117,6 +18159,31 @@ class TestReadingsThatHaveGoneStale(StaleReadingsCase):
         # A reading of folders ends the history, as the others do.
         self.assertFalse(self.window.undo.can_undo)
         self.assertIsNone(self.window.readings.worker)
+
+    def residents(self) -> str:
+        """The Residents the asset editor shows."""
+        return next(
+            item.text(1) for item in self.window.editor._iter_items()
+            if item.text(0) == "Residents" and item.data(0, 258) is not None
+        )
+
+    def test_the_asset_editor_shows_what_a_reading_moved(self):
+        """A reading that moves what the asset open comes to draws it again.
+        Taken after an undo, it left the editor drawing the asset as it was
+        before the reading until it was opened again, an entry a ModOp
+        removes not struck out (R4-5, hands-on run 4)."""
+        self.window.tabs.setCurrentIndex(TAB_EDIT)
+        # It sets the value again after the mod that doubles it.
+        self.window.unload_mods([self.LAST])
+        self.window.editor.load_asset("1010030")
+        self.assertEqual(self.residents(), "24")
+        with self.reading(now=False):
+            self.window.unload_mods([self.EARLY])
+            # Still what it came to before, until the reading is in.
+            self.assertEqual(self.residents(), "24")
+            self.started[0].run()
+        self.assertIn(("1010030", "16"), self.comes_to(self.LATE))
+        self.assertEqual(self.residents(), "16")
 
     def test_a_reading_taken_over_a_saved_loadout_leaves_it_saved(self):
         """A loadout saved with readings in doubt, opened and only looked

@@ -2474,9 +2474,15 @@ class EditorPanel(QWidget):
         elem = item.data(0, ELEM_ROLE)
         if elem is None or self.asset_root is None:
             return None, False
-        generated = pathmod.path_for(
-            self.asset_root, elem, gone=self._gone_for(elem), text=self._as_found()
-        )
+        try:
+            generated = pathmod.path_for(
+                self.asset_root, elem, gone=self._gone_for(elem),
+                text=self._as_found(),
+            )
+        except ValueError:
+            # A row of a tree drawn from another asset than the one open:
+            # its node is in no asset to name a path in (R4-5).
+            return None, False
         item.setData(0, PATH_ROLE, generated.path)
         item.setData(0, POS_ROLE, generated.positional)
         return generated.path, generated.positional
@@ -3069,12 +3075,16 @@ class EditorPanel(QWidget):
             theme.repolish(self.warning_label)
 
     def _on_current_changed(self, current, _previous) -> None:
-        if current is None or current.data(0, ELEM_ROLE) is None:
+        path, positional = (
+            self._path_for(current) if current is not None else (None, False)
+        )
+        if path is None:
+            # No row, a row of no node, or one of no asset open: nothing
+            # to say of it.
             self.path_box.clear()
             self._set_hint("")
             return
-        path, positional = self._path_for(current)
-        self.path_box.setText(path or "")
+        self.path_box.setText(path)
         if current.data(0, ORIG_ROLE) is None:
             self._set_hint(tr(
                 "This is a container. Right-click it to add a field or a list entry, "
