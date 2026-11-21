@@ -18832,7 +18832,8 @@ class TestWhatAReadingMovedIsShown(StaleReadingsCase):
 
         self.switched_off_and_on()
         late = self.mod_row(self.LATE)
-        self.assertTrue(late.text(1).startswith("3 changed when read again, "), late.text(1))
+        # At the end: the column is cut short from its start.
+        self.assertTrue(late.text(1).endswith(", 3 changed when read again"), late.text(1))
         self.assertFalse(late.icon(1).isNull())
         (fold,) = [row for row in self.late_rows() if row.data(0, KIND_ROLE) == "idle"]
         self.assertEqual(fold.text(1), "1 changed when read again")

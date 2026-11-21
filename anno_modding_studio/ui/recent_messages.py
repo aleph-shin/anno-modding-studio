@@ -244,7 +244,9 @@ class RecentMessagesDialog(QDialog):
             link.setAccessibleName(label)
             if tip:
                 link.setToolTip(tip)
-            link.linkActivated.connect(lambda _key, action=action: action())
+            # The list goes first: what a link shows is in the window
+            # behind it, Show it's rows above all, which it kept covered.
+            link.linkActivated.connect(lambda _key, action=action: (self.accept(), action()))
             column.addWidget(link, 0, Qt.AlignmentFlag.AlignLeft)
             self.links.append(link)
         grid.addLayout(column, row, 1)

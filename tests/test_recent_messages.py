@@ -147,6 +147,8 @@ class TestTheList(unittest.TestCase):
         with mock.patch.object(recent_messages, "show_in_folder") as shown:
             link.linkActivated.emit("link")
         shown.assert_called_once_with(self.folder)
+        # The list closes first, so what the link shows is not under it.
+        self.assertEqual(self.dialog.result(), self.dialog.DialogCode.Accepted)
 
     def test_copy_all_copies_each_with_its_time_and_folder(self):
         self.dialog.copy_all()

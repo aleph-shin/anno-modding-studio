@@ -771,9 +771,11 @@ class ChangeRows:
         if not count:
             return
         node.setData(0, MOVED_ROLE, count)
+        # Last: the column is cut short from its start, so what ends it is
+        # what stays in sight -- the count first was cut to "…n read again".
         node.setText(1, tr(", ", context="between items of a list").join(filter(None, [
-            trn("%(n)s changed when read again", "%(n)s changed when read again", count),
             node.text(1),
+            trn("%(n)s changed when read again", "%(n)s changed when read again", count),
         ])))
         cls._paint_moved(node)
 
