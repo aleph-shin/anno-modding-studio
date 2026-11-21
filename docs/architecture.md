@@ -396,7 +396,7 @@ Grouped by what they are about. `tools/check.py` fails when a module under
 | The library and backups | `convert_dialog`, `backup_dialog` |
 | The two histories, the loadout's and a project's | `history_dialog` |
 | mod.io | `modio_account_panel` (Settings' mod.io tab), `modio_get_dialog`, `install_plan_dialog`, `modio_updates_dialog`, `modio_publish_dialog`, `unsubscribe_dialog` |
-| The Studio itself | `settings_dialog`, `only_copies_dialog`, `shortcuts_dialog`, `about_dialog` (its version, licence and links, and the versions a bug report needs), `folders_dialog` (every folder the Studio uses, in one list) |
+| The Studio itself | `settings_dialog`, `only_copies_dialog`, `shortcuts_dialog`, `about_dialog` (its version, licence and links, and the versions a bug report needs), `folders_dialog` (every folder the Studio uses, in one list), `recent_messages` (the status bar's last messages, and the button that lists them) |
 
 **Shared pieces**
 

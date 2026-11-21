@@ -2280,11 +2280,22 @@ The main shortcuts:
 | Alt+Left, Alt+Right | Back and forward between assets |
 | Ctrl+S | Save the loadout |
 | Ctrl+, | Settings |
+| Ctrl+Shift+M | The status bar's recent messages |
 | F1 | This guide |
 | Enter | In a list, does what a double-click does |
 
 Every control can be reached from the keyboard. A `?` beside a label opens with
 Enter or F1 and closes with Esc.
+
+### The status bar's messages
+
+The status bar shows the newest message, from whatever said it last: something you
+did, or something read or checked behind the window. A message can be replaced
+within seconds. The clock at the bar's left end, or *View › Recent messages…*
+(Ctrl+Shift+M), lists the last 30, the newest first, each with the time it was shown,
+all of its words and its **Show in folder** where it had one. The number beside the
+clock counts the messages that came since you last opened the list. **Copy all**
+copies them with their times.
 
 ### Files the Studio keeps
 
@@ -2292,7 +2303,8 @@ Enter or F1 and closes with Esc.
 on your PC, with the library and the mods folder, and opens them. The `?` beside each
 says what it holds. It shows a folder you moved where it is
 now. A status bar message about something put in a folder, such as an export, Play
-or an install, has **Show in folder** after it until the next message.
+or an install, has **Show in folder** after it until the next message, and keeps it
+in [the list of recent messages](#the-status-bars-messages).
 
 | Where | What |
 |---|---|

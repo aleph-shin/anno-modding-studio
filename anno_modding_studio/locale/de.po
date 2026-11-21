@@ -5105,7 +5105,7 @@ msgstr "<a href=\"%(notices)s\">Hinweise zu Drittanbietern</a> &nbsp;·&nbsp; <a
 msgid "Not affiliated with Ubisoft or mod.io. Anno is a trademark of Ubisoft."
 msgstr "Nicht mit Ubisoft oder mod.io verbunden. Anno ist eine Marke von Ubisoft."
 
-#: anno_modding_studio/ui/about_dialog.py anno_modding_studio/ui/folders_dialog.py anno_modding_studio/ui/install_plan_dialog.py anno_modding_studio/ui/only_copies_dialog.py anno_modding_studio/ui/shortcuts_dialog.py
+#: anno_modding_studio/ui/about_dialog.py anno_modding_studio/ui/folders_dialog.py anno_modding_studio/ui/install_plan_dialog.py anno_modding_studio/ui/only_copies_dialog.py anno_modding_studio/ui/recent_messages.py anno_modding_studio/ui/shortcuts_dialog.py
 msgid "&Close"
 msgstr "S&chließen"
 
@@ -8428,7 +8428,7 @@ msgstr "Ordner &öffnen"
 msgid "Copy &path"
 msgstr "&Pfad kopieren"
 
-#: anno_modding_studio/ui/folders_dialog.py
+#: anno_modding_studio/ui/folders_dialog.py anno_modding_studio/ui/recent_messages.py
 msgid "Copy &all"
 msgstr "&Alles kopieren"
 
@@ -10275,7 +10275,7 @@ msgstr "v%s exportiert"
 msgid "%(name)s %(version)s (dev)"
 msgstr "%(name)s %(version)s (Entwicklung)"
 
-#: anno_modding_studio/ui/main_window.py anno_modding_studio/ui/source_panel.py
+#: anno_modding_studio/ui/main_window.py anno_modding_studio/ui/recent_messages.py anno_modding_studio/ui/source_panel.py
 msgid "Show in folder"
 msgstr "Im Ordner anzeigen"
 
@@ -10540,6 +10540,10 @@ msgstr "Im Asset oder in der Datei suchen"
 #: anno_modding_studio/ui/main_window.py
 msgid "Search for an asset"
 msgstr "Nach einem Asset suchen"
+
+#: anno_modding_studio/ui/main_window.py
+msgid "Recent messages…"
+msgstr "Letzte Meldungen…"
 
 #: anno_modding_studio/ui/main_window.py
 msgid "Appearance…"
@@ -16852,6 +16856,37 @@ msgstr[1] "%(n)s ModOps ergeben jetzt etwas anderes. Ihre Zeilen sagen es."
 #: anno_modding_studio/ui/readings_controller.py
 msgid "Every ModOp comes to what it did."
 msgstr "Jede ModOp ergibt, was sie zuvor ergab."
+
+#. Translators: when a status bar message was shown, on a day before today. %(day)s is a date such as "05 Sep", %(time)s a time of day.
+#: anno_modding_studio/ui/recent_messages.py
+#, python-format
+msgid "%(day)s, %(time)s"
+msgstr "%(day)s, %(time)s"
+
+#: anno_modding_studio/ui/recent_messages.py
+msgid "Recent messages"
+msgstr "Letzte Meldungen"
+
+#. Translators: the tooltip of the status bar's clock button. %(keys)s is its shortcut, such as Ctrl+Shift+M.
+#: anno_modding_studio/ui/recent_messages.py
+#, python-format
+msgid "Recent messages: one new  (%(keys)s)"
+msgid_plural "Recent messages: %(n)s new  (%(keys)s)"
+msgstr[0] "Letzte Meldungen: eine neue  (%(keys)s)"
+msgstr[1] "Letzte Meldungen: %(n)s neue  (%(keys)s)"
+
+#: anno_modding_studio/ui/recent_messages.py
+#, python-format
+msgid "Recent messages  (%s)"
+msgstr "Letzte Meldungen  (%s)"
+
+#: anno_modding_studio/ui/recent_messages.py
+msgid "The messages the status bar shows are kept here, the newest first."
+msgstr "Hier stehen die Meldungen der Statusleiste, die neueste zuerst."
+
+#: anno_modding_studio/ui/recent_messages.py
+msgid "Copies every message in the list, with its time."
+msgstr "Kopiert jede Meldung der Liste, mit ihrer Uhrzeit."
 
 #: anno_modding_studio/ui/reference_panel.py anno_modding_studio/ui/shortcuts_dialog.py
 msgid "Reference graph"

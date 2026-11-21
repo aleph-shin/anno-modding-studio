@@ -3268,6 +3268,20 @@ This was the sharp edge. That threw away anything you had edited into those mods
   blanket `QWidget { background: ... }` rule that gives most of the app's dark background
   also applied to the status bar's `QLabel`, painting it a slightly darker rectangle than
   the status bar itself. `QStatusBar QLabel { background: transparent; }` lets it blend in.
+- **The status bar keeps what it said, and the newest message still wins.** About a
+  hundred places say something there, and a sentence about what you did ("Exported to
+  …", "Undid …") was often replaced within seconds by one from the background: a
+  reading's "After that edit, …", what Play would make the loadout, the loader probes.
+  The change drew the eye, and what had been there was gone. Ranking the messages, or
+  holding back the background's, was weighed and left: which message matters more
+  depends on what you were looking for, and a line that sometimes doesn't show the
+  newest is harder to trust. So the line stays last-writer-wins, and keeps the last 30
+  messages, each with its time and the *Show in folder* it had. The clock button at the
+  bar's left end lists them (`ui/recent_messages.py`), with a count of those that came
+  since the list was last opened. The same words again with nothing between are one
+  message, at the later time, since a reading says "Every ModOp comes to what it did."
+  after each edit. The button stands in the bar on its own, outside the message's row,
+  which asks for no width so it never pushes what runs behind the window out of sight.
 - **A label that reflects live state elides instead of forcing its layout wider.** The
   *Export* page's "Export to:" path used to grow the whole Preview panel wider with
   every character typed into the mod name: a plain `QLabel`'s `minimumSizeHint` tracks its
