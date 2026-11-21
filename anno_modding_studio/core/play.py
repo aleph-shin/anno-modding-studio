@@ -170,7 +170,7 @@ def plan(
     # The inventory first, so the switches are read off the folders it found
     # rather than off a listing of their own (P8-29).
     found.found = truth.read(loadout, folder, library_dir=library_dir)
-    ids = {layer.origin: layer.mod_id for layer in loadout.layers}
+    ids = {layer.origin: switch_id(loadout, layer) for layer in loadout.layers}
     found.current = switches.read(
         folder, loadout.game, ids=ids, names=[layer.origin for layer in loadout.layers],
         tops=switches.tops_of(loadout.game, folder,
@@ -248,6 +248,20 @@ def plan(
     return found
 
 
+def switch_id(loadout, layer) -> str:
+    """The ModID the game knows ``layer``'s mod by: the one it declares, or,
+    for a mod of yours whose Mod ID was left blank, the one its build
+    writes, made from its name.  Matched by the blank, a project from 0.1.0
+    read as a mod the profile did not have on, and every Play listed it
+    under *Switch on* (R4-7, hands-on run 4)."""
+    if layer.mod_id or not loadout.yours(layer):
+        return layer.mod_id
+    try:
+        return modinfo.written_mod_id(generator.for_mod(loadout, layer.origin))
+    except LookupError:
+        return ""
+
+
 def current_build(loadout, origin: str, folder, library_dir) -> bool:
     """Whether the mods folder already loads the build of ``origin`` that
     building it now would make: its link there points at the library's copy,
@@ -314,7 +328,8 @@ def options_to_write(loadout) -> dict:
     wanted = {}
     off = loadout.switched_off()
     for layer in loadout.layers:
-        if layer.origin in off or not layer.offered or not layer.mod_id:
+        mod_id = switch_id(loadout, layer) if layer.offered else ""
+        if layer.origin in off or not mod_id:
             continue
         offered = settings_mod.from_dict(layer.offered)
         settled = offered.settled(layer.options)
@@ -324,8 +339,8 @@ def options_to_write(loadout) -> dict:
             if not imya.is_tweak_name(option.name)
             and settled.get(option.name, option.default) != option.default
         }
-        if answers != held.get(layer.mod_id.strip().lower(), {}):
-            wanted[layer.mod_id] = answers
+        if answers != held.get(mod_id.strip().lower(), {}):
+            wanted[mod_id] = answers
     return wanted
 
 
@@ -542,7 +557,7 @@ def carry_out(found: Plan, loadout, library_dir, backup_into=None, display_name:
         also = write_own_profile(loadout, found.pointer_folder, found.own_name, found.found, display_name)
     else:
         also = switches.write(found.current, wanted, ids={
-            layer.origin: layer.mod_id for layer in loadout.layers
+            layer.origin: switch_id(loadout, layer) for layer in loadout.layers
         }) if moving else switches.Written()
         if found.strays:
             also.merge(truth.switch_off(found.found, library_dir, found.strays))
@@ -651,9 +666,11 @@ def write_own_profile(loadout, pointer_folder, name: str, found, display_name: s
     for layer in loadout.layers:
         if modfolder.is_bundled(layer.origin):
             continue  # bundled: switches with its host
+        # A patch of yours names itself only in the modinfo its build wrote,
+        # and so does a mod of yours whose Mod ID was left blank, built now
+        # or before (switch_id).
         mod_id = (layer.mod_id or "").strip().lower()
-        if not mod_id and layer.origin in built:
-            # A patch of yours names itself only in the modinfo its build wrote.
+        if not mod_id and (layer.origin in built or loadout.yours(layer)):
             mod_id = modinfo.written_mod_id(generator.for_mod(loadout, layer.origin)).strip().lower()
         if not mod_id:
             written.failed.append((layer.origin, tr("declares no ModID for the profile to name")))

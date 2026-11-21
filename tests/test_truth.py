@@ -1180,6 +1180,55 @@ class TestAProfileOfTheLoadoutsOwn(TruthFolders):
         self.assertIsNone(switches.pointer_folder(self.mods, ANNO_1800))
 
 
+class TestAModOfYoursWithABlankModId(TruthFolders):
+    """117: a project whose Mod ID was left blank builds with one made from
+    its name, and the profile names it by that."""
+
+    game = ANNO_117
+    NAME = "[Gameplay] ReleaseTest_0.1.0"
+
+    def loadout_with_it(self, **more) -> Loadout:
+        install_mod(self.mods, self.NAME, "releasetest-0-1-0", "1.0", "ReleaseTest_0.1.0")
+        install_mod(self.mods, "Theirs", "theirs", "1")
+        return self.loadout(
+            ModLayer(origin=self.NAME, name="ReleaseTest_0.1.0", folder=str(self.mods / self.NAME),
+                     kept=True, **more),
+            ModLayer(origin="Theirs", mod_id="theirs", folder=str(self.mods / "Theirs")),
+        )
+
+    def test_play_after_play_has_nothing_to_switch_on(self):
+        """R4-7: every Play listed the mod under Switch on, though the
+        profile had it on."""
+        from anno_modding_studio.core import play
+
+        loadout = self.loadout_with_it()
+        switches.write_profile(self.documents, switches.STUDIO_PROFILE, "Set",
+                               {"releasetest-0-1-0": True, "theirs": True}, frozen=True)
+        switches.point_at(self.documents, switches.STUDIO_PROFILE)
+        found = play.plan(loadout, str(self.mods), self.root / "library")
+        self.assertEqual(found.moving, {})
+        self.assertTrue(found.nothing_to_do)
+
+    def test_the_profile_names_it_by_that_id_when_it_is_not_built_now(self):
+        from anno_modding_studio.core import play
+
+        loadout = self.loadout_with_it()
+        written = play.write_own_profile(loadout, self.documents, switches.STUDIO_PROFILE,
+                                         truth.read(loadout, self.mods))
+        self.assertEqual(written.failed, [])
+        lines = written.profile.read_text(encoding="utf-8").splitlines()
+        self.assertIn("releasetest-0-1-0", lines)
+
+    def test_its_options_are_written_under_that_id(self):
+        from anno_modding_studio.core import play, settings
+
+        offered = settings.ModOptions([
+            settings.Option(name="speed", label="Speed", kind=settings.SLIDER, default="1"),
+        ]).to_dict()
+        loadout = self.loadout_with_it(offered=offered, options={"speed": "3"})
+        self.assertEqual(play.options_to_write(loadout), {"releasetest-0-1-0": {"speed": "3"}})
+
+
 class TestWhereAModCameFrom(TruthFolders):
     def test_provenance_is_saved_and_attached_when_the_folder_is_read(self):
         loadout = self.loadout()
