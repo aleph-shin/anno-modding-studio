@@ -3175,6 +3175,14 @@ Start tab settling what this project is, and the first write of a project that h
 only been named. The second was its own small lie — the Studio wrote the whole
 project to disk and went on wearing the mark over a file holding every word of it.
 
+The options a mod is read at (*Mod options…*) are work of the same kind, and were
+missing from it: set and left, they went with the window without a question. And the
+question on the way out counts the mods switched and the mods set beside any other
+count (R4-20, hands-on run 4). Five mods switched, an option set and one edit made
+said "1 change you have made is not saved" and nothing more. A project that a save
+makes is said apart from the ones it saves: "saves the project of" a mod whose
+project no file held yet sent the tester looking for it.
+
 #### Reading the folder again keeps your work
 
 This was the sharp edge. That threw away anything you had edited into those mods, silently.

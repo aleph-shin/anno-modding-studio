@@ -191,6 +191,35 @@ class Truth:
         return found
 
     @property
+    def not_loaded(self) -> List[Mod]:
+        """Of the mods it has on that the switches have the game load, those
+        the game did not load the last time it started (see
+        :attr:`log_check`): a Mod ID it refused, say."""
+        keys = set(getattr(self.log_check, "not_loaded", None) or ())
+        return [mod for mod in self.in_loadout if mod.key in keys]
+
+    def grid(self) -> Dict[tuple, List[Mod]]:
+        """The grid's six cells, keyed ``(row, column)``: the rows "on",
+        "off" and "none" for what the loadout says, the columns "loads" and
+        "off" for what the game does.
+
+        A mod the game did not load when it last started, by its log, is
+        counted as not loading: a Mod ID it refused, say.  The switches
+        have it on, and the sentence over the grid says the game did not
+        load it: counted under "Game loads", the card said both (R4-19).
+        Only the cells move; what Play would switch does not, since
+        switching it again would change nothing."""
+        missing = {mod.key for mod in self.not_loaded}
+        return {
+            ("on", "loads"): [mod for mod in self.in_loadout if mod.key not in missing],
+            ("on", "off"): self.wanted_but_off + self.not_loaded,
+            ("off", "loads"): self.off_loads,
+            ("off", "off"): self.off_off,
+            ("none", "loads"): self.none_loads,
+            ("none", "off"): self.none_off,
+        }
+
+    @property
     def differ(self) -> int:
         """How many mods the two sides disagree about: the off-diagonal."""
         return len(self.others) + len(self.wanted_but_off)

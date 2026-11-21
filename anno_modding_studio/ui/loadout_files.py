@@ -467,12 +467,19 @@ class LoadoutFiles:
         # And of the details, which kind: a mod's own are named beside any
         # count, the switches where there is none, and what merely follows
         # from other work (which mod an edit lands in) not at all.
+        # And how many mods were switched, or set at other options, beside
+        # any count: they went unsaid beside an edit.
+        loadout = self.window.loadout
+        made = loadout.projects_to_make()
         answer = self.window.prompts.ask_save_first(
             self.made_unsaved(), self.taken_away(),
-            self.window.loadout.switches_moved(self._saved_details),
-            self.window.loadout.mod_details_moved(self._saved_details),
+            loadout.switches_moved(self._saved_details),
+            loadout.mod_details_moved(self._saved_details),
             self.notes_edited(),
-            projects=self.window.loadout.projects_to_save(),
+            projects=[name for name in loadout.projects_to_save() if name not in made],
+            switched=loadout.switched_since(self._saved_details),
+            options=loadout.options_since(self._saved_details),
+            made=made,
         )
         if answer == "save":
             return self.save_loadout()

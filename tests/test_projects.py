@@ -223,6 +223,15 @@ class TestWhatASaveWrites(_Case):
         loadout.own.version = "1.3"
         self.assertEqual(loadout.projects_to_save(), ["My Mod"])
 
+    def test_and_says_apart_the_ones_it_makes(self):
+        """R4-20: a project no file held yet was said to be saved, and
+        looked for."""
+        loadout = self.own()
+        self.assertEqual(loadout.projects_to_make(), ["My Mod"])
+        self.saved(loadout)
+        loadout.own.version = "1.3"
+        self.assertEqual((loadout.projects_to_save(), loadout.projects_to_make()), (["My Mod"], []))
+
     def test_a_copy_gets_its_own_mod_a_project_of_its_own(self):
         loadout = self.own()
         self.saved(loadout)

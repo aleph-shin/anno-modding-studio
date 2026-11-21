@@ -15684,8 +15684,12 @@ msgid "&Make it live"
 msgstr "&Live schalten"
 
 #: anno_modding_studio/ui/prompts.py
-msgid "No mod is deleted or rewritten: only switches and the Studio's own builds change."
-msgstr "Keine Mod wird gelöscht oder umgeschrieben: Nur Schalter und die eigenen Builds des Studios ändern sich."
+msgid "Makes the changes listed above, then starts the game. No mod is deleted."
+msgstr "Nimmt die oben aufgeführten Änderungen vor und startet dann das Spiel. Keine Mod wird gelöscht."
+
+#: anno_modding_studio/ui/prompts.py
+msgid "Makes the changes listed above, without starting the game. No mod is deleted."
+msgstr "Nimmt die oben aufgeführten Änderungen vor, ohne das Spiel zu starten. Keine Mod wird gelöscht."
 
 #. Translators: the headings of the table Play's question is. Each says what happens to the mods beside it; keep them short.
 #: anno_modding_studio/ui/prompts.py
@@ -16185,6 +16189,13 @@ msgstr "%s (ersetzt die Kopie in der Bibliothek)"
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
+msgid "You picked %(n)s mod for %(game)s:"
+msgid_plural "You picked %(n)s mods for %(game)s:"
+msgstr[0] "Du hast %(n)s Mod für %(game)s ausgewählt:"
+msgstr[1] "Du hast %(n)s Mods für %(game)s ausgewählt:"
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
 msgid "You dropped %(n)s mod for %(game)s:"
 msgid_plural "You dropped %(n)s mods for %(game)s:"
 msgstr[0] "Du hast %(n)s Mod für %(game)s abgelegt:"
@@ -16215,6 +16226,13 @@ msgstr[1] "%(n)s Kopien in der Bibliothek werden ersetzt und in den Sicherungen 
 #: anno_modding_studio/ui/prompts.py
 msgid "To read them in, choose a way of working on the Start tab first."
 msgstr "Um sie einzulesen, wähle zuerst auf dem Tab „Start“ eine Arbeitsweise."
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid "Install the mod?"
+msgid_plural "Install the mods?"
+msgstr[0] "Die Mod installieren?"
+msgstr[1] "Die Mods installieren?"
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
@@ -16261,6 +16279,20 @@ msgstr "%(mod)s (%(game)s)"
 
 #: anno_modding_studio/ui/prompts.py
 #, python-format
+msgid "%(n)s mod you picked has the folder layout of another game, and %(game)s is loaded:"
+msgid_plural "%(n)s mods you picked have the folder layout of another game, and %(game)s is loaded:"
+msgstr[0] "%(n)s ausgewählte Mod hat die Ordnerstruktur eines anderen Spiels, geladen ist aber %(game)s:"
+msgstr[1] "%(n)s ausgewählte Mods haben die Ordnerstruktur eines anderen Spiels, geladen ist aber %(game)s:"
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid "Installed, it goes into this game's library, and this game loads it where its paths do not match. To install it for its own game, load that game's files on the Start tab and add the zip again."
+msgid_plural "Installed, they go into this game's library, and this game loads them where their paths do not match. To install them for their own game, load that game's files on the Start tab and add the zips again."
+msgstr[0] "Installiert kommt sie in die Bibliothek dieses Spiels, und dieses Spiel lädt sie, obwohl ihre Pfade nicht passen. Um sie für ihr eigenes Spiel zu installieren, lade dessen Spieldateien im Tab „Start“ und füge die ZIP-Datei dann noch einmal hinzu."
+msgstr[1] "Installiert kommen sie in die Bibliothek dieses Spiels, und dieses Spiel lädt sie, obwohl ihre Pfade nicht passen. Um sie für ihr eigenes Spiel zu installieren, lade dessen Spieldateien im Tab „Start“ und füge die ZIP-Dateien dann noch einmal hinzu."
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
 msgid "%(n)s mod you dropped has the folder layout of another game, and %(game)s is loaded:"
 msgid_plural "%(n)s mods you dropped have the folder layout of another game, and %(game)s is loaded:"
 msgstr[0] "%(n)s abgelegte Mod hat die Ordnerstruktur eines anderen Spiels, geladen ist aber %(game)s:"
@@ -16286,6 +16318,10 @@ msgid "&Leave it out"
 msgid_plural "&Leave them out"
 msgstr[0] "Weg&lassen"
 msgstr[1] "Weg&lassen"
+
+#: anno_modding_studio/ui/prompts.py
+msgid "Installs the rest of what you picked."
+msgstr "Installiert den Rest dessen, was du ausgewählt hast."
 
 #: anno_modding_studio/ui/prompts.py
 msgid "Installs the rest of what you dropped."
@@ -16696,6 +16732,20 @@ msgstr[0] "Die Notiz an einer Änderung oder ModOp wurde seit dem letzten Speich
 msgstr[1] "Die Notizen an %(n)s Änderungen und ModOps wurden seit dem letzten Speichern dieses Loadouts geändert."
 
 #: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid "%(n)s mod has been switched on or off since this loadout was saved."
+msgid_plural "%(n)s mods have been switched on or off since this loadout was saved."
+msgstr[0] "Eine Mod wurde seit dem letzten Speichern dieses Loadouts aktiviert oder deaktiviert."
+msgstr[1] "%(n)s Mods wurden seit dem letzten Speichern dieses Loadouts aktiviert oder deaktiviert."
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid "The options of %(n)s mod have changed since this loadout was saved."
+msgid_plural "The options of %(n)s mods have changed since this loadout was saved."
+msgstr[0] "Die Optionen einer Mod wurden seit dem letzten Speichern dieses Loadouts geändert."
+msgstr[1] "Die Optionen von %(n)s Mods wurden seit dem letzten Speichern dieses Loadouts geändert."
+
+#: anno_modding_studio/ui/prompts.py
 msgid "Which mods this loadout has on, or its details, have changed since it was saved."
 msgstr "Seit dem letzten Speichern hat sich geändert, welche Mods in diesem Loadout aktiviert sind, oder seine Details."
 
@@ -16713,6 +16763,13 @@ msgid "Saving also saves the [[project]] of %(names)s."
 msgid_plural "Saving also saves the [[project|projects]] of %(names)s."
 msgstr[0] "Beim Speichern wird auch das [[project|Projekt]] von %(names)s gespeichert."
 msgstr[1] "Beim Speichern werden auch die [[project|Projekte]] von %(names)s gespeichert."
+
+#: anno_modding_studio/ui/prompts.py
+#, python-format
+msgid "Saving also makes a [[project]] for %(names)s."
+msgid_plural "Saving also makes [[project|projects]] for %(names)s."
+msgstr[0] "Beim Speichern wird auch ein [[project|Projekt]] für %(names)s angelegt."
+msgstr[1] "Beim Speichern werden auch [[project|Projekte]] für %(names)s angelegt."
 
 #: anno_modding_studio/ui/prompts.py
 msgid "Unsaved loadout"

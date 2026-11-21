@@ -123,7 +123,7 @@ from .modops import (
 # its readings were made under (``Loadout.read_by``), and a different one
 # has every mod in it read again (:func:`core.stale.check`); the loader
 # probes' verdict is kept under it too, and asked again when it moves.
-READER_VERSION = 1
+READER_VERSION = 2
 
 # One coarse op is allowed to become a lot of narrow ones -- a subtree replace
 # legitimately does -- but past this it is no longer a refactor, and a change

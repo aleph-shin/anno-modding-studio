@@ -354,5 +354,54 @@ class TestForgettingACollection(unittest.TestCase):
         self.assertEqual(loadout.layer("New").from_collection, "")
 
 
+class TestWhatIsSaidToBeUnsaved(unittest.TestCase):
+    """What the question before an unsaved loadout is left counts of its
+    switches and options (R4-20)."""
+
+    def setUp(self):
+        self.loadout = _loadout("A", "B", "C", "D", "E", "F")
+        self.before = self.loadout.typed_details()
+
+    def test_each_mod_switched_is_counted_and_one_switched_back_is_not(self):
+        for origin in ("A", "B", "C", "D", "E"):
+            self.loadout.layer(origin).active = False
+        self.loadout.layer("F").active = False
+        self.loadout.layer("F").active = True
+        self.assertEqual(self.loadout.switched_since(self.before), 5)
+        self.assertEqual(self.loadout.options_since(self.before), 0)
+        for origin in ("A", "B", "C", "D", "E"):
+            self.loadout.layer(origin).active = True
+        self.assertEqual(self.loadout.switched_since(self.before), 0)
+        self.assertFalse(self.loadout.details_moved(self.before))
+
+    def test_and_in_any_profile(self):
+        self.loadout.add_profile("Two")
+        before = self.loadout.typed_details()
+        self.loadout.find_profile("Two").switches["C"] = False
+        self.assertEqual(self.loadout.switched_since(before), 1)
+
+    def test_the_options_a_mod_is_read_at_are_unsaved_work(self):
+        """Set in Mod options… and left, they went with the window: nothing
+        compared them."""
+        self.loadout.layer("B").options = {"archers": "1"}
+        self.assertTrue(self.loadout.details_moved(self.before))
+        self.assertTrue(self.loadout.switches_moved(self.before))
+        self.assertEqual(self.loadout.options_since(self.before), 1)
+        self.assertEqual(self.loadout.switched_since(self.before), 0)
+        self.loadout.layer("B").options = {}
+        self.assertFalse(self.loadout.details_moved(self.before))
+
+    def test_a_mod_read_in_since_is_neither(self):
+        self.loadout.set_layer(ModLayer(origin="G", name="G", options={"x": "1"}, active=False))
+        self.assertEqual((self.loadout.switched_since(self.before),
+                          self.loadout.options_since(self.before)), (0, 0))
+
+    def test_a_rename_written_into_the_file_keeps_the_rest_as_saved(self):
+        self.loadout.layer("A").options = {"x": "1"}
+        before = Loadout.details_named(self.loadout.typed_details(), "A", "Renamed")
+        self.loadout.layer("A").name = "Renamed"
+        self.assertFalse(self.loadout.details_moved(before))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -7865,7 +7865,8 @@ class TestModImportIntoTheLoadout(unittest.TestCase):
         with mock.patch.object(self.window.prompts, "pick_mod_zips", return_value=[zipped]), \
                 mock.patch.object(controller, "install_dropped", return_value=True) as installed:
             _offered, landed = self._add_through("From a &zip…")
-        installed.assert_called_once_with([zipped])
+        # Said to be picked, not dropped (R4-20).
+        installed.assert_called_once_with([zipped], picked=True)
         self.assertTrue(landed)
 
     def test_no_zip_picked_installs_nothing(self):
@@ -15102,6 +15103,27 @@ class TestYourWorkVersusWhatYouOpened(ModsFolderCase):
         with mock.patch.object(self.window.prompts, "ask_save_first", return_value="") as asked:
             self.assertFalse(self.window.files.confirm_discard())
         return asked.call_args[0]
+
+    def test_the_question_counts_the_mods_switched_and_set_beside_an_edit(self):
+        """R4-20: five switches, an option and an edit said "1 change you
+        have made" and nothing more; an option set alone asked nothing."""
+        self.saved()
+        loadout = self.window.loadout
+        first, second = [layer.origin for layer in loadout.layers][:2]
+        # Off and on again is as it was: nothing to ask about.
+        loadout.layer(first).active = False
+        self.window.files.mark_unsaved()
+        loadout.layer(first).active = True
+        self.assertFalse(self.window.files.unsaved_work())
+        loadout.layer(second).options = {"speed": "3"}
+        self.assertTrue(self.window.files.unsaved_work())
+        loadout.layer(first).active = False
+        self.edit(self.EARLY, "15")
+        with mock.patch.object(self.window.prompts, "ask_save_first", return_value="") as asked:
+            self.assertFalse(self.window.files.confirm_discard())
+        self.assertEqual(asked.call_args[0][0], 1)
+        self.assertEqual((asked.call_args.kwargs["switched"], asked.call_args.kwargs["options"]), (1, 1))
+        self.assertEqual(asked.call_args.kwargs["made"], [])
 
     def test_the_question_counts_what_was_made_or_typed_again_since_the_save(self):
         """It counted every change made here, saved or not: with one saved

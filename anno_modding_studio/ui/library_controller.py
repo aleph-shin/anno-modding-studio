@@ -673,7 +673,7 @@ class LibraryController:
         """Mod zips picked from anywhere, installed as a zip dropped on the
         window is -- see :meth:`install_dropped`.  Whether anything landed."""
         chosen = self.window.prompts.pick_mod_zips()
-        return bool(chosen) and self.install_dropped(chosen)
+        return bool(chosen) and self.install_dropped(chosen, picked=True)
 
     def manage_own_folder(self) -> bool:
         """Link a mod folder of the user's own into the mods folder and manage
@@ -717,7 +717,7 @@ class LibraryController:
         self.window.refresh_truth(say=False)
         return True
 
-    def install_dropped(self, paths) -> bool:
+    def install_dropped(self, paths, picked: bool = False) -> bool:
         """Mod zips dropped on the window: installed into the library, once
         you have seen what they hold, and read into the loadout open now --
         or, for one mod alone, opened as a loadout of its own; or, with no
@@ -726,6 +726,10 @@ class LibraryController:
         Refused with no game files loaded.  A zip does not say which game it
         is for, so it goes into the library of the game that is open, and
         with none open there is no library to name; nor could it be read in.
+
+        ``picked`` is that the zips were picked with *From a zip…* in *Add
+        mods…* and not dropped: the questions say so, where they said "You
+        dropped" of a zip nobody had dragged anywhere.
 
         Returns whether anything landed in the loadout.
         """
@@ -776,7 +780,7 @@ class LibraryController:
             left_out = {mod.archive for mod in mismatched}
             others = [mod for mod in arriving if mod.archive not in left_out]
             answer = window.prompts.ask_dropped_other_game(
-                mismatched, window.loadout.game, len(others),
+                mismatched, window.loadout.game, len(others), picked=picked,
             )
             if not answer:
                 return False
@@ -788,7 +792,7 @@ class LibraryController:
         # over a window full of its changes.
         working = bool(loaded or window.loadout.aim or window.loadout_path is not None)
         action = window.prompts.ask_dropped_zips(
-            arriving, window.loadout.game, folder, loaded, working,
+            arriving, window.loadout.game, folder, loaded, working, picked=picked,
         )
         if not action:
             return False

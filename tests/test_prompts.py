@@ -171,6 +171,38 @@ class TestLeavingUnsavedWork(unittest.TestCase):
                 "Save before continuing?",
             )
 
+    def test_the_mods_switched_and_set_are_counted_beside_the_rest(self):
+        """R4-20: five mods switched, an option set and an edit made said
+        "1 change you have made is not saved." and nothing else."""
+
+        def asked(*counts, **more) -> str:
+            _said, box = answered(lambda prompts_: prompts_.ask_save_first(*counts, **more))
+            return _isolation.box_text(box)
+
+        self.assertEqual(
+            asked(1, 0, True, switched=5, options=1),
+            "1 change you have made is not saved. 5 mods have been switched on or "
+            "off since this loadout was saved. The options of 1 mod have changed "
+            "since this loadout was saved.\n\nSave before continuing?",
+        )
+        self.assertEqual(
+            asked(0, 0, True, switched=1),
+            "1 mod has been switched on or off since this loadout was saved.\n\n"
+            "Save before continuing?",
+        )
+
+    def test_a_project_saving_makes_is_not_said_to_be_saved(self):
+        """R4-20: "Saving also saves the project of" a mod no project file
+        held yet sent you looking for one."""
+        _said, box = answered(lambda asked: asked.ask_save_first(
+            1, projects=["Theirs (my patch)"], made=["My Mod"]))
+        self.assertEqual(
+            _isolation.box_text(box),
+            "1 change you have made is not saved. Saving also saves the project "
+            "of Theirs (my patch). Saving also makes a project for My Mod.\n\n"
+            "Save before continuing?",
+        )
+
     def test_but_a_mods_details_are_named_beside_whatever_is_counted(self):
         """With a change made and a description typed it counted the change
         and said nothing of the description, which Discard lost with it."""
@@ -257,7 +289,7 @@ class TestPlaysQuestion(unittest.TestCase):
         plan.strays = [SimpleNamespace(name="Stray %02d" % n) for n in range(switched)]
         return plan
 
-    def asked(self, plan):
+    def asked(self, plan, launch: bool = True):
         """The box Play's question is asked in, answered Cancel."""
         from types import SimpleNamespace
 
@@ -270,7 +302,7 @@ class TestPlaysQuestion(unittest.TestCase):
         loadout = SimpleNamespace(game=ANNO_1800)
         with mock.patch.object(prompts.Prompts, "answer", lambda _self, box: answer(box)), \
                 mock.patch.object(prompts.widgets, "answer_of", answer):
-            self.assertFalse(prompts.Prompts(None).confirm_live(plan, True, loadout, "Main"))
+            self.assertFalse(prompts.Prompts(None).confirm_live(plan, launch, loadout, "Main"))
         return shown[0]
 
     def test_it_is_a_table_naming_a_few_mods_in_a_row(self):
@@ -334,7 +366,43 @@ class TestPlaysQuestion(unittest.TestCase):
             box = self.asked(self.plan(switched))
             self.assertNotIn("No mod is deleted", _isolation.box_text(box))
             (play,) = [button for button in box.buttons() if button.text() == "&Play"]
-            self.assertTrue(play.toolTip().startswith("No mod is deleted or rewritten:"))
+            self.assertTrue(play.toolTip().endswith(" No mod is deleted."))
+
+    def test_each_button_says_what_it_does(self):
+        """R4-20: Play and Make it live had one tip between them, of what
+        neither does."""
+        tips = {}
+        for launch in (True, False):
+            box = self.asked(self.plan(2), launch)
+            (go,) = [button for button in box.buttons()
+                     if button.text() in ("&Play", "&Make it live")]
+            tips[go.text()] = go.toolTip()
+            # Read by a screen reader as the button takes the focus.
+            self.assertEqual(go.accessibleDescription(), go.toolTip())
+        self.assertEqual(tips, {
+            "&Play": "Makes the changes listed above, then starts the game. No mod is deleted.",
+            "&Make it live": "Makes the changes listed above, without starting the game. "
+                             "No mod is deleted.",
+        })
+
+    def test_the_tip_is_shown_on_the_button_in_the_box(self):
+        """Nothing about a question box keeps its buttons' tips from showing:
+        the Studio's tooltip filter shows one asked for on Play."""
+        from PySide6.QtCore import QEvent, QPoint
+        from PySide6.QtGui import QHelpEvent
+        from PySide6.QtWidgets import QToolTip
+
+        from anno_modding_studio.ui import help_tip
+
+        help_tip.keep_tooltips_open(_app)
+        box = self.asked(self.plan(2))
+        self.addCleanup(box.deleteLater)
+        (play,) = [button for button in box.buttons() if button.text() == "&Play"]
+        box.show()
+        self.addCleanup(box.hide)
+        self.addCleanup(QToolTip.hideText)
+        _app.sendEvent(play, QHelpEvent(QEvent.Type.ToolTip, QPoint(4, 4), play.mapToGlobal(QPoint(4, 4))))
+        self.assertEqual(QToolTip.text(), play.toolTip())
 
 
 if __name__ == "__main__":
