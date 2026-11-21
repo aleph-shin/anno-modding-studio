@@ -292,6 +292,22 @@ def _folders(window):
     return FoldersDialog(window.where.places(), window.loadout.game, window)
 
 
+def _recent_messages(window):
+    import time
+
+    from anno_modding_studio.ui.recent_messages import RecentMessagesDialog, Said
+
+    now = time.time()
+    said = [
+        Said("Every ModOp comes to what it did.", when=now - 4),
+        Said("Exported Better Bricks to C:\\Users\\Public\\Documents\\AnnoModdingStudio"
+             "\\exports\\Better Bricks.", Path("C:/Users/Public/Documents/AnnoModdingStudio"
+                                               "/exports/Better Bricks"), now - 9),
+        Said("Undid: Lumberjack's Hut, Maintenance cost 20.", when=now - 75),
+    ]
+    return RecentMessagesDialog(said, window)
+
+
 def _xml(window):
     from anno_modding_studio.ui.xml_view import XmlDialog
 
@@ -331,6 +347,7 @@ DIALOGS = {
     "shortcuts": _shortcuts,
     "about": _about,
     "folders": _folders,
+    "recent_messages": _recent_messages,
     "xml": _xml,
     "held": _held,
     "add_to_loadout": _add_to_loadout,
@@ -345,7 +362,7 @@ BUILT = (
     "ScriptsDialog", "OptionsEditorDialog", "OptionGroupDialog", "ConvertDialog", "LoadoutCheckDialog", "NeedsDialog", "UnsubscribeDialog",
     "ModioGetDialog", "ShortcutsDialog", "XmlDialog", "HeldDialog",
     "OnlyCopiesDialog", "ModioUpdatesDialog", "AboutDialog", "FoldersDialog",
-    "AddToLoadoutDialog",
+    "AddToLoadoutDialog", "RecentMessagesDialog",
 )
 WAITING = (
     "AddFieldDialog", "AssetPickerDialog", "InstallPlanDialog", "ModioTaskDialog",

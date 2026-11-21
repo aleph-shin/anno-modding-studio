@@ -1882,7 +1882,15 @@ reads the mods after it again, in the background:
 - **Until a mod is read again its row says *being read again*,** and so do the
   ModOps the change could reach. Its tooltip says which mod changed.
 - **Once it is read, a ModOp that comes to something else says *changed when read
-  again*,** and the status bar counts them.
+  again*,** with a warning glyph, until your next edit. So does the row of the one
+  change a ModOp comes to, where that row is the ModOp's. A mod's row, and a fold of
+  ModOps that change nothing, say how many under them do. The tooltip says what each
+  field was before and is now.
+- **The status bar names them,** up to three, each with the mod it is in, and a
+  ModOp that is no longer read. *Show it* (or *Show them*) opens their rows in the
+  Mod changes panel and selects them. While any row says *changed when read again*,
+  the box beside the filter has *Changed when read again*, which shows those rows
+  alone.
 - **What you did to the mod is kept:** your edits to it, the ModOps and changes you
   switched off, and your notes.
 - **The export was never affected.** It writes each ModOp as its author wrote it.
@@ -2280,11 +2288,22 @@ The main shortcuts:
 | Alt+Left, Alt+Right | Back and forward between assets |
 | Ctrl+S | Save the loadout |
 | Ctrl+, | Settings |
+| Ctrl+Shift+M | The status bar's recent messages |
 | F1 | This guide |
 | Enter | In a list, does what a double-click does |
 
 Every control can be reached from the keyboard. A `?` beside a label opens with
 Enter or F1 and closes with Esc.
+
+### The status bar's messages
+
+The status bar shows the newest message, from whatever said it last: something you
+did, or something read or checked behind the window. A message can be replaced
+within seconds. The clock at the bar's left end, or *View › Recent messages…*
+(Ctrl+Shift+M), lists the last 30, the newest first, each with the time it was shown,
+all of its words and its **Show in folder** where it had one. The number beside the
+clock counts the messages that came since you last opened the list. **Copy all**
+copies them with their times.
 
 ### Files the Studio keeps
 
@@ -2292,7 +2311,8 @@ Enter or F1 and closes with Esc.
 on your PC, with the library and the mods folder, and opens them. The `?` beside each
 says what it holds. It shows a folder you moved where it is
 now. A status bar message about something put in a folder, such as an export, Play
-or an install, has **Show in folder** after it until the next message.
+or an install, has **Show in folder** after it until the next message, and keeps it
+in [the list of recent messages](#the-status-bars-messages).
 
 | Where | What |
 |---|---|

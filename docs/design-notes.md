@@ -1065,6 +1065,28 @@ on showing what they came to before, whichever view the edit was made in.
   It is the marking only: the reading is of the whole mod either way, and
   an op that moves unmarked still says *changed when read again*. Not
   saved: marks read back from a project file reach every op.
+- **What a reading moved is shown where it is, and named.** The status
+  bar said "1 ModOp comes to something else. Its row says so.", and
+  mostly no row did. Most ops are drawn as the one change they come to
+  (`keptops.stands_alone`), and that row never looked. The op was most
+  often in a later mod, whose row starts shut with its rows not made, or
+  in the fold of ops that change nothing. An op the reading took away was
+  counted and has no row. And every reading put its own marks in place of
+  the last, so one that followed an edit and moved nothing took them away
+  and left the sentence. Now `stale.take` keeps what each op came to
+  before and comes to after (`Moved.was`, `Moved.now`), and each op it
+  took away (`Moved.lost`, with its place among the ops not read where it
+  is carried unread). The status bar names up to three, with the mod each
+  is in, and *Show it* opens their rows and selects them
+  (`ChangesPanel.show_moved`). A change row of an op that stands alone
+  says it too. A mod's row, the fold and an asset's row count what is
+  under them, and the tooltip says what each field was and is. The marks
+  last until the next edit, or another loadout, and the filter box has an
+  entry for them while there are any. What an op comes to is compared
+  without the list keys its own path gives (`stale._as_named`): a reading
+  keys an entry only where it has twins, so a removal by `Item[Key='1']`
+  read as plain `Item` once an add before it was switched off, and said it
+  had moved when it removed the same entry.
 - **The reading starts half a second after the last edit**
   (`readings_controller.EDIT_MS`). Each edit used to start one at once,
   which writes out the text of every edited mod on the window's thread, for
@@ -3268,6 +3290,22 @@ This was the sharp edge. That threw away anything you had edited into those mods
   blanket `QWidget { background: ... }` rule that gives most of the app's dark background
   also applied to the status bar's `QLabel`, painting it a slightly darker rectangle than
   the status bar itself. `QStatusBar QLabel { background: transparent; }` lets it blend in.
+- **The status bar keeps what it said, and the newest message still wins.** About a
+  hundred places say something there, and a sentence about what you did ("Exported to
+  …", "Undid …") was often replaced within seconds by one from the background: a
+  reading's "After that edit, …", what Play would make the loadout, the loader probes.
+  The change drew the eye, and what had been there was gone. Ranking the messages, or
+  holding back the background's, was weighed and left: which message matters more
+  depends on what you were looking for, and a line that sometimes doesn't show the
+  newest is harder to trust. So the line stays last-writer-wins, and keeps the last 30
+  messages, each with its time and the *Show in folder* it had. The clock button at the
+  bar's left end lists them (`ui/recent_messages.py`), with a count of those that came
+  since the list was last opened. The same words again with nothing between are one
+  message, at the later time, since a reading says "Every ModOp comes to what it did."
+  after each edit; so is a line said again as it changes (`say(…, about=…)`): the game
+  files' line at start-up, said again as the templates, the names and the check of the
+  game come in, was four messages. The button stands in the bar on its own, outside the message's row,
+  which asks for no width so it never pushes what runs behind the window out of sight.
 - **A label that reflects live state elides instead of forcing its layout wider.** The
   *Export* page's "Export to:" path used to grow the whole Preview panel wider with
   every character typed into the mod name: a plain `QLabel`'s `minimumSizeHint` tracks its

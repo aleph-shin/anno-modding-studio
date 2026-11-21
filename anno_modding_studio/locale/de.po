@@ -186,7 +186,7 @@ msgid_plural "%(n)s edited"
 msgstr[0] "%(n)s bearbeitet"
 msgstr[1] "%(n)s bearbeitet"
 
-#: anno_modding_studio/core/changes.py anno_modding_studio/core/grouping.py anno_modding_studio/core/i18n.py anno_modding_studio/core/truth.py anno_modding_studio/ui/changes_dock.py anno_modding_studio/ui/conflicts_dialog.py anno_modding_studio/ui/history_dialog.py anno_modding_studio/ui/options_editor_dialog.py anno_modding_studio/ui/output_panel.py
+#: anno_modding_studio/core/changes.py anno_modding_studio/core/grouping.py anno_modding_studio/core/i18n.py anno_modding_studio/core/truth.py anno_modding_studio/ui/change_rows.py anno_modding_studio/ui/changes_dock.py anno_modding_studio/ui/conflicts_dialog.py anno_modding_studio/ui/history_dialog.py anno_modding_studio/ui/options_editor_dialog.py anno_modding_studio/ui/output_panel.py
 msgctxt "between items of a list"
 msgid ", "
 msgstr ", "
@@ -5105,7 +5105,7 @@ msgstr "<a href=\"%(notices)s\">Hinweise zu Drittanbietern</a> &nbsp;·&nbsp; <a
 msgid "Not affiliated with Ubisoft or mod.io. Anno is a trademark of Ubisoft."
 msgstr "Nicht mit Ubisoft oder mod.io verbunden. Anno ist eine Marke von Ubisoft."
 
-#: anno_modding_studio/ui/about_dialog.py anno_modding_studio/ui/folders_dialog.py anno_modding_studio/ui/install_plan_dialog.py anno_modding_studio/ui/only_copies_dialog.py anno_modding_studio/ui/shortcuts_dialog.py
+#: anno_modding_studio/ui/about_dialog.py anno_modding_studio/ui/folders_dialog.py anno_modding_studio/ui/install_plan_dialog.py anno_modding_studio/ui/only_copies_dialog.py anno_modding_studio/ui/recent_messages.py anno_modding_studio/ui/shortcuts_dialog.py
 msgid "&Close"
 msgstr "S&chließen"
 
@@ -6152,10 +6152,6 @@ msgid "What is under it may be out of date: what loads before its mod has change
 msgstr "Was unter ihr steht, ist möglicherweise veraltet: Was vor ihrer Mod geladen wird, hat sich seit dem Einlesen geändert. Der Export ist nicht betroffen."
 
 #: anno_modding_studio/ui/change_rows.py
-msgid "Its mod was read again because what loads before it changed, and this ModOp comes to something else than it did."
-msgstr "Ihre Mod wurde neu eingelesen, weil sich geändert hat, was vor ihr geladen wird, und diese ModOp ergibt etwas anderes als zuvor."
-
-#: anno_modding_studio/ui/change_rows.py
 #, python-format
 msgid "It replaces %(n)s field it leaves as it was, so another mod that changes that field loses to this one. Narrow ModOps would claim only what it changes."
 msgid_plural "It replaces %(n)s fields it leaves as they were, so another mod that changes one of them loses to this one. Narrow ModOps would claim only what it changes."
@@ -6184,6 +6180,54 @@ msgstr "Die darunter gezeigten Änderungen sind nicht genau: %s."
 #: anno_modding_studio/ui/change_rows.py
 msgid "Double-click or press Enter to edit it."
 msgstr "Doppelklicke oder drücke die Eingabetaste, um sie zu bearbeiten."
+
+#: anno_modding_studio/ui/change_rows.py
+#, python-format
+msgid "%(n)s changed when read again"
+msgid_plural "%(n)s changed when read again"
+msgstr[0] "%(n)s beim erneuten Einlesen geändert"
+msgstr[1] "%(n)s beim erneuten Einlesen geändert"
+
+#: anno_modding_studio/ui/change_rows.py
+msgid "Its mod was read again because what loads before it changed, and this ModOp comes to something else than it did."
+msgstr "Ihre Mod wurde neu eingelesen, weil sich geändert hat, was vor ihr geladen wird, und diese ModOp ergibt etwas anderes als zuvor."
+
+#: anno_modding_studio/ui/change_rows.py
+#, python-format
+msgid "%(where)s: was %(was)s, now %(now)s"
+msgstr "%(where)s: war %(was)s, jetzt %(now)s"
+
+#: anno_modding_studio/ui/change_rows.py
+#, python-format
+msgid "%(where)s: now %(now)s, unchanged before"
+msgstr "%(where)s: jetzt %(now)s, vorher unverändert"
+
+#: anno_modding_studio/ui/change_rows.py
+#, python-format
+msgid "%(where)s: was %(was)s, unchanged now"
+msgstr "%(where)s: war %(was)s, jetzt unverändert"
+
+#. Translators: what a ModOp came to at a field.
+#: anno_modding_studio/ui/change_rows.py
+msgctxt "came to"
+msgid "removed"
+msgstr "entfernt"
+
+#. Translators: what a ModOp came to at a field: an empty value.
+#: anno_modding_studio/ui/change_rows.py
+msgctxt "came to"
+msgid "empty"
+msgstr "leer"
+
+#: anno_modding_studio/ui/change_rows.py anno_modding_studio/ui/changes_dock.py
+msgid "a ModOp"
+msgstr "eine ModOp"
+
+#. Translators: a ModOp named in a sentence, and the mod it is in.
+#: anno_modding_studio/ui/change_rows.py
+#, python-format
+msgid "%(op)s (in %(mod)s)"
+msgstr "%(op)s (in %(mod)s)"
 
 #: anno_modding_studio/ui/change_rows.py
 msgid "Positional path. It may break on a game patch."
@@ -6297,6 +6341,11 @@ msgid "From the mods folder, the library, mod.io or a zip, beside this loadout's
 msgstr "Aus dem Mod-Ordner, der Bibliothek, von mod.io oder aus einem Zip, neben die Mods dieses Loadouts."
 
 #: anno_modding_studio/ui/changes_dock.py
+msgctxt "filter in"
+msgid "Changed when read again"
+msgstr "Beim erneuten Einlesen geändert"
+
+#: anno_modding_studio/ui/changes_dock.py
 #, python-format
 msgctxt "filter in"
 msgid "In %s"
@@ -6305,6 +6354,10 @@ msgstr "In %s"
 #: anno_modding_studio/ui/changes_dock.py
 msgid "Filter mods by name or folder…"
 msgstr "Mods nach Name oder Ordner filtern…"
+
+#: anno_modding_studio/ui/changes_dock.py
+msgid "Filter the ModOps changed when read again…"
+msgstr "Die beim erneuten Einlesen geänderten ModOps filtern…"
 
 #: anno_modding_studio/ui/changes_dock.py
 #, python-format
@@ -6355,10 +6408,6 @@ msgstr ""
 "%(mod)s ist hier mitgeliefert, aber das Spiel lädt nur eine Kopie einer Mod, egal wie viele Mods sie mitbringen. Die verwendete Kopie liegt in %(host)s, und dort stehen ihre Änderungen.\n"
 "\n"
 "Doppelklicke oder drücke die Eingabetaste, um dorthin zu springen."
-
-#: anno_modding_studio/ui/changes_dock.py
-msgid "a ModOp"
-msgstr "eine ModOp"
 
 #: anno_modding_studio/ui/changes_dock.py anno_modding_studio/ui/file_panel.py
 msgid "not read, kept as written"
@@ -6639,6 +6688,22 @@ msgstr[1] "Gefiltert: %(shown)s der %(n)s Änderungen von %(mod)s gezeigt"
 #, python-format
 msgid "No rows of %(mod)s match “%(typed)s”."
 msgstr "Keine Zeile von %(mod)s passt zu „%(typed)s“."
+
+#: anno_modding_studio/ui/changes_dock.py
+#, python-format
+msgid "Filtered: %(n)s ModOp changed when read again shown"
+msgid_plural "Filtered: %(n)s ModOps changed when read again shown"
+msgstr[0] "Gefiltert: %(n)s beim erneuten Einlesen geänderte ModOp angezeigt"
+msgstr[1] "Gefiltert: %(n)s beim erneuten Einlesen geänderte ModOps angezeigt"
+
+#: anno_modding_studio/ui/changes_dock.py
+#, python-format
+msgid "No ModOp changed when read again matches “%s”."
+msgstr "Keine beim erneuten Einlesen geänderte ModOp passt zu „%s“."
+
+#: anno_modding_studio/ui/changes_dock.py
+msgid "No ModOp is marked changed when read again."
+msgstr "Keine ModOp ist als beim erneuten Einlesen geändert markiert."
 
 #: anno_modding_studio/ui/changes_dock.py
 #, python-format
@@ -8428,7 +8493,7 @@ msgstr "Ordner &öffnen"
 msgid "Copy &path"
 msgstr "&Pfad kopieren"
 
-#: anno_modding_studio/ui/folders_dialog.py
+#: anno_modding_studio/ui/folders_dialog.py anno_modding_studio/ui/recent_messages.py
 msgid "Copy &all"
 msgstr "&Alles kopieren"
 
@@ -10275,7 +10340,7 @@ msgstr "v%s exportiert"
 msgid "%(name)s %(version)s (dev)"
 msgstr "%(name)s %(version)s (Entwicklung)"
 
-#: anno_modding_studio/ui/main_window.py anno_modding_studio/ui/source_panel.py
+#: anno_modding_studio/ui/main_window.py anno_modding_studio/ui/recent_messages.py anno_modding_studio/ui/source_panel.py
 msgid "Show in folder"
 msgstr "Im Ordner anzeigen"
 
@@ -10540,6 +10605,10 @@ msgstr "Im Asset oder in der Datei suchen"
 #: anno_modding_studio/ui/main_window.py
 msgid "Search for an asset"
 msgstr "Nach einem Asset suchen"
+
+#: anno_modding_studio/ui/main_window.py
+msgid "Recent messages…"
+msgstr "Letzte Meldungen…"
 
 #: anno_modding_studio/ui/main_window.py
 msgid "Appearance…"
@@ -16795,13 +16864,6 @@ msgstr "Die Mods konnten nicht neu eingelesen werden: %s"
 
 #: anno_modding_studio/ui/readings_controller.py
 #, python-format
-msgid "After that edit, %(n)s ModOp comes to something else. Its row says so."
-msgid_plural "After that edit, %(n)s ModOps come to something else. Their rows say so."
-msgstr[0] "Nach dieser Änderung ergibt %(n)s ModOp etwas anderes. Ihre Zeile sagt es."
-msgstr[1] "Nach dieser Änderung ergeben %(n)s ModOps etwas anderes. Ihre Zeilen sagen es."
-
-#: anno_modding_studio/ui/readings_controller.py
-#, python-format
 msgid "%(n)s mod of yours was changed in its project by another loadout, and has been read again as its project is now."
 msgid_plural "%(n)s mods of yours were changed in their projects by another loadout, and have been read again as their projects are now."
 msgstr[0] "%(n)s deiner Mods wurde in ihrem Projekt von einem anderen Loadout geändert und so neu eingelesen, wie ihr Projekt jetzt ist."
@@ -16843,15 +16905,89 @@ msgstr[0] "%(n)s Mod wurde neu eingelesen, weil sich geändert hat, was vor ihr 
 msgstr[1] "%(n)s Mods wurden neu eingelesen, weil sich geändert hat, was vor ihnen geladen wird."
 
 #: anno_modding_studio/ui/readings_controller.py
-#, python-format
-msgid "%(n)s ModOp comes to something else now. Its row says so."
-msgid_plural "%(n)s ModOps come to something else now. Their rows say so."
-msgstr[0] "%(n)s ModOp ergibt jetzt etwas anderes. Ihre Zeile sagt es."
-msgstr[1] "%(n)s ModOps ergeben jetzt etwas anderes. Ihre Zeilen sagen es."
-
-#: anno_modding_studio/ui/readings_controller.py
 msgid "Every ModOp comes to what it did."
 msgstr "Jede ModOp ergibt, was sie zuvor ergab."
+
+#: anno_modding_studio/ui/readings_controller.py
+#, python-format
+msgid "A ModOp is no longer read: %(ops)s."
+msgid_plural "%(n)s ModOps are no longer read: %(ops)s."
+msgstr[0] "Eine ModOp wird nicht mehr eingelesen: %(ops)s."
+msgstr[1] "%(n)s ModOps werden nicht mehr eingelesen: %(ops)s."
+
+#: anno_modding_studio/ui/readings_controller.py
+#, python-format
+msgid "%(n)s ModOp is no longer read."
+msgid_plural "%(n)s ModOps are no longer read."
+msgstr[0] "%(n)s ModOp wird nicht mehr eingelesen."
+msgstr[1] "%(n)s ModOps werden nicht mehr eingelesen."
+
+#: anno_modding_studio/ui/readings_controller.py
+msgid "Show it"
+msgstr "Anzeigen"
+
+#: anno_modding_studio/ui/readings_controller.py
+msgid "Show them"
+msgstr "Anzeigen"
+
+#: anno_modding_studio/ui/readings_controller.py
+#, python-format
+msgid "After that edit, a ModOp comes to something else: %(ops)s."
+msgid_plural "After that edit, %(n)s ModOps come to something else: %(ops)s."
+msgstr[0] "Nach dieser Änderung ergibt eine ModOp etwas anderes: %(ops)s."
+msgstr[1] "Nach dieser Änderung ergeben %(n)s ModOps etwas anderes: %(ops)s."
+
+#: anno_modding_studio/ui/readings_controller.py
+#, python-format
+msgid "After that edit, %(n)s ModOp comes to something else."
+msgid_plural "After that edit, %(n)s ModOps come to something else."
+msgstr[0] "Nach dieser Änderung ergibt %(n)s ModOp etwas anderes."
+msgstr[1] "Nach dieser Änderung ergeben %(n)s ModOps etwas anderes."
+
+#: anno_modding_studio/ui/readings_controller.py
+#, python-format
+msgid "A ModOp comes to something else now: %(ops)s."
+msgid_plural "%(n)s ModOps come to something else now: %(ops)s."
+msgstr[0] "Eine ModOp ergibt jetzt etwas anderes: %(ops)s."
+msgstr[1] "%(n)s ModOps ergeben jetzt etwas anderes: %(ops)s."
+
+#: anno_modding_studio/ui/readings_controller.py
+#, python-format
+msgid "%(n)s ModOp comes to something else now."
+msgid_plural "%(n)s ModOps come to something else now."
+msgstr[0] "%(n)s ModOp ergibt jetzt etwas anderes."
+msgstr[1] "%(n)s ModOps ergeben jetzt etwas anderes."
+
+#. Translators: when a status bar message was shown, on a day before today. %(day)s is a date such as "05 Sep", %(time)s a time of day.
+#: anno_modding_studio/ui/recent_messages.py
+#, python-format
+msgid "%(day)s, %(time)s"
+msgstr "%(day)s, %(time)s"
+
+#: anno_modding_studio/ui/recent_messages.py
+msgid "Recent messages"
+msgstr "Letzte Meldungen"
+
+#. Translators: the tooltip of the status bar's clock button. %(keys)s is its shortcut, such as Ctrl+Shift+M.
+#: anno_modding_studio/ui/recent_messages.py
+#, python-format
+msgid "Recent messages: one new  (%(keys)s)"
+msgid_plural "Recent messages: %(n)s new  (%(keys)s)"
+msgstr[0] "Letzte Meldungen: eine neue  (%(keys)s)"
+msgstr[1] "Letzte Meldungen: %(n)s neue  (%(keys)s)"
+
+#: anno_modding_studio/ui/recent_messages.py
+#, python-format
+msgid "Recent messages  (%s)"
+msgstr "Letzte Meldungen  (%s)"
+
+#: anno_modding_studio/ui/recent_messages.py
+msgid "The messages the status bar shows are kept here, the newest first."
+msgstr "Hier stehen die Meldungen der Statusleiste, die neueste zuerst."
+
+#: anno_modding_studio/ui/recent_messages.py
+msgid "Copies every message in the list, with its time."
+msgstr "Kopiert jede Meldung der Liste, mit ihrer Uhrzeit."
 
 #: anno_modding_studio/ui/reference_panel.py anno_modding_studio/ui/shortcuts_dialog.py
 msgid "Reference graph"

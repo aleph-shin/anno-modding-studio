@@ -492,7 +492,8 @@ The Studio has no in-app help pages. The Help menu holds:
   and opens. A place another screen explains has that screen's help text.
   The Start tab's third card opens the same dialog. A status message about
   something put in a folder carries *Show in folder* until the next
-  message.
+  message, and keeps it in the status bar's list of recent messages
+  (`ui/recent_messages.py`).
 - **Glossary.** Opens the guide's glossary section. Not in the menu until
   the Studio has a public home: a local Markdown file cannot be opened at a
   heading.

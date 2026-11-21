@@ -18141,7 +18141,7 @@ class TestReadingsThatHaveGoneStale(StaleReadingsCase):
             # Still what it came to before, until the reading is in.
             self.assertIn(("1010030", "24"), self.comes_to(self.LATE))
             self.started[0].run()
-        self.assertNotIn("read again", self.mod_row(self.LATE).text(1))
+        self.assertNotIn("being read again", self.mod_row(self.LATE).text(1))
         self.assertIn(("1010030", "16"), self.comes_to(self.LATE))
 
     def test_what_moved_is_said_once_it_is_read(self):
@@ -18155,7 +18155,10 @@ class TestReadingsThatHaveGoneStale(StaleReadingsCase):
         self.assertNotIn("read again", plain.text(1))
         said = self.window.status_label.text()
         self.assertIn("2 mods were read again", said)
-        self.assertIn("1 ModOp comes to something else now", said)
+        self.assertIn(
+            "A ModOp comes to something else now: "
+            "Farmer Residence \u203a Residence7 \u203a Residents (in [Seal] Late).", said,
+        )
         # A reading of folders ends the history, as the others do.
         self.assertFalse(self.window.undo.can_undo)
         self.assertIsNone(self.window.readings.worker)
@@ -18646,7 +18649,7 @@ class TestAnEditLeavesReadingsInDoubt(StaleReadingsCase):
             self.assertEqual(
                 [layer.stale for layer in self.window.loadout.layers], [[], [], []]
             )
-            self.assertIn("1 ModOp comes to something else", self.window.status_label.text())
+            self.assertIn("After that edit, a ModOp comes to something else", self.window.status_label.text())
             # Asked for by an edit, it is no end to the history.
             self.assertTrue(self.window.undo.can_undo)
 
@@ -18671,7 +18674,7 @@ class TestAnEditLeavesReadingsInDoubt(StaleReadingsCase):
             self.assertNotIn("read again", plain.text(1))
             self.assertIn(("1010030", "24"), self.comes_to(self.LATE))
             self.started[0].run()
-        self.assertNotIn("read again", self.mod_row(self.LATE).text(1))
+        self.assertNotIn("being read again", self.mod_row(self.LATE).text(1))
         self.assertIn(("1010030", "16"), self.comes_to(self.LATE))
 
     def test_a_reading_overtaken_by_another_edit_is_not_taken(self):
@@ -18734,6 +18737,206 @@ class TestAnEditLeavesReadingsInDoubt(StaleReadingsCase):
             # Itself, from the op that was switched: nothing loads after it.
             self.assertEqual(len(self.started), 1)
             self.assertEqual(self.started[0].taken.asked, [self.LAST])
+
+
+class TestWhatAReadingMovedIsShown(StaleReadingsCase):
+    """After an edit or a reading of folders the status bar said "1 ModOp
+    comes to something else. Its row says so.", and mostly no row did: the
+    op was drawn as the one change it comes to, whose row never said it, or
+    was in a later mod whose row starts shut, or in a fold, or gone."""
+
+    FIRST = (
+        "<ModOps>"
+        # And a field the game files do not have.
+        '<ModOp Type="merge" GUID="1010030" Path="/Values/Residence7">'
+        "<Residents>12</Residents><Foo>1</Foo></ModOp>"
+        "</ModOps>"
+    )
+    SECOND = (
+        "<ModOps>"
+        # One change at the node it names, so drawn as that change: while
+        # the mod before has made the node, and not read without it.
+        '<ModOp Type="replace" GUID="1010030" Path="/Values/Residence7/Foo"><Foo>2</Foo></ModOp>'
+        # Twice what is there: 24 after the mod before, 16 without it.
+        '<ModOp Type="merge" GUID="1010030" Path="/Values/Residence7/Residents">'
+        '<Residents><ModValue Insert="self::node() * 2"/></Residents></ModOp>'
+        # Only where that field is not, so nothing while the mod before is on.
+        '<ModOp Type="merge" GUID="1010032" Path="/Values/Residence7" '
+        'Condition="!@1010030/Residence7/Foo"><Residents>13</Residents></ModOp>'
+        # What the game files have already: nothing at all.
+        '<ModOp Type="merge" GUID="1010031" Path="/Values/Residence7">'
+        "<AllowChangeResidents>1</AllowChangeResidents></ModOp>"
+        "</ModOps>"
+    )
+
+    def switch_first_off(self):
+        """Switch off the ops of the mod that loads first, as ticks in the
+        Mod changes panel do, and record the step."""
+        loadout = self.window.loadout
+        for op in [op for op in loadout.ops if op.origin == self.EARLY]:
+            op.active = False
+            for change in loadout.changes_by_op(op.uid):
+                change.active = False
+        self.window._on_edited()
+
+    def switched_off_and_on(self):
+        """Off, and back on by Undo: the op drawn as its one change comes
+        back, and the one that sets what the first mod set changes nothing
+        again, in the fold of those that change nothing."""
+        with self.reading(now=True):
+            self.switch_first_off()
+            self.window.undo_last()
+
+    def rows(self, item):
+        for at in range(item.childCount()):
+            yield item.child(at)
+            yield from self.rows(item.child(at))
+
+    def late_rows(self):
+        row = self.mod_row(self.LATE)
+        self.window.changes_panel._build_rows(row)
+        return list(self.rows(row))
+
+    def foo_row(self):
+        from anno_modding_studio.ui.changes_dock import KIND_ROLE, PATH_ROLE
+
+        (row,) = [
+            row for row in self.late_rows()
+            if row.data(0, KIND_ROLE) == "change" and row.data(0, PATH_ROLE) == "/Values/Residence7/Foo"
+        ]
+        return row
+
+    def doubled(self):
+        (op,) = [op for op in self.window.loadout.ops if "self::node() * 2" in op.source]
+        return op
+
+    def doubled_row(self):
+        from anno_modding_studio.ui.changes_dock import OP_ROLE
+
+        (row,) = [row for row in self.late_rows() if row.data(0, OP_ROLE) == self.doubled().uid]
+        return row
+
+    def test_an_op_drawn_as_its_one_change_says_it_changed(self):
+        from anno_modding_studio.ui import theme
+
+        self.switched_off_and_on()
+        row = self.foo_row()
+        self.assertTrue(row.text(1).startswith("changed when read again \u00b7 "), row.text(1))
+        # Not by colour alone: the glyph comes with it.
+        self.assertFalse(row.icon(1).isNull())
+        self.assertEqual(row.foreground(1).color().name(), theme.colour("warn").lower())
+        self.assertIn("this ModOp comes to something else than it did", row.toolTip(0))
+
+    def test_a_mod_row_and_a_fold_count_what_is_marked_under_them(self):
+        from anno_modding_studio.ui.changes_dock import KIND_ROLE
+
+        self.switched_off_and_on()
+        late = self.mod_row(self.LATE)
+        # At the end: the column is cut short from its start.
+        self.assertTrue(late.text(1).endswith(", 3 changed when read again"), late.text(1))
+        self.assertFalse(late.icon(1).isNull())
+        (fold,) = [row for row in self.late_rows() if row.data(0, KIND_ROLE) == "idle"]
+        self.assertEqual(fold.text(1), "1 changed when read again")
+        self.assertFalse(fold.icon(1).isNull())
+        # And none on a mod nothing in moved.
+        self.assertNotIn("read again", self.mod_row(self.EARLY).text(1))
+
+    def test_the_status_names_what_moved_and_what_is_no_longer_read(self):
+        with self.reading(now=True):
+            self.switch_first_off()
+        said = self.window.status_label.text()
+        self.assertEqual(said, (
+            "After that edit, 2 ModOps come to something else: "
+            "Farmer Residence \u203a Residence7 \u203a Residents (in [Seal] Late) and "
+            "Artisan Residence \u203a Residence7 \u203a Residents (in [Seal] Late). "
+            "A ModOp is no longer read: Farmer Residence \u203a Residence7 \u203a Foo (in [Seal] Late)."
+        ))
+        self.assertEqual(self.window.status_label.action_link.text().count("Show them"), 1)
+
+    def test_show_them_opens_the_later_mod_and_selects_the_rows(self):
+        from anno_modding_studio.ui.changes_dock import KIND_ROLE, OP_ROLE, UNBUILT_ROLE
+
+        with self.reading(now=True):
+            self.switch_first_off()
+        late = self.mod_row(self.LATE)
+        # Shut, its rows not made: one of several mods.
+        self.assertFalse(late.isExpanded())
+        self.assertTrue(late.data(0, UNBUILT_ROLE))
+        status = self.window.status_label
+        self.assertFalse(status.action_link.isHidden())
+        status.action_link.linkActivated.emit("action")
+        self.assertTrue(late.isExpanded())
+        tree = self.window.changes_panel.tree
+        picked = tree.selectedItems()
+        self.assertEqual(
+            sorted(row.data(0, KIND_ROLE) for row in picked), ["op", "op", "unread"]
+        )
+        # The first of them is where the keyboard is.
+        self.assertEqual(tree.currentItem().data(0, OP_ROLE), self.doubled().uid)
+        self.assertIn(self.doubled().uid, [row.data(0, OP_ROLE) for row in picked])
+
+    def test_the_tooltip_says_what_it_came_to_before_and_now(self):
+        with self.reading(now=True):
+            self.switch_first_off()
+        self.assertIn(
+            "Farmer Residence \u203a Residence7 \u203a Residents: was 24, now 16",
+            self.doubled_row().toolTip(0),
+        )
+        with self.reading(now=True):
+            self.window.undo_last()
+        self.assertIn(
+            "Farmer Residence \u203a Residence7 \u203a Foo: now 2, unchanged before",
+            self.foo_row().toolTip(0),
+        )
+
+    def test_the_marks_stay_through_a_reading_that_moves_nothing_and_go_at_the_next_edit(self):
+        from anno_modding_studio.core import stale
+
+        window = self.window
+        with self.reading(now=True):
+            self.switch_first_off()
+            said = window.status_label.text()
+            # Read again, for a reason that moves nothing of it.
+            stale._mark(window.loadout.layer(self.LATE), stale.GONE, self.EARLY)
+            window.readings.check()
+            self.assertEqual(len(self.started), 2)
+            self.assertTrue(
+                self.doubled_row().text(1).startswith("changed when read again"),
+                self.doubled_row().text(1),
+            )
+            # The next edit, of a mod after it, which moves nothing either.
+            (op,) = [op for op in window.loadout.ops if op.origin == self.LAST]
+            op.active = False
+            for change in window.loadout.changes_by_op(op.uid):
+                change.active = False
+            window.status_label.setText(said)
+            window._on_edited()
+        self.assertNotIn("read again", self.doubled_row().text(1))
+        self.assertNotIn("read again", self.mod_row(self.LATE).text(1))
+        self.assertNotEqual(window.status_label.text(), said)
+
+    def test_the_filter_shows_the_marked_rows_alone(self):
+        from anno_modding_studio.ui.changes_dock import SCOPE_MOVED
+
+        with self.reading(now=True):
+            self.switch_first_off()
+        panel = self.window.changes_panel
+        at = panel.scope_box.findData(SCOPE_MOVED)
+        self.assertEqual(panel.scope_box.itemText(at), "Changed when read again")
+        panel.scope_box.setCurrentIndex(at)
+        self.assertTrue(self.mod_row(self.EARLY).isHidden())
+        self.assertTrue(self.mod_row(self.LAST).isHidden())
+        late = self.mod_row(self.LATE)
+        self.assertFalse(late.isHidden())
+        shown = [row for row in self.rows(late) if not row.isHidden() and row.parent() is late]
+        self.assertEqual(len(shown), 2)
+        for row in shown:
+            self.assertTrue(row.text(1).startswith("changed when read again"), row.text(1))
+        self.assertEqual(panel.summary.text(), "Filtered: 2 ModOps changed when read again shown")
+        # Gone with the marks, and every row back.
+        panel.set_moved({}, redraw=True)
+        self.assertEqual(panel.scope_box.findData(SCOPE_MOVED), -1)
+        self.assertFalse(self.mod_row(self.EARLY).isHidden())
 
 
 if __name__ == "__main__":
