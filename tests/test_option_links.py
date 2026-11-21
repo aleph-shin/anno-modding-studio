@@ -293,6 +293,61 @@ class TestPutUnderAnOption(OptionsCase):
         self.panel.refresh()
         self.assertEqual(self.panel.pane.toPlainText().count('<Group Condition="$my-mod.shrine-of-ceres">'), 2)
 
+    def later_change(self):
+        """A change made after the ModOps were put under the toggle: picked."""
+        self.window.editor.load_asset("1010340")
+        field = next(
+            item for item in self.window.editor._iter_items() if item.text(0) == "BuildModeStartLevel"
+        )
+        field.setText(1, "2")
+        return [("change", change.key) for change in self.loadout.changes.values() if not change.op_uid]
+
+    def test_unticked_what_is_under_it_already_is_not_nested_in_a_group_of_it(self):
+        """R4-16: everything picked in its group already, unticking the box
+        let OK put a second group of the option inside the first."""
+        from anno_modding_studio.ui import option_group_dialog
+
+        self.put(self.every_pick())
+        before = self.panel.pane.toPlainText()
+        seen = []
+
+        def unticked(dialog):
+            dialog.which.setCurrentIndex(1)
+            dialog.join_box.setChecked(False)
+            seen.append(dialog)
+            return int(option_group_dialog.QDialog.DialogCode.Accepted)
+
+        with mock.patch.object(option_group_dialog.OptionGroupDialog, "exec", unticked):
+            self.assertFalse(self.window.put_under_option("", self.every_pick()))
+        dialog = seen[0]
+        self.assertFalse(dialog.join_box.isEnabled())
+        self.assertFalse(dialog.buttons.button(dialog.buttons.StandardButton.Ok).isEnabled())
+        self.assertIn("under that option already", dialog.problem.text())
+        self.panel.refresh()
+        self.assertEqual(self.panel.pane.toPlainText(), before)
+        self.assertEqual(before.count("<Group"), 1)
+
+    def test_what_stays_where_it_is_is_not_counted_as_put(self):
+        """R4-16: the status counted every pick, those under the option
+        already as well."""
+        self.put(self.every_pick())
+        later = self.later_change()
+        done, seen = self.put(self.every_pick() + later, which=1)
+        self.assertTrue(done)
+        self.assertEqual((seen[0].plan().joined, seen[0].plan().already), (1, 1))
+        self.assertEqual(self.window.status_label.text(), "1 ModOp put under option “Shrine of Ceres”.")
+
+    def test_undo_and_redo_name_the_step_and_count_no_change_it_moved(self):
+        """R4-17: one Put under an option undone said "Undid 7 changes.":
+        the changes read again and moved along with it were counted."""
+        self.put(self.every_pick())
+        put = "putting 2 ModOps under option “Shrine of Ceres”"
+        self.assertEqual(self.window.undo_action.text(), "&Undo " + put)
+        self.window.undo_last()
+        self.assertEqual(self.window.status_label.text(), "Undid %s." % put)
+        self.window.redo_last()
+        self.assertEqual(self.window.status_label.text(), "Redid %s." % put)
+
     def test_a_new_toggle_offers_no_group_to_go_into(self):
         _done, seen = self.put(self.every_pick())
         dialog = seen[0]
@@ -308,7 +363,9 @@ class TestPutUnderAnOption(OptionsCase):
         self.assertEqual((origin, picked), ("", [("op", row.data(0, asset_xml_op_role()))]))
         menu = panel.menu_for(row)
         self.addCleanup(menu.deleteLater)
-        self.assertIn("Put under an option…", [a.text() for a in menu.actions()])
+        under = next(a for a in menu.actions() if a.text() == "Put under an option…")
+        # It says it may join the group the toggle has (R4-16).
+        self.assertIn("its existing one", under.toolTip())
         self.loadout.game = "anno1800"
         self.assertIsNone(panel.picked_for_option())
 

@@ -2836,13 +2836,17 @@ class MainWindow(QMainWindow):
         self.mark_output_dirty()
         self.update_title()
 
-    def _on_edited(self) -> None:
-        """An edit in the asset editor, which is one step to undo."""
+    def _on_edited(self, label: str = "") -> None:
+        """An edit in the asset editor, which is one step to undo.  ``label``
+        names it, or the editor's :attr:`EditorPanel.step_label` does, where
+        the changes it holds would not say what was done: counted, they are
+        every change the step moved along with it as well (R4-17)."""
         # Recorded first: what the step leaves in doubt is marked before the
         # rows are drawn, and they are drawn once.  Drawn first, a list of
         # 68 mods was drawn again for the marks, every time.
         typed, self.editor.typed_applied = self.editor.typed_applied, None
-        step = self.record(redraw=False)
+        named, self.editor.step_label = self.editor.step_label, ""
+        step = self.record(label or named, redraw=False)
         if step is not None:
             # Before the first change writes a new loadout's file, so the
             # name goes into it rather than waiting there unsaved.
@@ -2973,8 +2977,8 @@ class MainWindow(QMainWindow):
     def put_under_option(self, origin: str, picked: list) -> bool:
         """Put the ModOps ``picked`` in the Mod changes panel under one of
         ``origin``'s options: each run of them in the mod's file wrapped in
-        ``<Group Condition="$name">``, and applied as typing in the Mod file
-        tab is -- one step to undo.  Under an option with its group in the
+        ``<Group Condition="$mod-id.name">``, and applied as typing in the
+        Mod file tab is -- one step to undo.  Under an option with its group in the
         file already, they go into that group (:func:`.option_groups.planned`).
         A new toggle is declared first, so the ops are read with it.  Whether
         it was done."""
@@ -2990,16 +2994,19 @@ class MainWindow(QMainWindow):
                 "Apply it or Revert it first."))
             return False
         shown = modfile.shown(self.loadout, origin)
-        found = option_groups.runs(shown, picked)
-        if not found:
+        # Each in a group of its own where it stands: what a new toggle does.
+        apart = option_groups.planned(shown, picked)
+        if not apart.left:
             return False
         mod_id = declaring.mod_id_of(self.loadout, origin)
 
-        def planned(name: str) -> option_groups.Plan:
-            return option_groups.planned(shown, picked, option_groups.spellings(name, mod_id))
+        def planned(name: str, join: bool) -> option_groups.Plan:
+            return option_groups.planned(
+                shown, picked, option_groups.spellings(name, mod_id), join=join,
+            )
 
         dialog = OptionGroupDialog(
-            self.loadout, origin, len(picked), len(found), self, planned=planned,
+            self.loadout, origin, apart.alone, len(apart.left), self, planned=planned,
         )
         try:
             if dialog.exec() != int(QDialog.DialogCode.Accepted):
@@ -3008,14 +3015,17 @@ class MainWindow(QMainWindow):
         finally:
             dialog.deleteLater()
         if plan is None:
-            plan = option_groups.Plan(shown, found)
+            plan = apart
         if plan.nothing_to_do:
             return False
         was = settings.block_of(self.loadout, origin)
         if new is not None:
             settings.set_block(self.loadout, origin, {**was, **settings.to_block([new])})
-        # Named in full, as the mod names its options elsewhere: the loader
-        # reads a bare name as the mod's own all the same.
+        option = settings.read(settings.block_of(self.loadout, origin)).get(name)
+        label = option.label if option is not None else name
+        # Named in full, as the loader's docs name an option and as the
+        # options editor shows it: the loader reads a bare name as the
+        # mod's own all the same.
         text = option_groups.wrapped(
             plan.shown.text, plan.left, "%s.%s" % (mod_id, name) if mod_id else name,
         )
@@ -3031,18 +3041,25 @@ class MainWindow(QMainWindow):
             ))
             return False
         if done.moved:
-            self._on_edited()
+            # Named as what was done: the changes the step holds are those
+            # read again and moved along as well (R4-17).
+            # Translators: finishes "Undo …" in the Edit menu.
+            self._on_edited(trn(
+                "putting %(n)s ModOp under option “%(option)s”",
+                "putting %(n)s ModOps under option “%(option)s”",
+                plan.put, option=label,
+            ))
             self.editor.refresh_from_loadout()
         if new is not None:
             self.output.loadoutEdited.emit()
             self.readings.options_declared(origin)
         self.file_panel.mark_stale()
         self.output.refresh()
-        option = settings.read(settings.block_of(self.loadout, origin)).get(name)
+        # What went: not what was under the option already, and stays.
         self.status_label.setText(trn(
             "%(n)s ModOp put under option “%(option)s”.",
             "%(n)s ModOps put under option “%(option)s”.",
-            len(picked), option=option.label if option is not None else name,
+            plan.put, option=label,
         ))
         return True
 

@@ -183,7 +183,7 @@ def _option_group(window):
     # one gets a group of its own.
     dialog = OptionGroupDialog(
         window.loadout, "", 3, 2, window,
-        planned=lambda _name: Plan(None, left=[None], joined=2, passed=1),
+        planned=lambda _name, _join: Plan(None, left=[None], joined=2, passed=1),
     )
     dialog.which.setCurrentIndex(1)
     return dialog

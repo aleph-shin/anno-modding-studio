@@ -268,7 +268,7 @@ Grouped by what they are about. `tools/check.py` fails when a module under
 | `games` | `Game`: per-game facts and ModOp dialect |
 | `modinfo` | the `modinfo.json` an export writes: each game's shape, over the mod's own file, with the Studio's build block |
 | `declaring` | a mod's own options declared here: what stands in the way of writing them, and which of them its ModOps already read |
-| `option_groups` | some of a mod's ModOps put under one of its options: each run of them in the mod's file wrapped in `<Group Condition="$name">`, applied as typing in the Mod file tab is |
+| `option_groups` | some of a mod's ModOps put under one of its options: each run of them in the mod's file wrapped in `<Group Condition="$mod-id.name">`, applied as typing in the Mod file tab is |
 | `gamefiles` | finding and extracting the few files the Studio needs from an install |
 | `gameversion` | which update of the game is installed |
 | `discovery` | finding installs and already-extracted asset files |

@@ -315,7 +315,8 @@ def _about(change: Change) -> set:
     return found
 
 
-def _named(change: Change) -> str:
+def change_named(change: Change) -> str:
+    """What a step says ``change`` is about: its field, on its asset."""
     what = change.tag or tr_stored(change.summary) or tr("a field")
     if not change.asset_label:
         return what
@@ -414,7 +415,7 @@ def describe(loadout: Loadout, step: Step) -> str:
                            "switching %(n)s changes on and off", count)
             on = states.pop()
             if count == 1:
-                name = _named(switched[0][1])
+                name = change_named(switched[0][1])
                 # Translators: finishes "Undo …" in the Edit menu.
                 return tr("switching %s on", name) if on else tr("switching %s off", name)
             if on:
@@ -426,7 +427,7 @@ def describe(loadout: Loadout, step: Step) -> str:
         if len(reverted) == count:
             if count == 1:
                 # Translators: finishes "Undo …" in the Edit menu.
-                return tr("reverting %s", _named(reverted[0]))
+                return tr("reverting %s", change_named(reverted[0]))
             # Translators: finishes "Undo …" in the Edit menu.
             return trn("reverting one change", "reverting %(n)s changes", count)
         before, after = pairs[0]
@@ -435,7 +436,7 @@ def describe(loadout: Loadout, step: Step) -> str:
                 # Translators: finishes "Undo …" in the Edit menu.
                 return tr("creating a new asset")
             # Translators: finishes "Undo …" in the Edit menu.
-            return tr("the change to %s", _named(after))
+            return tr("the change to %s", change_named(after))
         # Translators: finishes "Undo …" in the Edit menu.
         return trn("one change", "%(n)s changes", count)
 

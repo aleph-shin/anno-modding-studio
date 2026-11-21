@@ -1,8 +1,11 @@
 """Some of a mod's ModOps put under one of its options.
 
 Anno 117 reads a mod's options back in its ModOps, and the simplest use of
-one is a switch over part of the mod: ``<Group Condition="$name">`` around
-what the option turns on, and a toggle the player can turn off.  This is
+one is a switch over part of the mod: ``<Group Condition="$mod-id.name">``
+around what the option turns on, and a toggle the player can turn off.  The
+group is written with the option named in full, as the loader's docs name
+one; the loader reads the bare ``$name`` as the mod's own all the same, so
+a group spelled either way is the option's (:func:`spellings`).  This is
 that group made from what was picked in the Mod changes panel: the mod's
 file as the Mod file tab shows it, with each run of the picked ModOps
 wrapped -- one group where they stand together, one for each run where
@@ -22,8 +25,11 @@ beside it -- in the same file, in the same group as it -- gets one of its
 own.  A change made after the group was is written at the end of the file,
 so for one made last the group is the one before it, with nothing between.
 What is gone past to get into a group runs on the other side of what was
-moved then: :attr:`Plan.passed` counts it, for the caller to say.  What is
-under the option already, in its group, is left where it is.
+moved then: :attr:`Plan.passed` counts the ModOps it is, for the caller to
+say -- each in a group gone past, however deep, and not the group as one.
+What is under the option already, in its group, is left where it is, and
+is never wrapped in a group of the option again: that would ask the same
+thing twice, once inside the other.
 """
 
 from __future__ import annotations
@@ -38,6 +44,8 @@ from .generator import SPAN_CHANGES, SPAN_GROUP, SPAN_GROUP_END, SPAN_OP, SPAN_U
 # The opening tag of a group that asks one thing and nothing else of it:
 # the group this puts things under, as it writes it.
 _ASKS_ONE = re.compile(r"""\A<Group\s+Condition\s*=\s*(["'])(.*?)\1\s*>\Z""", re.S)
+# What is a ModOp in the file: not a group's tags, an <Include> or a comment.
+_MODOPS = (SPAN_OP, SPAN_CHANGES, SPAN_UNREAD)
 
 
 @dataclass(frozen=True)
@@ -182,6 +190,22 @@ def _index(shown, key: tuple) -> Optional[int]:
     return next((at for at, item in enumerate(shown.items) if _key(item) == key), None)
 
 
+def _modops_in(shown, held: List[Optional[int]]) -> Dict[int, List[int]]:
+    """For each thing of ``shown.items``, the ModOps it is or holds,
+    however deep: an op is itself, a group what is in it and in the groups
+    in it, an ``<Include>`` what is in its file.  ``held`` is
+    :func:`.moving.containers`."""
+    found: Dict[int, List[int]] = {}
+    for at, item in enumerate(shown.items):
+        if item.kind not in _MODOPS or not moving.is_row(item):
+            continue
+        place: Optional[int] = at
+        while place is not None:
+            found.setdefault(place, []).append(at)
+            place = held[place]
+    return found
+
+
 @dataclass
 class Plan:
     """What putting things under an option comes to: ``shown``, the file
@@ -192,28 +216,43 @@ class Plan:
     left: List[Run] = field(default_factory=list)
     # How many things picked went into a group the option had.
     joined: int = 0
-    # How many other things they went past to get there.
+    # How many other ModOps they went past to get there.
     passed: int = 0
     # How many were under it already, in such a group, and stay.
     already: int = 0
+    # How many go into a group of their own: what the runs of ``left`` hold.
+    alone: int = 0
 
     @property
     def nothing_to_do(self) -> bool:
         return not self.joined and not self.left
 
+    @property
+    def put(self) -> int:
+        """How many of the things picked it puts under the option: into
+        its group, or into one of their own.  Not those that stay."""
+        return self.joined + self.alone
 
-def planned(shown, picked: Iterable[Tuple[str, Any]], spelled: Collection[str] = ()) -> Plan:
+
+def planned(
+    shown, picked: Iterable[Tuple[str, Any]], spelled: Collection[str] = (), join: bool = True,
+) -> Plan:
     """The picked things put under the option ``spelled`` is
     (:func:`spellings`): each into the group of it that stands among the
     same things it does, where there is one -- the one it gets to past the
     fewest others, and the one before it where two do -- and the rest left
-    to wrap.  With ``spelled`` empty, every one of them is left to wrap."""
+    to wrap.  With ``join`` off, none goes into a group: each is left to
+    wrap where it stands.  What is under the option already stays either
+    way.  With ``spelled`` empty, every one of them is left to wrap."""
     at = _picked(shown, picked)
     if not spelled:
-        return Plan(shown, _runs(shown, at))
+        return Plan(shown, _runs(shown, at), alone=len(at))
     held = moving.containers(shown)
     under = {one for one in range(len(shown.items)) if asks_only(shown, one, spelled)}
     chosen = set(at)
+    ops_of = _modops_in(shown, held)
+    # What goes is not gone past: a pick inside a group gone past.
+    going = {op for one in at for op in ops_of.get(one, ())}
     plan = Plan(shown)
     # Each thing, and the group it goes into: the group's key, and whether
     # it goes at the group's end (a group before it) or its start.
@@ -227,6 +266,9 @@ def planned(shown, picked: Iterable[Tuple[str, Any]], spelled: Collection[str] =
             place = held[place]
         if place is not None:
             plan.already += 1
+            continue
+        if not join:
+            left.append(_key(shown.items[one]))
             continue
         among = moving.siblings(shown, held[one])
         mine = among.index(one) if one in among else -1
@@ -245,7 +287,11 @@ def planned(shown, picked: Iterable[Tuple[str, Any]], spelled: Collection[str] =
             continue
         _rank, into_at, at_end, gone = best
         moves.append((_key(shown.items[one]), _key(shown.items[into_at]), at_end))
-        passed.update(_key(shown.items[other]) for other in gone)
+        # The ModOps gone past, and not each group of them as one.
+        passed.update(
+            _key(shown.items[op]) for other in gone for op in ops_of.get(other, ())
+            if op not in going
+        )
     # Into a group at its start, in file order each before the first of what
     # it had: so they stand in the order they did.
     firsts: Dict[tuple, Optional[tuple]] = {}
@@ -270,7 +316,7 @@ def planned(shown, picked: Iterable[Tuple[str, Any]], spelled: Collection[str] =
         plan.joined += 1
     plan.shown = now
     plan.passed = len(passed)
-    plan.left = _runs(now, sorted(
-        found for found in (_index(now, thing) for thing in left) if found is not None
-    ))
+    alone = sorted(found for found in (_index(now, thing) for thing in left) if found is not None)
+    plan.alone = len(alone)
+    plan.left = _runs(now, alone)
     return plan

@@ -2833,7 +2833,7 @@ class ChangesPanel(QWidget, ChangeRows):
         picked = self.picked_for_option()
         if picked is not None:
             under = menu.addAction(tr("Put under an option…"))
-            under.setToolTip(tr("Wraps the rows picked in a group that runs only while a toggle is on."))
+            under.setToolTip(tr("Puts the picked rows in a toggle's group: its existing one, or a new one."))
             under.triggered.connect(lambda: self.optionGroupRequested.emit(*picked))
         if kind in XML_KINDS:
             show = menu.addAction(tr("Show XML…"), lambda: self._show_xml(item))
