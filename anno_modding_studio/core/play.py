@@ -51,6 +51,9 @@ class Plan:
     # Mods of yours not built, because another project built their folder:
     # [(origin, why), ...].  See core.builtby.
     stopped: list = field(default_factory=list)
+    # Mods of yours not built, and not switched on, because the game would
+    # refuse their Mod ID: [(origin, why), ...].  See refused.
+    refused: list = field(default_factory=list)
     # What is worth knowing first, by kind: [(heading, [sentence, ...]), ...],
     # in the order they are said. Kept apart so a long list can be told as a
     # count per kind with the rest behind *Show Details*.
@@ -102,7 +105,7 @@ class Plan:
     def nothing_to_do(self) -> bool:
         # A mod not built is said, even with nothing else to do.
         return not (self.built or self.moving or self.strays or self.options or self.tweaks
-                    or self.generating or self.reverting or self.stopped)
+                    or self.generating or self.reverting or self.stopped or self.refused)
 
     @property
     def warnings(self) -> list:
@@ -156,6 +159,11 @@ def plan(
     # built is not built from here, and the game gets that project's build.
     found.stopped = builtby.stopped(loadout, found.built, Path(folder), library_dir)
     yours = [origin for origin in found.built if origin not in dict(found.stopped)]
+    # Nor a mod whose Mod ID the game would refuse: built and linked, it
+    # went to a game that turned it away, as Export will not (R4-9,
+    # hands-on run 4).  The rest is played without it.
+    found.refused = refused(loadout, yours)
+    yours = [origin for origin in yours if origin not in dict(found.refused)]
     # A build the mods folder already loads, of the mod as it is now, is not
     # built again: it would come out the same, and Play would ask about it
     # every time though nothing was to change.
@@ -163,6 +171,8 @@ def plan(
                    if not current_build(loadout, origin, folder, library_dir)]
     found.built_names = [generator.folder_for(loadout, origin) for origin in found.built]
     found.worth_knowing(tr("Built by another project"), [why for _origin, why in found.stopped])
+    found.worth_knowing(tr("Mod IDs the game would refuse"),
+                        [why for _origin, why in found.refused])
     # Translators: headings over what Play's question says is worth knowing
     # first, each a kind of finding.
     found.worth_knowing(tr("Your changes"), validate(loadout, yours, index))
@@ -184,6 +194,11 @@ def plan(
         layer.origin: layer.active for layer in loadout.layers
         if holders[layer.origin] is None or holders[layer.origin] is layer
     }
+    # An earlier build of a mod the game would refuse now is not left on:
+    # the game would load what the mod was, not what it is.
+    for origin, _why in found.refused:
+        if origin in found.wanted:
+            found.wanted[origin] = False
     # A library mod switched off by having its link taken away is not in the
     # folder to be read, and is still a mod this loadout may want on.
     for name, entry in library.unlinked(library_dir).items():
@@ -234,7 +249,8 @@ def plan(
             count, mod=label)
         for label, count in _held_by_mod(loadout)
     ])
-    found.loader = verdicts(yours) if verdicts is not None else []
+    found.loader = [verdict for verdict in verdicts(yours)
+                    if verdict.origin not in dict(found.refused)] if verdicts is not None else []
     # A disagreement is worth knowing before the game starts; it is said,
     # never a reason not to start it -- the extension's loader may not be the
     # one the game has.  And a check that failed, which is no agreement: kept
@@ -286,8 +302,9 @@ def strays(found: Plan) -> list:
 
 def validate(loadout, origins, index) -> list:
     """What Export's check would say about the mods Play builds: changes that
-    would not apply, and a Mod ID the game would refuse.  Said, not refused --
-    the game is about to show whether it matters.
+    would not apply.  Said, not refused -- the game is about to show whether
+    it matters.  A Mod ID the game would refuse is :func:`refused`'s, and the
+    mod is not built.
 
     Checked as the Export tab checks them, through a workspace of the
     loadout: a change to a field a mod under it added is checked against
@@ -311,9 +328,31 @@ def validate(loadout, origins, index) -> list:
                 "%(mod)s: %(n)s changes would not apply. The Export tab lists them.",
                 failing, mod=name,
             ))
-        why = games.get(loadout.game).mod_id_problem(modinfo.written_mod_id(view))
+    return found
+
+
+def refused(loadout, origins) -> list:
+    """Of ``origins``, the mods whose Mod ID the game would refuse, each with
+    the sentence saying why and where to change it: ``[(origin, why)]``.
+
+    Play builds none of them and switches none on, as Export writes none of
+    them out: built and linked, a mod with such an ID was a mod the game
+    turned away, said only in a log most players never read.  The rest of
+    the loadout is played without it."""
+    game = games.get(loadout.game)
+    found = []
+    for origin in origins:
+        view = generator.for_mod(loadout, origin)
+        mod_id = modinfo.written_mod_id(view)
+        why = game.mod_id_problem(mod_id)
         if why:
-            found.append("%s: %s" % (name, why))
+            found.append((origin, tr(
+                "%(mod)s was not built: the game would refuse its Mod ID, “%(id)s”. "
+                "%(why)s Change the Mod ID on the Export tab, to “%(instead)s” for "
+                "instance.",
+                mod=view.own.name or origin or tr("your mod"), id=mod_id, why=why,
+                instead=game.usable_mod_id(view.own.mod_id or view.own.name),
+            )))
     return found
 
 
@@ -658,6 +697,10 @@ def write_own_profile(loadout, pointer_folder, name: str, found, display_name: s
     on = {}
     written = switches.Written()
     built = set(build.mine(loadout))
+    # Not built, and not on: the game would refuse the ID (:func:`refused`).
+    # Its line is left to whatever folder of it is there, which is off.
+    refusing = {origin for origin, _why in refused(loadout, built)}
+    built -= refusing
     if "" in built:
         # The loadout's own mod, built a moment ago: no layer, but on.
         own_id = modinfo.written_mod_id(generator.for_mod(loadout, "")).strip().lower()
@@ -666,6 +709,8 @@ def write_own_profile(loadout, pointer_folder, name: str, found, display_name: s
     for layer in loadout.layers:
         if modfolder.is_bundled(layer.origin):
             continue  # bundled: switches with its host
+        if layer.origin in refusing:
+            continue
         # A patch of yours names itself only in the modinfo its build wrote,
         # and so does a mod of yours whose Mod ID was left blank, built now
         # or before (switch_id).

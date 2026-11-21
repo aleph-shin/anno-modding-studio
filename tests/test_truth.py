@@ -32,6 +32,7 @@ from support import (  # noqa: E402
 from anno_modding_studio.core import (  # noqa: E402
     disk,
     installplan,
+    places,
     switches,
     truth,
 )
@@ -1229,6 +1230,68 @@ class TestAModOfYoursWithABlankModId(TruthFolders):
         self.assertEqual(play.options_to_write(loadout), {"releasetest-0-1-0": {"speed": "3"}})
 
 
+class TestAModIdTheGameWouldRefuse(TruthFolders):
+    """117: a mod of yours whose Mod ID the game would refuse is not built
+    or switched on by Play, and the rest of the loadout is played."""
+
+    game = ANNO_117
+    FOLDER = "[Gameplay] 117 Run Four Ids"
+
+    def setUp(self):
+        super().setUp()
+        self.library = self.root / "library" / "anno117"
+        patched = mock.patch.object(places, "backups_dir", return_value=self.root / "backups")
+        patched.start()
+        self.addCleanup(patched.stop)
+
+    def loadout_of(self, mod_id: str) -> Loadout:
+        from anno_modding_studio.core.changes import Change, own_record
+
+        install_mod(self.mods, "Theirs", "theirs", "1")
+        loadout = Loadout(game=ANNO_117, own=own_record(name="117 Run Four Ids", creator="me",
+                                                        mod_id=mod_id),
+                          own_mod=True, is_the_mod=True)
+        loadout.set_layer(ModLayer(origin="Theirs", mod_id="theirs", folder=str(self.mods / "Theirs")))
+        loadout.set_change(Change(
+            guid="1000", asset_label="alpha", path="/Values/Building/Radius", tag="Radius",
+            old_value="10", new_value="20", authored=True,
+        ))
+        return loadout
+
+    def test_it_is_said_and_not_built_and_the_rest_goes_ahead(self):
+        """R4-9: the refusal was only said, and Play built and linked the
+        mod, which the game then refused."""
+        from anno_modding_studio.core import play
+
+        loadout = self.loadout_of("117-run-four")
+        found = play.plan(loadout, str(self.mods), self.library)
+        self.assertEqual(found.built, [])
+        self.assertEqual([origin for origin, _why in found.refused], [""])
+        self.assertFalse(found.nothing_to_do)
+        (why,), = [lines for heading, lines in found.worth
+                   if heading == "Mod IDs the game would refuse"]
+        self.assertEqual(why, (
+            "117 Run Four Ids was not built: the game would refuse its Mod ID, “117-run-four”. "
+            "Anno 117 refuses a Mod ID that is not lowercase letters, numbers and dashes, "
+            "starting with a letter, e.g. fancy-mod-authorname. Change the Mod ID on the "
+            "Export tab, to “run-four” for instance."))
+        self.assertEqual(found.warnings, [why])
+        written = play.carry_out(found, loadout, self.library)
+        self.assertEqual(written.failed, [])
+        self.assertFalse((self.mods / self.FOLDER).exists())
+        self.assertFalse((self.library / self.FOLDER).exists())
+        lines = (self.documents / "profiles" / "Anno Modding Studio.txt").read_text(
+            encoding="utf-8").splitlines()
+        self.assertIn("theirs", lines)
+        self.assertNotIn("117-run-four", lines)
+
+    def test_one_it_takes_is_built(self):
+        from anno_modding_studio.core import play
+
+        found = play.plan(self.loadout_of("run-four"), str(self.mods), self.library)
+        self.assertEqual((found.built, found.refused, found.warnings), ([""], [], []))
+
+
 class TestWhereAModCameFrom(TruthFolders):
     def test_provenance_is_saved_and_attached_when_the_folder_is_read(self):
         loadout = self.loadout()
@@ -1327,6 +1390,31 @@ class TestSwitchingToMatchOnAnno117(TruthWindow):
         self.sync()
         self.assertIn("DisplayName Celtic Set", written.read_text(encoding="utf-8"))
         self.assertFalse((self.documents / "profiles" / "Roman Set.txt").exists())
+        self.window.files.mark_saved()
+
+    def test_a_mod_whose_id_the_game_would_refuse_is_left_out_and_said_after(self):
+        """R4-9: Play built and linked it, and the game refused it. Left
+        out, it is said in the question and again once it is done, with
+        nothing else to build."""
+        from anno_modding_studio.core import play
+        from anno_modding_studio.core.changes import Change
+
+        install_mod(self.mods, "Theirs", "theirs", "1")
+        loadout = self.window.loadout
+        loadout.own.name, loadout.own.mod_id = "117 Run Four Ids", "117-run-four"
+        loadout.layers = [ModLayer(origin="Theirs", mod_id="theirs", folder=str(self.mods / "Theirs"))]
+        loadout.set_change(Change(
+            guid="1000", asset_label="alpha", path="/Values/Building/Radius", tag="Radius",
+            old_value="10", new_value="20", authored=True,
+        ))
+        # The window's index is a stand-in, with no assets to check changes on.
+        with mock.patch.object(play.generator, "verify_changes", return_value=[]):
+            asked = self.sync()
+        self.assertIn("117 Run Four Ids was not built: the game would refuse its Mod ID", asked[0])
+        self.assertNotIn("Build", asked[0])
+        self.assertFalse((self.mods / "[Gameplay] 117 Run Four Ids").exists())
+        self.assertIn("117 Run Four Ids was not built, since the game would refuse its Mod ID.",
+                      self.window.status_label.text())
         self.window.files.mark_saved()
 
     def test_a_loadout_that_is_not_a_loadout_gets_a_profile_of_its_own_too(self):
