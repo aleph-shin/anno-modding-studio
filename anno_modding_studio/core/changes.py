@@ -65,10 +65,16 @@ from .modop import (
 STRUCTURAL_OPS = (OP_ADD, OP_ADD_NEXT, OP_ADD_PREV, OP_REMOVE, OP_MERGE)
 
 # ``…/Item[GoodsOrPool='174519']/GoodsOrPool``: a field named by the predicate
-# that finds its own list entry. See :attr:`Change.replaces_its_own_key`.
+# that finds its own list entry. See :attr:`Change.keyed_entry`.
 # Groups: the key, its quote, its value, the count among the entries holding
-# that value where there is one (``Item[F='5'][2]/F``), the field replaced.
-_KEYED_FIELD = re.compile(r"\[\s*([\w.-]+)\s*=\s*(['\"])(.*?)\2\s*\](?:\[\s*(\d+)\s*\])?/([\w.-]+)$")
+# that value where there is one (``Item[F='5'][2]/F``), the field changed.
+# The key and the field may be a step down, ``Item[Hull/Max='1']/Hull/Max``,
+# and a value holds no quote of its own kind, so a predicate further up is
+# never read as running on into the one after it.
+_KEYED_FIELD = re.compile(
+    r"\[\s*([\w.-]+(?:/[\w.-]+)*)\s*=\s*(['\"])((?:(?!\2).)*)\2\s*\]"
+    r"(?:\[\s*(\d+)\s*\])?/([\w.-]+(?:/[\w.-]+)*)$"
+)
 # A payload that is one field holding a value and nothing else.
 _ONE_VALUE = re.compile(r"\s*<([\w.-]+)\s*(?:/>|>([^<]*)</\1\s*>)\s*$")
 
@@ -518,19 +524,24 @@ class Change:
         entry finds it by the value this one replaces, so it has to go after
         them -- in the file written out and in the asset as the Studio shows it.
         """
-        return self.keyed_entry is not None
+        return self.op == OP_REPLACE and self.keyed_entry is not None
 
     @property
     def keyed_entry(self) -> Optional[str]:
-        """The list entry a key replacement finds, ``…/Item[GoodsOrPool='174519']``.
+        """The list entry a change to its own key finds, ``…/Item[GoodsOrPool='174519']``.
 
-        ``None`` for anything that is not a replace of its own entry's key.
+        A replace of the field the entry is found by, or a removal of that
+        field or of what holds it: ``Item[Hull/Max='1']/Hull`` takes the key
+        with it.  ``None`` for anything else.
         """
-        if self.op != OP_REPLACE:
+        if self.op not in (OP_REPLACE, OP_REMOVE):
             return None
         path = self.path.rstrip("/")
         keyed = _KEYED_FIELD.search(path)
-        if keyed is None or keyed.group(1) != keyed.group(5):
+        if keyed is None:
+            return None
+        key, changed = keyed.group(1), keyed.group(5)
+        if key != changed and not (self.op == OP_REMOVE and key.startswith(changed + "/")):
             return None
         return path[: keyed.start(5) - 1]
 
@@ -4635,6 +4646,14 @@ def after_their_entry(ordered: List[Change]) -> List[Change]:
     every ``Item`` with ``<Item><Product>2002</Product><X>1</X></Item>``, read
     field by field, gave ``Item[Product='2001']`` its new key before the add
     to ``Item[Product='2002']``, and that add put a second ``<X>`` in it.
+
+    A removal of the key goes behind them as well, though removals are
+    otherwise written first: a patch that took the ``AdditionalHull/
+    MaximumModuleCount`` out of the Latium Flagship's ship module config,
+    the field that told it from the one struck out beside it, wrote that
+    first, and its edit to the config's Archers, keyed by that field, found
+    nothing.  Not behind what puts the field back, which the removal would
+    take out too.
     """
     out = list(ordered)
     moving = sorted(
@@ -4648,7 +4667,7 @@ def after_their_entry(ordered: List[Change]) -> List[Change]:
         keyed = _KEYED_FIELD.search(change.path.rstrip("/"))
         later = _counted_after(entry, keyed)
         new = str(change.new_value or "")
-        if keyed is not None and keyed.group(2) not in new:
+        if change.op == OP_REPLACE and keyed is not None and keyed.group(2) not in new:
             became = "%s%s%s" % (entry[: keyed.start(3)], new, entry[keyed.end(3):])
             if became != entry:
                 entries.append(became)
@@ -4656,6 +4675,8 @@ def after_their_entry(ordered: List[Change]) -> List[Change]:
         for position, other in enumerate(out):
             if (other.origin, other.order) != (change.origin, change.order):
                 continue
+            if change.op == OP_REMOVE and puts_back(change.path.rstrip("/"), other):
+                break
             path = other.path.rstrip("/")
             if any(path == one or path.startswith(one + "/") for one in entries) or (
                 later is not None and later(path)

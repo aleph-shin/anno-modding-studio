@@ -473,6 +473,24 @@ class EffectiveAsset:
         first of them that replaced it."""
         return self._handed.get((id(node), origin), node.text or "")
 
+    @contextmanager
+    def as_handed(self, origin: str) -> Iterator[None]:
+        """The tree with every text ``origin``'s ops replaced put back as
+        they were handed it, for a while: what a path of theirs is asked of
+        (:meth:`handed_text`), and put back as the changes leave it however
+        the block is left."""
+        swapped = []
+        for node in self.element.iter():
+            handed = self._handed.get((id(node), origin))
+            if handed is not None and handed != (node.text or ""):
+                swapped.append((node, node.text))
+                node.text = handed
+        try:
+            yield
+        finally:
+            for node, text in swapped:
+                node.text = text
+
     def added_by(self, node, origin: str) -> bool:
         """Whether ``node`` is in the asset because ``origin`` added it."""
         known = self.origin(node)
@@ -702,16 +720,27 @@ def repointed(eff: EffectiveAsset, change: Change, gone: Callable[[object], bool
     A removal before it, put in or taken back, moves every entry after it in
     the game's list by one, and a path that names an entry by its position
     names another one then.  Only the positions are counted again: a step
-    that names an entry by what is in it is left as it is, since what is in
-    it here is what the changes leave, and the change may be the one that
-    sets it -- ``Item[B='9']/B`` for the edit that makes ``B`` 9 finds
-    nothing in the game, which runs it on the 2 that was there.
+    that names an entry by what is in it is left as it is.
+
+    The paths are asked of the entries as the change's op finds them, not
+    as its mod's changes leave them (:meth:`EffectiveAsset.as_handed`).  The
+    change may be the one that sets what its entry is counted by.  The edit
+    giving the second of two entries of pool 31354 another pool,
+    ``Item[Fertility='31354'][2]/Fertility``, was looked for again among the
+    31354s by the pool it gives, was not one of them, and kept its ``[2]``
+    once the first was removed before it.
     """
     target = eff.targets.get(change.key)
     if eff.element is None or target is None or not change.path:
         return None
     if gone(target) or any(gone(above) for above in target.iterancestors()):
         return None  # what it is aimed at is gone itself then
+    with eff.as_handed(change.origin):
+        return _recounted_path(eff, change, target, gone)
+
+
+def _recounted_path(eff: EffectiveAsset, change: Change, target, gone: Callable[[object], bool]):
+    """:func:`repointed`'s answer, asked of the tree as it stands."""
     found = resolve_as_the_game_has_it(eff.element, change.path, gone)
     if len(found) == 1 and found[0] is target:
         return None

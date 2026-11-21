@@ -439,6 +439,18 @@ class TestAPositionCountsWhatTheGameHasLeft(unittest.TestCase):
                 # Where nothing it counts moves, it stays as it is.
                 self.assertIsNone(effective.repointed(eff, sixth, eff.gone_before(sixth.key)))
 
+    def test_an_edit_of_the_key_it_is_counted_by_is_repointed_too(self):
+        """Counted among the entries as the op finds them: the tree holds
+        the 9 the edit sets, and the op finds the 5 it replaces."""
+        edit = Change(guid="1000", asset_label="six", path="/Values/Set/List/Item[F='5'][2]/F",
+                      tag="F", old_value="5", new_value="9")
+        eff = effective.build(etree.fromstring(self.SIX), [edit], "1000")
+        fifth = eff.element.findall("Values/Set/List/Item")[4]
+        generated = effective.repointed(eff, edit, lambda node: node is fifth)
+        self.assertEqual(generated.path, self.FIFTH + "/F")
+        # And the tree is left holding what the edit set.
+        self.assertEqual(eff.element.findall("Values/Set/List/Item/F")[5].text, "9")
+
 
 class TestKeysOfEntriesFoundByACount(unittest.TestCase):
     """Replacing the key an entry is counted by takes it out of the entries
@@ -461,6 +473,40 @@ class TestKeysOfEntriesFoundByACount(unittest.TestCase):
              "/Values/L/Item[F='1']/N"],
         )
         self.assertTrue(made[0].replaces_its_own_key)
+
+
+class TestKeysOneLevelDown(unittest.TestCase):
+    """An entry found by a field inside one of its own, ``Item[Hull/Max='1']``,
+    is found by nothing once that field is replaced or removed: what goes
+    through the entry by it is written first."""
+
+    ENTRY = "/Values/L/Item[Hull/Max='1']"
+
+    def change(self, path, op=OP_REPLACE, payload=""):
+        return Change(guid="1000", asset_label="x", path=self.ENTRY + path,
+                      tag=path.rsplit("/", 1)[1], op=op, old_value="1",
+                      new_value="" if op != OP_REPLACE else "2", payload=payload)
+
+    def test_a_replace_of_it_goes_behind_them(self):
+        key, other = self.change("/Hull/Max"), self.change("/Archers/Default")
+        self.assertTrue(key.replaces_its_own_key)
+        self.assertEqual(emit_order([key, other]), [other, key])
+
+    def test_a_removal_of_it_or_of_what_holds_it_goes_behind_them(self):
+        for removed in ("/Hull/Max", "/Hull"):
+            with self.subTest(removed):
+                key = self.change(removed, op=OP_REMOVE)
+                other, third = self.change("/Archers/Default"), self.change("/Mast/Max")
+                self.assertFalse(key.replaces_its_own_key)
+                self.assertEqual(emit_order([key, other, third]), [other, third, key])
+
+    def test_but_not_behind_what_puts_it_back(self):
+        """Put back by an add, a removal after it would take that out too:
+        it goes behind what comes before that."""
+        key = self.change("/Hull/Max", op=OP_REMOVE)
+        other = self.change("/Archers/Default")
+        again = self.change("/Hull", op=OP_ADD, payload="<Max>4</Max>")
+        self.assertEqual(emit_order([other, again, key]), [other, key, again])
 
 
 class TestTheEntryAChangeWasMadeAgainst(unittest.TestCase):
