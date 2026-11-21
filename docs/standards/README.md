@@ -7,7 +7,8 @@ The rules a change to the Studio follows, and how each is held.
 | [code-standards.md](code-standards.md) | The code: layers, Python, linters, errors, files, tests, tools, documents, commits, and what the Studio keeps across versions. |
 | [design-standards.md](design-standards.md) | Everything a person reads, sees or operates: text, voice, help, colour, scaling, accessibility, the glossary. |
 | [translation.md](translation.md) | Marking text for translation, what stays English, and the decisions for the German. |
-| [pr-checklist.md](pr-checklist.md) | What a contributor checks before opening a PR, and what a reviewer looks at. |
+| [pr-checklist.md](pr-checklist.md) | The absolute rules every PR keeps, what its description holds, how a change is verified in the Studio and in the game, and what a reviewer looks at. |
+| [../ledger.md](../ledger.md) | What was noticed and not fixed, one row each, triaged once per release. |
 | [release-checklist.md](release-checklist.md) | What is checked once per release, on the release branch: the renders, a run by hand, the census and the bench. |
 | [repository-settings.md](repository-settings.md) | The GitHub settings the public repository is to have: branch protection, secret scanning, Dependabot, email privacy. |
 
@@ -30,7 +31,9 @@ the same checks, sooner. The hook is switched on per clone, so a rule "held by t
 hook" is held by CI where the hook is off.
 - **Review.** A person checks it, with the PR checklist, or once per release with the
   release checklist. A rule stays here when no check can decide it: whether a label
-  names its action, whether a module is the right owner for a question.
+  names its action, whether a module is the right owner for a question. The absolute
+  rules of the PR checklist are kept by every PR. Any other a change falls short of
+  without fixing goes in the [ledger](../ledger.md), which is triaged once per release.
 
 A rule that is held by review and keeps being missed is a candidate for a check. A new
 check goes into `tools/standards_check.py` or `tools/design_check.py`, with a test

@@ -1,122 +1,126 @@
 # PR checklist
 
-What to go through before opening a PR, and what a reviewer looks at. Nothing here is
-enforced beyond what CI, the hook and the suite already check. It is a reference.
+What a PR holds before it is opened, and what a reviewer looks at. It is short on
+purpose. What it asks for is either absolute or a matter of judgement:
 
-Everything here can be done by whoever wrote the change, without waiting on anyone.
-What needs a person to look, such as the renders and the screenshots in the README and the guide, is
-done once per release instead, on the release branch: see
+- **The absolute rules** below are kept by every PR. Only a maintainer can let a PR
+  break one, and the PR says so under *Exceptions*, with who allowed it and their
+  words.
+- **Everything else** the standards ask for is judgement. Where a change falls short
+  of a standard and does not fix it, that goes in the [ledger](../ledger.md), one row,
+  and is triaged once per release. It does not go in a PR description to be forgotten.
+
+The description starts from
+[`.github/pull_request_template.md`](../../.github/pull_request_template.md).
+`tools/pr_description.py` fails the PR while a heading is missing or a line under
+*Verified* says nothing. It runs on every PR and again on every edit of the
+description. What a person has to check by hand once per release is
 [release-checklist.md](release-checklist.md).
 
-The PR description starts from
-[`.github/pull_request_template.md`](../../.github/pull_request_template.md), which
-carries the short form. The rules behind each line are in
-[code-standards.md](code-standards.md), [design-standards.md](design-standards.md)
-and [translation.md](translation.md).
+## The description
 
-## For the contributor
+- **What and why.** What was wrong or missing, what changed, and what was measured or
+  tried, for each change the PR carries. Where the answer rests on what the game's
+  loader does, say how that was established: the loader's reference, its source,
+  `xmltest`, or the game.
+- **AI assistance.** Which model or models and what they did, and the level from
+  [AI_DISCLOSURE.md](../../AI_DISCLOSURE.md).
+- **Verified**, one line each:
+  - **Suite:** the result of `python tools/check.py`, and whether both games and the
+    loader were installed.
+  - **In the Studio:** see [below](#verified-in-the-studio).
+  - **In the game:** see [below](#verified-in-the-game).
+  - **Ledger:** the rows the PR adds or closes, or none.
+- **Exceptions.** `None.`, or each absolute rule broken, with the maintainer who
+  allowed it.
 
-### Every PR
+## The absolute rules
 
-- [ ] The title says what is true after the PR. Where it carries several changes, the
-      title names the main one or what they share.
-- [ ] The description lists every change the PR carries. For each it says what was
-      wrong or missing, what changed, and what was measured or tried.
-- [ ] The description says what AI assistance the change had, if any: which model,
-      what it did, and which of the levels in
-      [AI_DISCLOSURE.md](../../AI_DISCLOSURE.md) it was.
-- [ ] `python tools/check.py` passes: the linters' counts, the design and standards
-      rules, and the suite. If the suite ran without the games or the loader
-      installed, the description says so.
-- [ ] The **check** runs on the PR pass. They run the same `tools/check.py`, without
-      the games or the loader, and the run's summary lists the tests that skipped
-      for it ([development.md](../development.md#ci)). A green CI run does not
-      stand in for the line above.
-- [ ] A count that went down is ratcheted (`python tools/check.py --ratchet`), and the
-      lower number is in the PR.
-- [ ] No count was raised, and no waiver was added to get past a rule. A new waiver
-      has its reason on the line.
-- [ ] A bug fix has a test that fails without it. New behaviour has a test.
-- [ ] The documents that own the changed facts are updated: the user guide for what a
-      person sees, the design notes for why, the architecture map for modules and
-      owners (code-standards.md, section 9).
-- [ ] Nothing from a game install and no key is in the diff.
+Most of these are held by a check. The rest are held by review.
 
-### If it adds or moves code
+| Rule | Held by |
+|---|---|
+| `python tools/check.py` passes, and the PR's **check** runs pass. | CI, required to merge |
+| No count is raised and no rule is switched off, in `check_baseline.json` or `pyproject.toml`. A new waiver has its reason on the line. A count that went down is ratcheted (`--ratchet`). | `check.py`; the ratchet by review |
+| `--no-verify` is not used. | review |
+| `core/` has no Qt, and a leaf imports no more than it did ([architecture.md](../architecture.md), section 1). | `standards_check.py` |
+| A new module or tool is named in [architecture.md](../architecture.md), section 4. | `check.py` |
+| A bug fix has a test that fails without it. New behaviour has a test. | review |
+| A changed string is in the catalog, and its German is redone under [translation.md](translation.md). | the hook |
+| A new dialog has a factory in `tests/design_dialogs.py`. | review |
+| The documents that own the changed facts are updated: the user guide for what a person sees, the design notes for why, the architecture map for modules ([code-standards.md](code-standards.md), section 9). | review |
+| What the Studio keeps: the stamp of what changed is bumped, or the PR says why no released build would misread it; text written into mods to recognise later is added to, never reworded; a new JSON record goes through `core/records.py` ([code-standards.md](code-standards.md), section 11). | `tests/test_formats.py`, `tests/test_contracts.py`, review |
+| `READER_VERSION` in `core/reader.py` is bumped where a mod now reads differently. | review |
+| Where a change could alter what an export writes, the census was run and the PR gives the result beside the last baseline. Where it changes something a person waits for, `tools/bench.py` was run. | review |
+| Nothing from a game install, no key, and no term from the private list is in the diff. | the hook, `private_scan.py` |
+| The *In the Studio* line is honest: what it says was seen, was seen. | review |
 
-- [ ] `core/` still has no Qt, and the new code is in the module that owns the
-      question (architecture.md, section 2).
-- [ ] A new module or tool is in architecture.md, section 4.
-- [ ] A new shared helper is in a leaf, and no leaf imports more than it did.
-- [ ] Names use the words the screen uses.
+## Verified in the Studio
 
-### If it changes the interface
+Before a PR is opened, the change is tried in the running Studio, or the PR says in one
+sentence why looking would show nothing different.
 
-- [ ] The checklist in [design-standards.md](design-standards.md), section 15, is
-      done. It covers text, look and keyboard.
-- [ ] `python tools/untranslated_widgets.py` is clean.
-- [ ] A new dialog has a factory in `tests/design_dialogs.py`, so the window walk
-      and the renders reach it.
+- **Write the check before the change.** Write down the steps and what should be seen
+  before making the change, then do them in the built change and write what was seen.
+  A check written afterwards bends towards whatever happened.
+- **A skip names what a person could see.** "No screen shows anything different: the
+  change is to the census tool" is a reason. "The tests cover it" is not one, for
+  anything a person can see.
+- **Where it runs.** The maintainer's agents run it by computer use on the test machine
+  that `CLAUDE.md` names, and nowhere else. A contributor runs it on their own
+  machine.
+- **What it does not cover.** Nothing past Play's question: starting the game, mod.io
+  and the Steam and Ubisoft accounts are left alone. What needs the game is the next
+  section.
+- **It is per change.** The hands-on runs, which try everything together for hours,
+  still happen before a release.
 
-### If it changes a string
+## Verified in the game
 
-- [ ] `python tools/translations.py update` has run and the catalog is committed.
-- [ ] The German is redone for every new or changed sentence, under
-      [translation.md](translation.md). The hook fails until it is.
-- [ ] A new term is in the glossary (design-standards.md, section 14) and in the
-      German terms table.
+Some changes can only be known to work in the game. The maintainer runs those, so each
+one is made to take a few minutes.
 
-### If it changes what the Studio keeps
-
-- [ ] The stamp of what changed is bumped, or the description says why no released
-      build would misread it ([code-standards.md](code-standards.md), section 11).
-- [ ] Text the Studio writes into mods to recognise later is added to, not
-      reworded, and a new marker is pinned in `tests/test_contracts.py`.
-- [ ] A new JSON record is read and written through `core/records.py`.
-
-### If it changes how mods are read, written or loaded
-
-- [ ] `READER_VERSION` in `core/reader.py` is bumped where a mod now reads
-      differently.
-- [ ] The description says which games it was tried against.
-- [ ] Where the change could alter what an export writes, the census was run and the
-      description gives the result beside the last baseline.
-- [ ] Where the answer rests on what the game's loader does, the description says how
-      that was established: the loader's reference, its source, `xmltest`, or the game.
-- [ ] Where it changes something a person waits for, `tools/bench.py` was run.
+- **When it is worth it.** When the answer rests on what the game does and the loader's
+  reference, its source and `xmltest` don't settle it, or when an export writes
+  something the game has not loaded before. Not when the census shows the export
+  writes the same bytes, and not for a change that is very unlikely to break. Say
+  which under *In the game*.
+- **A test pack.** `python tools/ingame_pack.py new <folder>` starts one: the probe
+  mods, `pack.json` with the questions and the answers expected, and a `README.txt`
+  that says what to do and how long it takes. Prefer questions the loader's log
+  answers (a marker ModOp that matches nothing, logged under the mod that ran it) over
+  ones that need play, since reaching the main menu is then enough. Where play is
+  needed, say which cheats get there. Packs go in the companion repository's
+  `in-game/` folder.
+- **It does not hold the merge.** The PR says *Pending:* and the pack's folder. The
+  release does not go out while a pack is pending
+  ([release-checklist.md](release-checklist.md)).
 
 ## For the reviewer
 
-CI has already checked what a program can, short of the tests that need the games or
-the loader. Spend the review on what it cannot.
+CI has already checked what a program can. Spend the review on what it cannot, and
+put what is not fixed in the PR in the [ledger](../ledger.md):
 
 - **Is it in the right place?** One question, one owner. A second answer to a question
-  that already has an owner is the most common way the code drifts.
-- **Does `ui/` decide anything?** A dialog that works out a folder or reads a file is
-  doing `core/`'s work.
-- **Is the test a test of the change?** It should fail without the change, and it
-  should fail for the reason the PR gives.
+  that already has an owner is the most common way the code drifts. Does `ui/` decide
+  something that is `core/`'s?
+- **Is the test a test of the change?** It should fail without the change, for the
+  reason the PR gives.
 - **Does the text read as one piece of writing?** Labels name the action, the voice is
-  the Studio's, and every term is the glossary's. Read the German as well where you
-  can.
+  the Studio's, and every term is the glossary's
+  ([design-standards.md](design-standards.md)).
 - **Is each waiver's reason true?** A reason that restates the rule ("broad except on
   purpose") is not one.
-- **Was a count ratcheted, or raised?** CI refuses a raised count. A new ruff
-  rule switched off in `pyproject.toml` is the same thing by another route.
 - **Do the documents still describe the code?** Look for a number, a module name or a
-  step in the user guide or the README that the PR made untrue.
-- **Was `--no-verify` used?** If the description says so, check that the reason is
-  gone by the time the PR merges.
-
-A finding the review does not fix in the PR is written down where it will be found
-again, as an issue.
+  step in the guide or the README that the PR made untrue.
 
 ### A PR from someone else
 
 A contributor may not have both games and the loader, and the Studio's look is not
 theirs to approve. On a PR that neither the maintainer nor one of their agents wrote:
 
-- [ ] The suite was run here, with both games and the loader installed.
-- [ ] Where it changes a screen, the screens it touches were looked at in the renders
-      from `python tools/render_themes.py <folder>`, the German ones as well.
-- [ ] Where it changes how mods are read, written or loaded, the census was run here.
+- The suite is run here, with both games and the loader installed.
+- The *In the Studio* check is done again here.
+- Where it changes a screen, the renders from `python tools/render_themes.py <folder>`
+  are looked at, the German ones as well.
+- Where it changes how mods are read, written or loaded, the census is run here.

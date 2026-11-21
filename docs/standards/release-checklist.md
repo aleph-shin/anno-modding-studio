@@ -69,6 +69,16 @@ Fixes for what these checks find are PRs into the release branch, not into `main
 ### What was left open
 
 - [ ] Every issue meant for this release is settled, or moved to the next one.
+- [ ] Every row of the [ledger](../ledger.md) was triaged: fixed, made an issue,
+      dropped, or kept with this release's version added to its *Kept*. `python
+      tools/ledger.py --release` passes; the release workflow runs it on the tag and
+      stops there if it does not.
+- [ ] No in-game test pack is pending: every PR since the last release that says
+      *In the game: Pending* has its pack run by the maintainer, and its result written
+      in the pack's folder in the companion repository's `in-game/`. A pack that failed
+      has its fix in this release, or the release notes say what does not work.
+- [ ] A hands-on run tried the release as a whole in the Studio, on the test machine,
+      beside the per-PR checks.
 
 ### The zip
 

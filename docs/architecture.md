@@ -435,6 +435,14 @@ rules it holds are in `docs/standards/`.
 | `private_scan.py` | the pre-push hook's scan of the commits a push adds, for the terms on a list kept outside the repository |
 | `duplicate_check.py` | the lines of the application and its tools that are in a run written somewhere else as well, by file; `check.py` holds each file's count from growing |
 
+**A PR's process** (`docs/standards/pr-checklist.md`)
+
+| Tool | For |
+|---|---|
+| `pr_description.py` | a PR's description has what the template asks for; `.github/workflows/pr-description.yml` runs it on every PR and every edit of its description |
+| `ledger.py` | `docs/ledger.md`, what was noticed and not fixed: its rows well formed (the `ledger` rule of `standards_check.py`), the count `check.py` prints, and with `--release` the release workflow's step that stops a tag while a row was not triaged for it |
+| `ingame_pack.py` | makes, installs, judges and takes away a test pack the maintainer runs in the game: probe mods whose marker ModOps the loader's log answers, with a README written from the pack's questions |
+
 **Translations** (`docs/standards/translation.md`)
 
 | Tool | For |

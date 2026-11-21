@@ -768,8 +768,11 @@ Where the Studio's words differ from the mod loader's reference
 
 ## 15. Checklist for a PR that adds or changes UI
 
-The checklist for every PR is [pr-checklist.md](pr-checklist.md). This is the part of
-it for the interface.
+The checklist for every PR is [pr-checklist.md](pr-checklist.md). This is a reference
+for the interface, not a list each PR ticks: the absolute rules there and the checks of
+section 13 are what every PR keeps. What no check can decide is looked at in the
+running Studio before the PR is opened, and a line a change falls short of without
+fixing goes in the [ledger](../ledger.md).
 
 Text:
 

@@ -1,4 +1,6 @@
-<!-- The full checklist, with the reason for each line, is docs/standards/pr-checklist.md. -->
+<!-- What each part asks for, and the absolute rules, are docs/standards/pr-checklist.md.
+     A check (tools/pr_description.py) fails the PR while a heading is missing, or a
+     line under "Verified" says nothing. Comments like this one don't count as text. -->
 
 ## What and why
 
@@ -7,29 +9,20 @@
 
 ## AI assistance
 
-<!-- Which model or models, and what they did. One of: none, ai-assisted,
-     ai-generated, autonomous (see AI_DISCLOSURE.md). -->
+<!-- Which model or models and what they did, and one of: none, ai-assisted,
+     ai-generated, autonomous (AI_DISCLOSURE.md). -->
 
-## Checked
+## Verified
 
-- [ ] `python tools/check.py` passes (linters' counts, design and standards rules, the suite)
-- [ ] The suite ran with both games and the loader installed, or this says what was missing:
-- [ ] The **check** runs on this PR pass (they skip what needs the games or the loader)
-- [ ] Tests cover the change, and a bug fix has a test that fails without it
-- [ ] Documents that own the changed facts are updated (README, design notes, architecture map)
-- [ ] No count raised, no waiver without a reason, `--no-verify` not used (or this says why)
+- **Suite:** <!-- tools/check.py's result, and whether both games and the loader were installed -->
+- **In the Studio:** <!-- The steps, what was expected, and what was seen. Or one sentence on
+     why looking would show nothing different: what a person could see, not "tests cover it". -->
+- **In the game:** <!-- "Not needed:" and why; or "Pending:" and the test pack's folder in the
+     companion; or what was seen. -->
+- **Ledger:** <!-- The rows this adds or closes (L12, L13), or none. -->
 
-## If it changes the interface or a string
+## Exceptions
 
-<!-- Delete this section if it does neither. -->
-
-- [ ] The checklist in docs/standards/design-standards.md, section 15, is done
-- [ ] `python tools/translations.py update` has run and the German is redone
-- [ ] A new dialog has a factory in `tests/design_dialogs.py`
-
-## If it changes how mods are read, written or loaded
-
-<!-- Delete this section if it does not. -->
-
-- [ ] Games it was tried against:
-- [ ] Census or bench result, where an export or a wait could change:
+<!-- An absolute rule this PR breaks, each with who allowed it ("allowed by ...") and their
+     words. Otherwise leave "None." -->
+None.
