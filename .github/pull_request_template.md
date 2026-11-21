@@ -23,6 +23,6 @@
 
 ## Exceptions
 
-<!-- An absolute rule this PR breaks, each with who allowed it ("allowed by ...") and their
-     words. Otherwise leave "None." -->
+<!-- Each absolute rule this PR breaks, as a list item with who allowed it
+     ("- ..., allowed by ...: "their words""). Otherwise leave "None." -->
 None.

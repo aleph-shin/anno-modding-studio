@@ -121,10 +121,18 @@ class PrDescription(unittest.TestCase):
         self.assertEqual(pr_description.problems(body), ['"**In the Studio:**" under "Verified" says nothing'])
 
     def test_an_exception_names_who_allowed_it(self):
-        body = GOOD.replace("None.", "Raised the ruff count by one.")
+        body = GOOD.replace("None.", "- Raised the ruff count by one.")
         self.assertTrue(pr_description.problems(body)[0].startswith("an exception names nobody"))
-        allowed = GOOD.replace("None.", 'Raised the ruff count by one, allowed by the maintainer: "fine".')
+        allowed = GOOD.replace("None.", '- Raised the ruff count by one, allowed by the maintainer: "fine".')
         self.assertEqual(pr_description.problems(allowed), [])
+        loose = GOOD.replace("None.", "Raised the ruff count by one.")
+        self.assertIn("neither", pr_description.problems(loose)[0])
+
+    def test_a_footer_after_the_exceptions_is_not_one(self):
+        footer = "\n\U0001f916 Generated with [Claude Code](https://claude.com/claude-code)\n"
+        self.assertEqual(pr_description.problems(GOOD + footer), [])
+        listed = GOOD.replace("None.", '- One, allowed by the maintainer: "yes".') + footer
+        self.assertEqual(pr_description.problems(listed), [])
 
     def test_an_empty_description(self):
         self.assertIn("empty", pr_description.problems("")[0])

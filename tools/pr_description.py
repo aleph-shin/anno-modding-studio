@@ -71,17 +71,26 @@ def problems(body: str) -> List[str]:
             said.append('no "**%s:**" line under "Verified"' % label)
         elif not line.group(1).strip():
             said.append('"**%s:**" under "Verified" says nothing' % label)
+    # Exceptions are list items; text after them, such as a footer a tool
+    # adds to every description, is not one.
     exceptions = found.get("Exceptions", "")
-    if exceptions and not re.fullmatch(r"none\.?", exceptions.strip(), re.I):
-        for line in exceptions.splitlines():
-            if line.strip() and not re.search(r"allowed by", line, re.I):
+    lines = [line.strip() for line in exceptions.splitlines() if line.strip()]
+    items = [line for line in lines if re.match(r"[-*]\s", line)]
+    if lines and not re.fullmatch(r"none\.?", lines[0], re.I):
+        if not items:
+            said.append('"Exceptions" is neither "None." nor a list of exceptions')
+        for line in items:
+            if not re.search(r"allowed by", line, re.I):
                 said.append('an exception names nobody who allowed it ("allowed by"): %s'
-                            % line.strip()[:80])
+                            % line[:80])
     return said
 
 
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    # What it quotes from a description may be anything, whatever the console takes.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if os.environ.get("PR_AUTHOR", "").endswith("[bot]"):
         print("written by %s: not checked" % os.environ["PR_AUTHOR"])
         return 0

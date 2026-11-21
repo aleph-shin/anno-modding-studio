@@ -31,8 +31,8 @@ description. What a person has to check by hand once per release is
   - **In the Studio:** see [below](#verified-in-the-studio).
   - **In the game:** see [below](#verified-in-the-game).
   - **Ledger:** the rows the PR adds or closes, or none.
-- **Exceptions.** `None.`, or each absolute rule broken, with the maintainer who
-  allowed it.
+- **Exceptions.** `None.`, or a list item for each absolute rule broken, saying
+  "allowed by" the maintainer, with their words.
 
 ## The absolute rules
 
