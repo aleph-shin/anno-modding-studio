@@ -961,7 +961,9 @@ class ChangeRows:
         if asset:
             # In full, whatever the row had room for.
             tip = asset + "\n" + tip
-        if change.positional:
+        # Only a count the check cannot ask about: one that kept its entry
+        # is checked on the Export tab, and said there where it moved.
+        if change.count_unchecked:
             tip = keptops.clipped(change.path, TIP_LINE) + "\n\n" + tr(
                 "Positional path. It may break on a game patch."
             )
@@ -1120,7 +1122,7 @@ class ChangeRows:
             theme.mark(item, "text-dim" if beaten else "warn", 0)
             if beaten:
                 item.setForeground(1, QColor(theme.TEXT_DIM))
-        elif change.positional:
+        elif change.count_unchecked:
             theme.mark(item, "warn", 0)
         else:
             theme.mark(item, "text", 0)

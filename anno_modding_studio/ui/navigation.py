@@ -155,7 +155,8 @@ def arrow_icon(pointing: int) -> QIcon:
 
 
 class NavButtons(QWidget):
-    """Back and forward over a trail, plus Alt+← and Alt+→ inside ``host``.
+    """Back and forward over a trail, plus Alt+← and Alt+→ in ``host``'s
+    window while ``host`` is shown.
 
     The buttons only ask; the tab they sit on decides what going back means
     for it -- the graph redraws, the editor opens the asset.
@@ -191,9 +192,14 @@ class NavButtons(QWidget):
                 shortcut = QShortcut(QKeySequence(keys), host)
                 # What the Keyboard shortcuts dialog lists it as.
                 shortcut.setProperty("shortcut_name", name)
-                # Only while that tab has the focus: the other tab walks the
-                # same trail with its own pair.
-                shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+                # Anywhere in the window while the tab is shown: with the
+                # keyboard in the Mod changes panel beside it, the keys did
+                # nothing, though the tab's Back button was right there.  A
+                # hidden widget's shortcut is not asked, so the other tab,
+                # which walks the same trail with its own pair, stays out of
+                # it, and a box that types with Alt and an arrow takes the
+                # keys first, as it does from inside the tab.
+                shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
                 shortcut.activated.connect(signal.emit)
 
         trail.changed.connect(self.sync)

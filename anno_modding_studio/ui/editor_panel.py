@@ -369,8 +369,12 @@ def _is_identity_guid(elem) -> bool:
 # pixels, while a field twelve levels down had its name cut to nothing. So
 # Property shares too, and the most, and Value and Original stop at what
 # they have a use for (field_limits) and leave the rest to Property and
-# Refers to.
-FIELD_SHARES = {0: 0.40, 1: 0.20, 2: 0.30, 3: 0.10}
+# Refers to.  Value comes before Refers to: with the larger share of the
+# two, Refers to, empty on most rows, took the room while an asset's name
+# in Value was cut after some twenty-six characters.  Now Value is at its
+# cap by the time the tree has room for Original, and Refers to is still
+# near its floor; past that, Refers to grows and Value does not.
+FIELD_SHARES = {0: 0.40, 1: 0.35, 2: 0.15, 3: 0.10}
 
 
 def field_limits(metrics, button: int) -> dict:
@@ -378,17 +382,20 @@ def field_limits(metrics, button: int) -> dict:
     own measure so they follow its size. ``button`` is the width of the
     "Choose asset…" button.
 
-    Value has room for a value of thirty-two characters: a longer one is a text
-    or a path, rare, and shown whole while it is typed in. Refers to keeps
-    room for an asset's short name or the button, and its hover says the
-    rest. Original is the first to go: past its cap it has nothing more to
-    say, and where the tree is narrow it is hidden, its rows' colour saying
-    which mod they come of.
+    Value has room for a value of forty-eight average characters, an asset's
+    name in capitals and spaces: thirty-two of them held a name to some
+    twenty-six letters.  A longer one is a text or a path, rare, and shown
+    whole while it is typed in. Refers to keeps room for an asset's short
+    name or the button, and its hover says the rest. Original is the first
+    to go: past its cap it has nothing more to say, and where the tree is
+    narrow it is hidden, its rows' colour saying which mod they come of.
+    Narrow is still measured with thirty-two characters of Value, so it is
+    hidden below the width it always was.
     """
     char = metrics.averageCharWidth()
     floors = {0: 22 * char, 1: 10 * char, 2: max(18 * char, button + 2 * PICK_MARGIN + 8)}
-    caps = {1: 32 * char, 3: 26 * char}
-    spare = {3: 2 * floors[0] + caps[1] + 2 * floors[2] + caps[3]}
+    caps = {1: 48 * char, 3: 26 * char}
+    spare = {3: 2 * floors[0] + 32 * char + 2 * floors[2] + caps[3]}
     return {"floors": floors, "caps": caps, "spare": spare}
 
 
@@ -669,7 +676,14 @@ class EditorPanel(QWidget):
         self.fold_button = QPushButton(tr("Expand all"))
         self.fold_button.clicked.connect(self._toggle_fold)
         tools.addWidget(self.fold_button)
+        # Whether every row is open now, which the button's words follow,
+        # and whether the next asset opens with every row open: only the
+        # button changes that, and Back and Forward put back what it was
+        # when the asset was left.  They were one, so a row shut by hand
+        # turned Expand all off for the next asset as well, and a row
+        # opened by hand did nothing either way.
         self._all_open = False
+        self._keep_open = False
         # How each asset's tree was left -- the rows open, where it was
         # scrolled to, the row picked -- for going back to it.
         self._views = {}
@@ -782,6 +796,7 @@ class EditorPanel(QWidget):
         self.tree.clear()
         self._loading = False
         self._set_all_open(False)
+        self._keep_open = False
         self._views = {}
         self.guid = None
         self.asset_root = None
@@ -832,7 +847,7 @@ class EditorPanel(QWidget):
         arrived = guid != self.guid
         if arrived and self.guid is not None:
             self._views[self.guid] = self._view_state()
-        all_open = self._all_open
+        all_open = self._keep_open
         self.guid = guid
         # What to do here is for an empty editor. With an asset open, the
         # room is the asset's.
@@ -2422,6 +2437,7 @@ class EditorPanel(QWidget):
             "open": {self._item_key(i) for i in self._iter_items()
                      if i.childCount() and i.isExpanded()},
             "all_open": self._all_open,
+            "keep_open": self._keep_open,
             "scroll": self.tree.verticalScrollBar().value(),
             "current": self._item_key(current) if current is not None else None,
         }
@@ -2433,7 +2449,8 @@ class EditorPanel(QWidget):
         assets to compare them, each opened at the rows being compared, lost
         them at every step. Come to any other way, Expand all carries on
         from the asset before, as a way of reading assets and not a click
-        to make on each.
+        to make on each, and it opens at the top: the scroll the asset
+        before was left at hid the rows an asset starts with.
         """
         view = self._views.get(guid) if self.trail.stepped and self.trail.current == guid else None
         if view is None:
@@ -2442,6 +2459,9 @@ class EditorPanel(QWidget):
                 self.tree.expandAll()
                 self._loading = False
                 self._set_all_open(True)
+            # Emptied and filled again, the tree keeps its scroll as far
+            # as the new rows reach.
+            self.tree.scrollToTop()
             return
         self._loading = True
         self.tree.setUpdatesEnabled(False)
@@ -2459,6 +2479,7 @@ class EditorPanel(QWidget):
             self.tree.setUpdatesEnabled(True)
             self._loading = False
         self._set_all_open(view["all_open"])
+        self._keep_open = view["keep_open"]
         if target is not None:
             # Before the scroll is put back: picking a row scrolls to it.
             self.tree.setCurrentItem(target)
@@ -3090,7 +3111,7 @@ class EditorPanel(QWidget):
                 "This is a container. Right-click it to add a field or a list entry, "
                 "or pick one of its values to change it."
             ))
-        elif positional:
+        elif positional and self._count_unchecked(current):
             self._set_hint(
                 tr("This value has no unique sibling key, so the path uses a "
                    "position index. It works, but can break if a game patch "
@@ -3099,6 +3120,19 @@ class EditorPanel(QWidget):
             )
         else:
             self._set_hint("")
+
+    def _count_unchecked(self, item) -> bool:
+        """Whether the row's path counts to its entry where the check on the
+        Export tab cannot ask whether it still finds it: the change of this
+        mod's behind the row kept no entry, as one read out of a mod's file
+        (:attr:`.changes.Change.count_unchecked`).  A row with none is not:
+        a change made on it keeps the entry its count finds
+        (:meth:`_entry_of`)."""
+        change = self._change_by_key(self._origin(item).change_key)
+        return (
+            change is not None and change.origin == self.editing()
+            and change.count_unchecked
+        )
 
     def _apply_filter(self) -> None:
         needle = self.filter_box.text().strip().lower()
@@ -3159,6 +3193,7 @@ class EditorPanel(QWidget):
         else:
             self._collapse_to_sections()
         self._set_all_open(opening)
+        self._keep_open = opening
 
     def _set_all_open(self, shown: bool) -> None:
         """Whether every row is open: the fold button offers the other."""
@@ -3167,7 +3202,8 @@ class EditorPanel(QWidget):
 
     def _on_row_collapsed(self, _item) -> None:
         # A row shut by hand: Collapse all would no longer be all there was
-        # left to do, and Expand all opens it again.
+        # left to do, and Expand all opens it again.  The next asset still
+        # opens with every row open: that is the button's to say.
         if self._all_open and not self._loading:
             self._set_all_open(False)
 

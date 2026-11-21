@@ -394,17 +394,31 @@ opened again at every step. Now an asset gone back or forward to, from either ta
 back as it was left: the rows open, the row picked, the scroll. An asset come to any other
 way is a new step and opens fresh, except that Expand all carries over from the asset
 before, as a way of reading assets rather than a click to make on each. What was added or
-pasted under it opens too.
+pasted under it opens too. Only the button turns it on or off, and Back puts back what it
+was when the asset was left. A row shut by hand used to turn it off for the next asset as
+well, while a row opened by hand, or Qt's `*`, never turned it on. The button's words
+still follow the tree, offering Expand all again once a row is shut, but the next asset
+opens as the button was last clicked. Opening fresh includes the scroll: the tree kept
+the one the asset before was left at, as far as the new rows reached, which hid the rows
+an asset starts with.
 
 **The field columns share the width by what they have a use for.** Property held 300
 pixels and the other three shared the rest, so on a wide screen a value of a few
 characters had a column of hundreds of pixels while a field twelve levels down had its
 name cut to nothing. Widening Property to fit the rows that are open would have moved
 the columns at every click, so the widths go by the tree's width alone: Value stops at
-room for 32 characters and Original at 26, both measured in the text's own size;
+room for 48 characters and Original at 26, both measured in the text's own size;
 Property and Refers to share what is left, Property the more. Refers to keeps room for
 an asset's short name or the button, and its hover says the rest. Original is hidden
 where the tree is narrow: the row's colour already says which mod it comes of.
+
+Value comes before Refers to. Value stopped at 32 average characters, which held an
+asset's name, all capitals and spaces, to some 26 letters, and Refers to had the larger
+share of the two, though it is empty on most rows. Value now has the larger share and a
+cap of 48, so it reaches its cap about where the tree has room for Original, with Refers
+to still near its floor; past that Refers to grows and Value does not. Where Original is
+hidden is still measured with 32 characters of Value, so it goes at the width it always
+did.
 
 **An empty GUID field shows a button.** Its Refers to cell opened the picker, but empty
 it looked like any number field's, and only someone who knew could find it. The button is

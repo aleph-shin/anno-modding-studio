@@ -517,6 +517,15 @@ class Change:
         return self.op in (OP_ADD_NEXT, OP_ADD_PREV) and not self.path
 
     @property
+    def count_unchecked(self) -> bool:
+        """True for a path that finds a list entry by a count the check on
+        the Export tab cannot ask about: no :attr:`entry` was kept for it,
+        as for a change read out of a mod's file.  A count with its entry
+        kept is asked whether it still finds it, and said only where it does
+        not, so it is no reason to warn by itself."""
+        return self.positional and not self.entry
+
+    @property
     def replaces_its_own_key(self) -> bool:
         """True for a replace of the field its own list entry is found by.
 
