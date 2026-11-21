@@ -1326,9 +1326,10 @@ class MainWindow(QMainWindow):
         # moved out of the main window into a window of its own.
         own_window = view_menu.addMenu(tr("Separate window"))
         own_window.addAction(self.changes_out)
+        # The tabs in the order of the strip, which their keys follow.
         own_window.addAction(self.editor_out)
-        own_window.addAction(self.file_out)
         own_window.addAction(self.references_out)
+        own_window.addAction(self.file_out)
         # Find is for the text in front of you, as it is in any editor, and
         # the XML view is text. It was the search for an asset, which made
         # the one key mean two things depending on how the asset was shown.

@@ -253,6 +253,8 @@ top row. The same arrow, the same key, or closing the window puts it back.
 - Every shortcut works there as it does in the main window.
 - The Studio remembers that it was out, and where. If that monitor isn't connected
   at the next start, it opens in the main window.
+- The window always opens wholly on one screen, moved in from the edge if it would
+  go past it.
 - A tab stays in the strip while it is out, and says where it is.
 
 With the mod's file in its own window, you see it and the asset editor together:
@@ -277,6 +279,8 @@ With the graph and the asset editor in different windows, you see them together:
 - Clicking through the graph leaves the editor where it is. **Edit this asset**, a
   double-click or Ctrl+Enter opens an asset there.
 - **Pin to this asset** keeps the graph on its asset whatever the editor opens.
+- The graph is drawn again after each change, and keeps its zoom and where it is
+  scrolled to. Moving it to another asset shows the whole of the new graph.
 - Back and forward in the graph step through the assets the graph has shown, and
   leave the editor's history alone.
 

@@ -28,7 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional
 
-from PySide6.QtCore import QRect, QSize, Qt, Signal
+from PySide6.QtCore import QMargins, QRect, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QGuiApplication, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -60,6 +60,32 @@ def on_a_screen(rect: QRect, screens: List[QRect]) -> bool:
     middle is on one of ``screens``.  A window remembered on a monitor that
     has since been unplugged is not."""
     return any(screen.contains(rect.center()) for screen in screens)
+
+
+def onto_a_screen(rect: QRect, screens: List[QRect]) -> QRect:
+    """``rect`` moved, and made smaller where it has to be, so that the
+    whole of it is on one of ``screens``: the one its middle is on, or
+    else the one it overlaps most, or else the first.
+
+    A window on a screen by its middle could still be partly off it, and
+    one put over the panel was as far right as the main window reached:
+    either opened with its side, and its title bar's buttons, past the
+    edge of the screen (R4-12).
+    """
+    if not screens:
+        return QRect(rect)
+    screen = next((each for each in screens if each.contains(rect.center())), None)
+    if screen is None:
+        def overlap(each: QRect) -> int:
+            common = each.intersected(rect)
+            return max(common.width(), 0) * max(common.height(), 0)
+
+        screen = max(screens, key=overlap)
+    width = min(rect.width(), screen.width())
+    height = min(rect.height(), screen.height())
+    x = min(max(rect.x(), screen.x()), screen.x() + screen.width() - width)
+    y = min(max(rect.y(), screen.y()), screen.y() + screen.height() - height)
+    return QRect(x, y, width, height)
 
 
 def _as_text(rect: QRect) -> str:
@@ -240,6 +266,9 @@ class PanelWindows:
             seat.window.showMaximized()
         else:
             seat.window.show()
+            # After what showing it set going: the panel's rows laid out
+            # in a window of their own make it wider than it was asked to be.
+            QTimer.singleShot(0, seat.window, lambda window=seat.window: self._keep_on_screen(window))
         seat.window.activateWindow()
         # Last, so that whoever hears of it finds the panel where it is.
         seat.action.setChecked(True)
@@ -289,18 +318,58 @@ class PanelWindows:
 
     def _place(self, seat: _Seat) -> QRect:
         """Where the window opens: where it was last, while that is on a
-        screen that is there, and over where the panel is otherwise."""
+        screen that is there, and over where the panel is otherwise.
+        Either way all of it, frame and all, on that screen."""
         least = seat.panel.minimumSizeHint().expandedTo(LEAST)
         if self._found(seat):
-            kept = self._remembered(seat)
-            kept.setSize(kept.size().expandedTo(least))
-            return kept
-        main = self.window
-        size = seat.panel.size() if seat.panel.isVisible() else QSize(0, 0)
-        size = size.expandedTo(least)
-        inside = main.centralWidget() or main
-        corner = inside.mapToGlobal(inside.rect().topRight())
-        return QRect(corner.x() - size.width(), corner.y(), size.width(), size.height())
+            where = self._remembered(seat)
+            where.setSize(where.size().expandedTo(least))
+        else:
+            main = self.window
+            size = seat.panel.size() if seat.panel.isVisible() else QSize(0, 0)
+            size = size.expandedTo(least)
+            inside = main.centralWidget() or main
+            corner = inside.mapToGlobal(inside.rect().topRight())
+            where = QRect(
+                corner.x() - size.width(), corner.y(), size.width(), size.height()
+            )
+        # The window's frame is not known before it is shown: the main
+        # window's stands in for it, as a window of the same kind.
+        frame = self._frame()
+        whole = onto_a_screen(where.marginsAdded(frame), self._screens())
+        return whole.marginsRemoved(frame)
+
+    def _keep_on_screen(self, window: QWidget) -> None:
+        """Once shown, ``window`` moved wholly onto its screen again.
+
+        Its place was worked out from the size its panel asks for in the
+        main window, and in a window of its own, shown, the panel asks for
+        more: the References window, put flush against the right edge of a
+        screen at 601 pixels wide, grew to 755 rightwards, past the edge
+        (R4-12).  Its layout is settled first, so that it has grown."""
+        layout = window.layout()
+        if layout is not None:
+            layout.activate()
+        outer = window.frameGeometry()
+        whole = onto_a_screen(outer, self._screens())
+        if whole == outer:
+            return
+        window.resize(
+            window.width() - (outer.width() - whole.width()),
+            window.height() - (outer.height() - whole.height()),
+        )
+        window.move(whole.topLeft())
+
+    def _frame(self) -> QMargins:
+        """The main window's frame: its title bar and borders."""
+        outer = self.window.frameGeometry()
+        inner = self.window.geometry()
+        return QMargins(
+            max(inner.left() - outer.left(), 0),
+            max(inner.top() - outer.top(), 0),
+            max(outer.right() - inner.right(), 0),
+            max(outer.bottom() - inner.bottom(), 0),
+        )
 
     def _remember_place(self, seat: _Seat) -> None:
         window = seat.window

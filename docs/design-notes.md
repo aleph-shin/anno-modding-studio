@@ -69,6 +69,12 @@ References tab (phase 2), the Mod file tab (phase 3) and the Asset editor
   left it would land on top of the main window, unasked. The panel stays in the main
   window and is still remembered as out, and where, so that a laptop back on its
   dock has it out again. Moving it by hand ends that.
+- **A window that is opened is wholly on one screen.** A window remembered with its
+  middle on a screen could still be partly off it, and one put over the panel went
+  as far right as the main window did: either opened with its side and its title
+  bar's buttons past the edge. Each place is moved in, and made smaller where it is
+  larger than the screen, frame and all (`panel_windows.onto_a_screen`). The frame
+  is not known before the window is shown, so the main window's stands in for it.
 - **Two rules stand in for "which tab is in front".** A panel is *showing* when it
   is the tab in front or is out (`MainWindow.showing`), and `open_tab` brings a
   panel forward wherever it is, with the keyboard. From a panel's window, going to a
@@ -453,6 +459,11 @@ does, and the difference is stark.
 - `ReferencePanel.menu_for()` builds it apart from
   showing it, the way the *Mod changes* panel does, so what it offers can be tested
   without a modal menu on screen.
+- A redraw of the asset the graph is on keeps the zoom and the scroll. The graph is
+  drawn again at every edit, undo and reading, wherever they are, and each redraw
+  framed it afresh: a graph zoomed into, pinned in a window of its own, went back to
+  the whole of it at every edit of another asset. Moving to an asset frames it,
+  even the one it is on, since a click on the middle box means "centre on this".
 
 ### Exporting the mod
 
