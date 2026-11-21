@@ -29,6 +29,7 @@ still sitting there when you switch it back on.
 
 from __future__ import annotations
 
+import bisect
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -427,6 +428,37 @@ def order(game: str, mods: Dict[str, dict], logged=None) -> List[str]:
                 placed[name] = at
             return sorted(ranked, key=lambda name: (placed[name], base_key(game, name, mods.get(name))))
     return _loader_sort(game, mods, ranked)
+
+
+def moved(before: List[str], after: List[str]) -> List[str]:
+    """The mods of ``before`` that ``after``, a load order read since, has
+    somewhere else among the others: the fewest that can have moved, those
+    outside the longest run of them ``after`` has in ``before``'s order.  In
+    ``after``'s order.  A mod only one of the two has is not counted: a mod
+    added or left out moves nothing."""
+    was = {name: at for at, name in enumerate(before)}
+    both = [name for name in after if name in was]
+    # The longest run, by patience sorting: ``tails[k]`` is the smallest
+    # place in ``before`` a run k + 1 long can end at, ``ends[k]`` where in
+    # ``both`` that run ends, and ``behind`` the mod each run steps back to.
+    tails: List[int] = []
+    ends: List[int] = []
+    behind = [-1] * len(both)
+    for at, name in enumerate(both):
+        k = bisect.bisect_left(tails, was[name])
+        if k == len(tails):
+            tails.append(was[name])
+            ends.append(at)
+        else:
+            tails[k] = was[name]
+            ends[k] = at
+        behind[at] = ends[k - 1] if k else -1
+    stayed = set()
+    at = ends[-1] if ends else -1
+    while at >= 0:
+        stayed.add(at)
+        at = behind[at]
+    return [name for at, name in enumerate(both) if at not in stayed]
 
 
 def loader_id(game: str, name: str, meta) -> str:

@@ -220,6 +220,11 @@ def add(target: Loadout, source: Loadout, origin: str, mods_folder) -> Added:
         layer = ModLayer(origin=name, folder=str(Path(mods_folder) / name), kept=True)
         target.set_layer(layer)
         readback.take_in(target, layer, project_files.Project.read(project))
+        # Placed again by what its project says it is: set in before that,
+        # Anno 117 sorted it as a mod of no category, after every other one
+        # (R4-8, hands-on run 4).
+        layer.order = 0
+        target.renumber_layers()
     layer.active = True
     done.origin = layer.origin
     target.projects[layer.origin].read_at = NEVER_READ
