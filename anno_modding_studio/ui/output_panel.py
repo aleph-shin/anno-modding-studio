@@ -2259,7 +2259,7 @@ class OutputPanel(QWidget):
         for change in exported.active():
             # One that knows the entry it was made against was asked whether
             # it still finds it, and is said above only where it does not.
-            if change.positional and not change.entry:
+            if change.count_unchecked:
                 problems.append(
                     (
                         "warn",

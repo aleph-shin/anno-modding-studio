@@ -1003,6 +1003,55 @@ class TestEditingAValue(WorkflowCase):
         self.assertEqual(self.window.output.check_list.count(), 0)
         self.assertIn("verified", self.window.output.check_summary.text())
 
+    def test_the_panel_marks_only_a_count_it_cannot_check(self):
+        """Every counted path wore the warning and *Positional path* in
+        its hover, one the check on the Export tab asks about as well."""
+        from anno_modding_studio.ui.change_rows import STATUS_ROLE
+
+        self.window._open_asset("1010030")
+        self._edit("Tag", "manor")
+        change = next(iter(self.window.loadout))
+        self.assertTrue(change.positional and change.entry)
+        panel = self.window.changes_panel
+        row = change_rows(panel)[0]
+        self.assertIsNone(row.data(0, STATUS_ROLE))
+        self.assertNotIn("Positional path", row.toolTip(0))
+
+        change.entry = ""
+        panel.refresh()
+        row = change_rows(panel)[0]
+        self.assertEqual(row.data(0, STATUS_ROLE), "warn")
+        self.assertIn("Positional path", row.toolTip(0))
+
+    def test_the_editor_warns_only_of_a_count_it_cannot_check(self):
+        """Its hint said a position index can break on a game patch on
+        every counted row, though a change made there keeps its entry and
+        is checked."""
+        editor = self.window.editor
+        self.window._open_asset("1010030")
+        editor.tree.setCurrentItem(self._find_item("Tag"))
+        self.assertIn("/Tag[", editor.path_box.text())
+        self.assertEqual(editor.warning_label.text(), "")
+
+        self._edit("Tag", "manor")
+        change = next(iter(self.window.loadout))
+        self.assertTrue(change.entry)
+        # Drawn again, so the row knows the change behind it.
+        self.window._open_asset("1010340")
+        self.window._open_asset("1010030")
+        edited = next(
+            item for item in editor._iter_items()
+            if item.text(0) == "Tag" and item.text(1) == "manor"
+        )
+        editor.tree.setCurrentItem(edited)
+        self.assertEqual(editor.warning_label.text(), "")
+
+        # As one read out of a mod's file: nothing to check it by.
+        change.entry = ""
+        editor.tree.setCurrentItem(None)
+        editor.tree.setCurrentItem(edited)
+        self.assertIn("position index", editor.warning_label.text())
+
     def test_a_validation_row_can_be_opened_rather_than_only_read(self):
         """The list names an asset; getting to it used to mean finding it again."""
         self.window._open_asset("1010030")
@@ -2648,9 +2697,9 @@ class TestStructuralEdits(WorkflowCase):
         self.assertEqual(len(self.window.loadout), 1)
         self.assertIn("<Twice>3</Twice>", next(iter(self.window.loadout)).payload)
 
-    def _on_a_value_of_an_added_entry(self):
-        """Add a list entry and put the tree on its first value; the path
-        box and the hint are then about a row only the addition has."""
+    def _on_an_added_entry(self):
+        """Add a list entry and put the tree on it; the path box and the
+        hint are then about a row only the addition has."""
         editor = self.window.editor
         self.window._open_asset("1010340")
         editor._add_list_entry(self._container("Maintenances"))
@@ -2658,22 +2707,27 @@ class TestStructuralEdits(WorkflowCase):
             i for i in editor._iter_items()
             if i.text(0) == "Item" and i.text(3) == "added by this mod"
         )
-        editor.tree.setCurrentItem(entry.child(0))
+        editor.tree.setCurrentItem(entry)
         self.assertIn("/Maintenances/Item[", editor.path_box.text())
-        self.assertIn("position index", editor.warning_label.text())
+        self.assertIn("This is a container", editor.warning_label.text())
+        # Its values are written into the addition, by no path that
+        # counts: nothing to warn of.
+        editor.tree.setCurrentItem(entry.child(0))
+        self.assertEqual(editor.warning_label.text(), "")
+        editor.tree.setCurrentItem(entry)
         return editor
 
     def test_the_path_box_does_not_outlive_the_entry_it_was_about(self):
         """Revert asset took the added entry out of the tree, and its path
-        and "no unique sibling key" stayed below it."""
-        editor = self._on_a_value_of_an_added_entry()
+        and the hint stayed below it."""
+        editor = self._on_an_added_entry()
         editor._revert_asset()
         self.assertEqual(len(self.window.loadout), 0)
         self.assertIsNone(editor.tree.currentItem())
         self.assertEqual((editor.path_box.text(), editor.warning_label.text()), ("", ""))
 
     def test_nor_when_the_addition_is_undone(self):
-        editor = self._on_a_value_of_an_added_entry()
+        editor = self._on_an_added_entry()
         self.window.undo_last()
         self.assertEqual(len(self.window.loadout), 0)
         self.assertEqual((editor.path_box.text(), editor.warning_label.text()), ("", ""))
@@ -3011,6 +3065,59 @@ class TestBrowsingKeepsTheView(WorkflowCase):
         self.assertTrue(deep)
         self.assertFalse(any(i.isExpanded() for i in deep))
 
+    def test_a_row_shut_by_hand_does_not_turn_it_off_for_the_next_asset(self):
+        """It did: one row shut, and the next asset opened collapsed, the
+        button offering Expand all."""
+        editor = self.window.editor
+        self.window._open_asset("1010340")
+        editor.fold_button.click()
+        deep = [i for i in self._containers() if i.parent() is not None]
+        deep[0].setExpanded(False)
+        # The tree has a row to open again, and the button says so.
+        self.assertEqual(editor.fold_button.text(), "Expand all")
+
+        editor.load_asset("1010030")
+        self.assertTrue(all(i.isExpanded() for i in self._containers()))
+        self.assertEqual(editor.fold_button.text(), "Collapse all")
+
+    def test_nor_do_rows_opened_by_hand_turn_it_on(self):
+        editor = self.window.editor
+        self.window._open_asset("1010340")
+        for item in self._containers():
+            item.setExpanded(True)
+        editor.load_asset("1010030")
+        deep = [i for i in self._containers() if i.parent() is not None]
+        self.assertTrue(deep)
+        self.assertFalse(any(i.isExpanded() for i in deep))
+        self.assertEqual(editor.fold_button.text(), "Expand all")
+
+    def test_an_asset_opened_afresh_opens_at_its_top(self):
+        """It kept the scroll of the asset before, which hid its first
+        rows, Template and Standard among them."""
+        editor = self.window.editor
+        bar = editor.tree.verticalScrollBar()
+        # Short, so an asset scrolls with only its sections open: the
+        # scroll left was held to what those leave, still past the top.
+        self.window.resize(1400, 420)
+        self.window.show()
+        self.window.tabs.setCurrentWidget(editor)
+        self.window._open_asset("1010340")
+        editor.fold_button.click()
+        _app.processEvents()
+        self.assertGreater(bar.maximum(), 0, "the open tree should scroll")
+        bar.setValue(bar.maximum())
+        scrolled = bar.value()
+        self.assertGreater(scrolled, 0)
+
+        editor.load_asset("1010030")
+        _app.processEvents()
+        self.assertGreater(bar.maximum(), 0)
+        self.assertEqual(bar.value(), 0)
+        # Back still puts the asset's scroll back.
+        editor.go_back()
+        _app.processEvents()
+        self.assertEqual(bar.value(), scrolled)
+
     def test_back_and_forward_come_back_to_the_asset_as_it_was_left(self):
         editor = self.window.editor
         tree = editor.tree
@@ -3105,6 +3212,33 @@ class TestTheFieldColumnsShareTheWidth(WorkflowCase):
         self.window.resize(4000, 700)
         _app.processEvents()
         self.assertFalse(header.isSectionHidden(3))
+
+    def test_value_has_its_room_before_refers_to_grows(self):
+        """Refers to, empty on most rows, had the larger share, and an
+        asset's name in Value was cut after some twenty-six characters."""
+        tree, header = self._laid_out(1400)
+        limits = self.window.editor._field_limits()
+        # Just wide enough for Original to be shown.
+        just = limits["spare"][3] + 10
+        self.window.resize(self.window.width() + just - tree.viewport().width(), 700)
+        _app.processEvents()
+        self.assertGreaterEqual(tree.viewport().width(), limits["spare"][3])
+        self.assertFalse(header.isSectionHidden(3))
+        char = tree.fontMetrics().averageCharWidth()
+        self.assertEqual(header.sectionSize(1), limits["caps"][1])
+        self.assertGreaterEqual(header.sectionSize(1), 40 * char)
+        self.assertLess(header.sectionSize(2), header.sectionSize(1))
+        self.assertGreaterEqual(header.sectionSize(2), limits["floors"][2])
+        # Original still goes where it went: the cap raised is no reason
+        # to hide it on a wider tree than before.
+        self.window.resize(self.window.width() - 20, 700)
+        _app.processEvents()
+        self.assertTrue(header.isSectionHidden(3))
+        floors = limits["floors"]
+        self.assertEqual(
+            limits["spare"][3],
+            2 * floors[0] + 32 * char + 2 * floors[2] + limits["caps"][3],
+        )
 
 
 class TestCopyingAndPastingABlock(WorkflowCase):
@@ -4819,6 +4953,49 @@ class TestTheResultListAndCombos(WorkflowCase):
                     self._step_with_the_mouse("xml", button), self.window.editor.xml.strip
                 )
 
+    def test_alt_and_an_arrow_walk_the_trail_from_the_mod_changes_panel(self):
+        """The keys were the editor tab's own, and with the keyboard in the
+        Mod changes panel beside it they did nothing."""
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+
+        self._in_front()
+        editor = self.window.editor
+        self.window._open_asset("1010030")
+        tree = self.window.changes_panel.tree
+        self.assertTrue(tree.isVisible())
+        tree.setFocus()
+        _app.processEvents()
+        if not tree.hasFocus():
+            self.skipTest("no keyboard focus on this platform")
+        alt = Qt.KeyboardModifier.AltModifier
+        QTest.keyClick(tree, Qt.Key.Key_Left, alt)
+        _app.processEvents()
+        self.assertEqual(editor.guid, "1010340")
+        QTest.keyClick(tree, Qt.Key.Key_Right, alt)
+        _app.processEvents()
+        self.assertEqual(editor.guid, "1010030")
+        self.assertTrue(tree.hasFocus())
+
+    def test_and_from_the_references_tab_only_its_own_pair_answers(self):
+        """Both tabs have a pair for the window: the one not shown is not
+        asked, so the keys are no one shortcut claimed twice."""
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+
+        self._in_front()
+        self.window._open_asset("1010030")
+        self.window.tabs.setCurrentIndex(TAB_REFS)
+        _app.processEvents()
+        tree = self.window.changes_panel.tree
+        tree.setFocus()
+        _app.processEvents()
+        if not tree.hasFocus():
+            self.skipTest("no keyboard focus on this platform")
+        QTest.keyClick(tree, Qt.Key.Key_Left, Qt.KeyboardModifier.AltModifier)
+        _app.processEvents()
+        self.assertEqual(self.window.trail.current, "1010340")
+
     def test_a_step_from_the_keys_leaves_the_keyboard_where_it_was(self):
         """Alt+Left from the filter is not a reason to take it out of there."""
         self._in_front()
@@ -5399,8 +5576,18 @@ class TestHintsAndGeometry(WorkflowCase):
         self.assertEqual(label.objectName(), "StepHint")
 
     def test_a_positional_path_still_gets_the_warning_style(self):
+        """One the check can't ask about: a change at it that kept no
+        entry, as one read out of a mod's file."""
         self.window._open_asset("1010030")
-        item = self._edit("Tag", "manor")  # positional: no identifying child
+        self._edit("Tag", "manor")  # positional: no identifying child
+        next(iter(self.window.loadout)).entry = ""
+        # Drawn again, so the row knows the change behind it.
+        self.window._open_asset("1010340")
+        self.window._open_asset("1010030")
+        item = next(
+            item for item in self.window.editor._iter_items()
+            if item.text(0) == "Tag" and item.text(1) == "manor"
+        )
         self.window.editor.tree.setCurrentItem(item)
 
         label = self.window.editor.warning_label

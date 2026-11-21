@@ -1191,9 +1191,11 @@ Search is at the top of the asset editor. Type an in-game name, an internal name
 - **Right-click a result** for **Open in asset editor**, **References for this
   asset…**, **Copy GUID**, **Copy internal name** and **Show only &lt;template&gt;**.
 - **Back** and **Forward** (Alt+Left, Alt+Right, or the mouse's side buttons) walk
-  the assets you have visited. The References tab shares the same history. An asset
-  gone back or forward to opens as you left it: the same rows open, the same row
-  picked, scrolled to the same place.
+  the assets you have visited. The keys work anywhere in the window while the tab is
+  shown, the Mod changes panel included. The References tab shares the same history.
+  An asset gone back or forward to opens as you left it: the same rows open, the same
+  row picked, scrolled to the same place. An asset opened any other way opens at its
+  top.
 
 ### Editing
 
@@ -1203,8 +1205,8 @@ edit it.
 - **Original** shows the value before your change. Changed rows are highlighted.
   Where the tree is narrow, Original is hidden first.
 - **The columns share the width.** Value and Original take only what they need, and
-  Property and Refers to take the rest, so deep rows keep their names. Drag a column's
-  edge to change it.
+  Property and Refers to take the rest, so deep rows keep their names. Value has room
+  for an asset's name before Refers to grows. Drag a column's edge to change it.
 - **Typing the original value back** removes the change.
 - **Refers to** shows the asset a GUID field points at. Double-click it, or
   right-click › *Choose asset…*, to pick another. An empty field that takes a GUID
@@ -1213,8 +1215,9 @@ edit it.
 - **Filter fields…** searches within the asset, and Ctrl+F puts the keyboard there.
   **Only changed** shows what the mod touches. **Show empty** shows empty fields and
   list padding. **Expand all** opens every row, and then reads **Collapse all**.
-  It stays on: the next asset you open, and what you add or paste, opens expanded
-  too, until you collapse.
+  It stays on: the next asset you open opens expanded too, until you click
+  **Collapse all**. Opening or closing a row by hand doesn't change that. While every
+  row is open, what you add or paste opens expanded as well.
 - **ModOp path** shows the path the selected value will be targeted by. **Copy**
   copies it.
 - **The asset's own GUID is read-only.** Other GUID fields are editable.
@@ -1239,9 +1242,12 @@ The tree shows the asset as it will be: the game's asset with every loaded mod a
 your own changes applied. Changing something you added updates that one ModOp.
 
 A list entry is addressed by its content where possible
-(`Item[Product='1010365']`). An entry with nothing unique in it is addressed by
-position (`Tag[2]`). Those rows are flagged, because a game update that reorders the
-list would move the target.
+(`Item[Product='1010365']`). An entry with nothing unique in it is found by a count
+among the entries like it (`Item[Fertility='31361'][2]`), or in the whole list
+(`Tag[2]`). A change made here remembers the entry its count found, and the check on
+the Export tab says when the count finds another one: see
+[One ModOp per change](#one-modop-per-change). Only a count it can't check, such as
+one read from a mod's file, is flagged, in the editor and in the Mod changes panel.
 
 **Undo.** *Edit › Undo* (Ctrl+Z) and *Redo* (Ctrl+Y) cover everything that changes
 what the mod writes: edits, additions, new assets, patterns, checkboxes in the Mod
